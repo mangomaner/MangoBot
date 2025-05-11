@@ -1,0 +1,18 @@
+QQ:
+  whitelist: 420418118, 220264051
+  botQQ: 3970521445
+
+chat-model:
+  api-key: xxx
+  model-name: qwen-turbo  # 可自选
+
+server:
+  port: 8765
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/qq_messages
+
+# 访问 http://localhost:8765/doc.html# 进入接口文档
+knife4j:
+  enable: true
