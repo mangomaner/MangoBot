@@ -8,6 +8,7 @@ import org.mango.mangobot.exception.BusinessException;
 import org.mango.mangobot.manager.websocketReverseProxy.model.dto.Message;
 import org.mango.mangobot.manager.websocketReverseProxy.model.dto.groupMessage.*;
 import org.mango.mangobot.service.GroupMessage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -24,12 +25,14 @@ public class GroupMessageService implements GroupMessage {
     @Resource
     private Map<String, WebSocketSession> sessionMap; // 假设 SessionMap 是你管理 WebSocketSession 的组件
 
+    @Value("${QQ.botQQ}")
+    private String selfId;
 
     /**
      * 发送纯文本消息
      */
     @Override
-    public void sendTextMessage(String selfId, String groupId, String text) {
+    public void sendTextMessage(String groupId, String text) {
         SendGroupMessageRequest request = new SendGroupMessageRequest();
         request.setGroup_id(groupId);
         request.setMessage(List.of(new TextMessageData() {{
@@ -43,7 +46,7 @@ public class GroupMessageService implements GroupMessage {
      * 发送带 @ 的消息
      */
     @Override
-    public void sendAtMessage(String selfId, String groupId, String qq, String text) {
+    public void sendAtMessage(String groupId, String qq, String text) {
         SendGroupMessageRequest request = new SendGroupMessageRequest();
         request.setGroup_id(groupId);
         request.setMessage(List.of(
@@ -62,7 +65,7 @@ public class GroupMessageService implements GroupMessage {
      * 发送图片消息
      */
     @Override
-    public void sendImageMessage(String selfId, String groupId, String fileUrlOrPath) {
+    public void sendImageMessage(String groupId, String fileUrlOrPath) {
         SendGroupMessageRequest request = new SendGroupMessageRequest();
         request.setGroup_id(groupId);
         request.setMessage(List.of(new ImageMessageData() {{
@@ -76,7 +79,7 @@ public class GroupMessageService implements GroupMessage {
      * 发送语音消息
      */
     @Override
-    public void sendRecordMessage(String selfId, String groupId, String fileUrlOrPath) {
+    public void sendRecordMessage(String groupId, String fileUrlOrPath) {
         SendGroupMessageRequest request = new SendGroupMessageRequest();
         request.setGroup_id(groupId);
         request.setMessage(List.of(new RecordMessageData() {{
@@ -90,7 +93,7 @@ public class GroupMessageService implements GroupMessage {
      * 发送回复消息
      */
     @Override
-    public void sendReplyMessage(String selfId, String groupId, String messageId, String message) {
+    public void sendReplyMessage(String groupId, String messageId, String message) {
         SendGroupMessageRequest request = new SendGroupMessageRequest();
         request.setGroup_id(groupId);
         request.setMessage(List.of(
@@ -109,7 +112,7 @@ public class GroupMessageService implements GroupMessage {
      * 发送混合消息（可自定义多个 MessageSegment）
      */
     @Override
-    public void sendCustomMessage(String selfId, String groupId, String text, String qq, String imageUrl) {
+    public void sendCustomMessage(String groupId, String text, String qq, String imageUrl) {
         if(text == null && qq == null && imageUrl == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前发送的是空消息");
         }

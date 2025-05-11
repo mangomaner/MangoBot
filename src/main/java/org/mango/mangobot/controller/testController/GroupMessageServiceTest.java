@@ -26,7 +26,7 @@ public class GroupMessageServiceTest {
             @RequestParam String selfId,
             @RequestParam String groupId,
             @RequestParam String text) {
-        groupMessageService.sendTextMessage(selfId, groupId, text);
+        groupMessageService.sendTextMessage(groupId, text);
         return ResultUtils.success("文本消息已发送: " + text);
     }
 
@@ -39,7 +39,7 @@ public class GroupMessageServiceTest {
             @RequestParam String groupId,
             @RequestParam String qq,
             @RequestParam String text) {
-        groupMessageService.sendAtMessage(selfId, groupId, qq, text);
+        groupMessageService.sendAtMessage(groupId, qq, text);
         return ResultUtils.success("@消息已发送: @" + qq + " " + text);
     }
 
@@ -51,7 +51,7 @@ public class GroupMessageServiceTest {
             @RequestParam String selfId,
             @RequestParam String groupId,
             @RequestParam String fileUrlOrPath) {
-        groupMessageService.sendImageMessage(selfId, groupId, fileUrlOrPath);
+        groupMessageService.sendImageMessage(groupId, fileUrlOrPath);
         return ResultUtils.success("图片消息已发送: " + fileUrlOrPath);
     }
 
@@ -63,7 +63,7 @@ public class GroupMessageServiceTest {
             @RequestParam String selfId,
             @RequestParam String groupId,
             @RequestParam String fileUrlOrPath) {
-        groupMessageService.sendRecordMessage(selfId, groupId, fileUrlOrPath);
+        groupMessageService.sendRecordMessage(groupId, fileUrlOrPath);
         return ResultUtils.success("语音消息已发送: " + fileUrlOrPath);
     }
 
@@ -76,7 +76,7 @@ public class GroupMessageServiceTest {
             @RequestParam String groupId,
             @RequestParam String replyMessageId,
             @RequestParam String message) {
-        groupMessageService.sendReplyMessage(selfId, groupId, replyMessageId, message);
+        groupMessageService.sendReplyMessage(groupId, replyMessageId, message);
         return ResultUtils.success("回复消息已发送，ID: " + replyMessageId + message);
     }
 
@@ -91,7 +91,7 @@ public class GroupMessageServiceTest {
             @RequestParam(required = false) String qq,
             @RequestParam(required = false) String imageUrl) {
 
-        groupMessageService.sendCustomMessage(selfId, groupId, text, qq, imageUrl);
+        groupMessageService.sendCustomMessage(groupId, text, qq, imageUrl);
         return ResultUtils.success("混合消息已发送");
     }
 }

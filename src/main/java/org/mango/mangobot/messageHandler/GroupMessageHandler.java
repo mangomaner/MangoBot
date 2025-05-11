@@ -77,7 +77,9 @@ public class GroupMessageHandler {
      */
     @PokeMessage
     public void handlePoke(@SenderId String fromUser,
-                           @TargetId String targetUser) {
+                           @TargetId String targetUser,
+                           @GroupId String groupId) {
         log.info("收到 @ {}的戳一戳，来自：{}", targetUser, fromUser);
+        groupMessageService.sendAtMessage(groupId, fromUser, "戳我干嘛");
     }
 }
