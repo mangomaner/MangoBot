@@ -17,7 +17,7 @@
 - [LLOneBot插件](https://llonebot.com/zh-CN/guide/getting-started)
 
 安装好后按下图配置：
-![image](https://github.com/mangomaner/MangoBot/tree/main/image/LLOneBotConfig.png)
+![image](https://github.com/mangomaner/MangoBot/blob/main/image/LLOneBotconfig.png)
 
 在application.yml中配置好Bot后，@你的Bot，收到回应表示安装成功。
 
