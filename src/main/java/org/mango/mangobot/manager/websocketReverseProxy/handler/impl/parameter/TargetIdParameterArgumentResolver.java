@@ -23,12 +23,13 @@ public class TargetIdParameterArgumentResolver implements ParameterArgumentResol
             return message.getTarget_id();
         } else {
             List<ReceiveMessageSegment> segments = message.getMessage();    // at对象
+            StringBuilder sb = new StringBuilder();
             for (ReceiveMessageSegment segment : segments) {
                 if ("at".equalsIgnoreCase(segment.getType())) {
-                    return segment.getData().getQq();
+                    sb.append(segment.getData().getQq());
                 }
             }
+            return sb;
         }
-        return null;
     }
 }

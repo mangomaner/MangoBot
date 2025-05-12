@@ -66,15 +66,18 @@ public class BotMessageHandler extends TextWebSocketHandler {
             log.error("解析后 messageMap 为空");
             return;
         }
-        log.debug("收到消息: " + payload);
+        log.info("收到消息: " + payload);
         // 开启后仅接收群消息
-        if(!messageMap.containsKey("group_id")){
-            return;
+        if(!"meta_event".equals(messageMap.getOrDefault("post_type", ""))){
+            if(!messageMap.containsKey("group_id")){
+                return;
+            }
+            // 开启后仅接收groupSet中存储的群号的消息
+            if(!groupSet.contains(messageMap.get("group_id").toString())){
+                return;
+            }
         }
-        // 开启后仅接收groupSet中存储的群号的消息
-        if(!groupSet.contains(messageMap.get("group_id").toString())){
-            return;
-        }
+
         // 提取 post_type
         Optional.ofNullable(messageMap.get("post_type"))
                 .filter(String.class::isInstance)
