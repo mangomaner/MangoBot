@@ -5,7 +5,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import jakarta.annotation.Resource;
 import org.bson.Document;
-import org.mango.mangobot.annotation.QQ.parameter.ImageURL;
 import org.mango.mangobot.annotation.QQ.parameter.ReplyContent;
 import org.mango.mangobot.manager.websocketReverseProxy.handler.ParameterArgumentResolver;
 import org.mango.mangobot.model.QQ.QQMessage;
@@ -46,7 +45,7 @@ public class ReplyContentParameterArgumentResolver implements ParameterArgumentR
             }
         }
 
-        return null; // 或者抛出异常，取决于你的需求
+        return ""; // 或者抛出异常，取决于你的需求
     }
 
     private Document findMessageById(Integer messageId, String groupId) {

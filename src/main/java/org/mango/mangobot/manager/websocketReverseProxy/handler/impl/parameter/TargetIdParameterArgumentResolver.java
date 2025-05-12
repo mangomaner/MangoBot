@@ -29,7 +29,7 @@ public class TargetIdParameterArgumentResolver implements ParameterArgumentResol
                     sb.append(segment.getData().getQq());
                 }
             }
-            return sb;
+            return sb.toString();
         }
     }
 }
