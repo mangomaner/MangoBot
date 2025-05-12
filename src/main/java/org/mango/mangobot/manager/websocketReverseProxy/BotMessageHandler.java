@@ -67,9 +67,8 @@ public class BotMessageHandler extends TextWebSocketHandler {
             return;
         }
         log.info("收到消息: " + payload);
-
         // 开启后仅接收群消息
-        if(!messageMap.getOrDefault("post_type", "").equals("meta_event")){
+        if(!"meta_event".equals(messageMap.getOrDefault("post_type", ""))){
             if(!messageMap.containsKey("group_id")){
                 return;
             }

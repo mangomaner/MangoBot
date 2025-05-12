@@ -5,10 +5,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.annotation.QQ.QQMessageHandlerType;
-import org.mango.mangobot.annotation.QQ.method.AtMessage;
-import org.mango.mangobot.annotation.QQ.method.ImageMessage;
-import org.mango.mangobot.annotation.QQ.method.PokeMessage;
-import org.mango.mangobot.annotation.QQ.method.TextMessage;
+import org.mango.mangobot.annotation.QQ.method.*;
+import org.mango.mangobot.annotation.QQ.parameter.ReplyContent;
+import org.mango.mangobot.manager.websocketReverseProxy.handler.impl.parameter.ReplyContentParameterArgumentResolver;
 import org.mango.mangobot.model.QQ.QQMessage;
 import org.mango.mangobot.model.QQ.ReceiveMessageSegment;
 import org.mango.mangobot.messageHandler.GroupMessageHandler;
@@ -169,17 +168,44 @@ public class MessageReflect {
 
             boolean allAnnotationsMatch = true;
 
+
+
             // 判断消息中的 segment类型数量 是否与 注解类型数量 匹配
             List<ReceiveMessageSegment> segments = message.getMessage();
-            if(segments != null){
-                Set<String> segmentTypes = segments.stream().map(ReceiveMessageSegment::getType).collect(Collectors.toSet());
-                if(annotations.size() != segmentTypes.size()){
+            Set<String> segmentTypes = null;
+            if(segments != null) {
+                segments.stream().map(ReceiveMessageSegment::getType).collect(Collectors.toSet());
+
+                if (annotations.size() == 1) {
+                    // 匹配 @TextImageReplyMessage
+                    if (annotations.get(0) instanceof AtTextImageReplyMessage) {
+                        boolean hasRightSegement = true;
+                        assert segments != null;
+                        for (ReceiveMessageSegment segment : segments) {
+                            if (segment.getType().equals("text")) {
+                            } else if (segment.getType().equals("image")) {
+                            } else if (segment.getType().equals("reply")) {
+                            } else if (segment.getType().equals("at")) {
+                            } else {
+                                hasRightSegement = false;
+                            }
+                        }
+                        if (!hasRightSegement) {
+                            allAnnotationsMatch = false;
+                            break;
+                        } else {
+                            bestMatch = method;
+                            break;
+                        }
+                    }
+                }
+                if (segmentTypes != null && annotations.size() != segmentTypes.size()) {
                     continue;
                 }
             }
 
-
             for (Annotation annotation : annotations) {
+
                 if (annotation instanceof AtMessage atAnno) {
                     // 判断是否要求 @ 自己
                     if (atAnno.self() != isSelfAt) {
@@ -193,24 +219,27 @@ public class MessageReflect {
                         allAnnotationsMatch = false;
                         break;
                     }
-
                 } else if (annotation instanceof TextMessage) {
                     boolean hasTextSegment = containsSegmentOfType(message, "text");
                     if (!hasTextSegment) {
                         allAnnotationsMatch = false;
                         break;
                     }
-
                 } else if (annotation instanceof ImageMessage) {
                     boolean hasImageSegment = containsSegmentOfType(message, "image");
                     if (!hasImageSegment) {
                         allAnnotationsMatch = false;
                         break;
                     }
-
                 } else if (annotation instanceof PokeMessage) {
                     // Poke 消息没有 message 字段，直接看 sub_type
                     if (!"poke".equalsIgnoreCase(message.getSub_type())) {
+                        allAnnotationsMatch = false;
+                        break;
+                    }
+                } else if (annotation instanceof ReplyMessage) {
+                    boolean hasReplySegment = containsSegmentOfType(message, "reply");
+                    if (!hasReplySegment) {
                         allAnnotationsMatch = false;
                         break;
                     }

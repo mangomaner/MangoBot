@@ -39,7 +39,7 @@ public class GroupMessageService implements GroupMessage {
             getData().setText(text);
         }}));
 
-        sendMessage(selfId, "send_group_msg", request);
+        sendMessage("send_group_msg", request);
     }
 
     /**
@@ -58,7 +58,7 @@ public class GroupMessageService implements GroupMessage {
                 }}
         ));
 
-        sendMessage(selfId, "send_group_msg", request);
+        sendMessage("send_group_msg", request);
     }
 
     /**
@@ -72,7 +72,7 @@ public class GroupMessageService implements GroupMessage {
             getData().setFile(fileUrlOrPath);
         }}));
 
-        sendMessage(selfId, "send_group_msg", request);
+        sendMessage("send_group_msg", request);
     }
 
     /**
@@ -86,7 +86,7 @@ public class GroupMessageService implements GroupMessage {
             getData().setFile(fileUrlOrPath);
         }}));
 
-        sendMessage(selfId, "send_group_msg", request);
+        sendMessage("send_group_msg", request);
     }
 
     /**
@@ -105,7 +105,7 @@ public class GroupMessageService implements GroupMessage {
                 }}
         ));
 
-        sendMessage(selfId, "send_group_msg", request);
+        sendMessage("send_group_msg", request);
     }
 
     /**
@@ -141,13 +141,13 @@ public class GroupMessageService implements GroupMessage {
         request.setGroup_id(groupId);
         request.setMessage(segments);
 
-        sendMessage(selfId, "send_group_msg", request);
+        sendMessage("send_group_msg", request);
     }
 
     /**
      * 内部方法：构造并发送 Message 对象
      */
-    private <T> void sendMessage(String selfId, String action, T params) {
+    private <T> void sendMessage(String action, T params) {
         try {
             WebSocketSession session = sessionMap.get(selfId);
             if (session == null || !session.isOpen()) {
