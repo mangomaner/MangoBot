@@ -1,6 +1,7 @@
 package org.mango.mangobot.manager.controller;
 
-import dev.langchain4j.agent.tool.Tool;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenChatRequestParameters;
 import dev.langchain4j.data.message.UserMessage;
@@ -13,12 +14,11 @@ import org.mango.mangobot.common.ErrorCode;
 import org.mango.mangobot.common.ResultUtils;
 import org.mango.mangobot.exception.BusinessException;
 import org.mango.mangobot.knowledgeLibrary.service.TextProcessingService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.mango.mangobot.manager.crawler.SearchByBrowser;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class TextProcessingController {
@@ -27,11 +27,22 @@ public class TextProcessingController {
     private TextProcessingService textProcessingService;
     @Resource
     private QwenChatModel qwenChatModel;
+    @Resource
+    private ObjectMapper objectMapper;
 
 
-    @Tool
-    public int add(int a, int b) {
-        return a + b;
+
+    @Resource
+    SearchByBrowser searchByBrowser;
+    @GetMapping("/searchByBrowser")
+    public BaseResponse<String> searchByBrowser(@RequestParam String query) {
+        try {
+            String result = searchByBrowser.searchBing(query);
+            return ResultUtils.success(result);
+        } catch (Exception e) {
+            // 处理异常情况
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "查询失败");
+        }
     }
 
     @GetMapping("/query")
@@ -46,28 +57,31 @@ public class TextProcessingController {
         }
     }
 
-    @GetMapping("/chatTest")
-    public String qwenChatModelTest(@RequestParam(required = false) String chatInfo) {
+    @PostMapping("/chatTest")
+    public String qwenChatModelTest(@RequestBody String chatInfo) {
+
         ChatRequest request = ChatRequest.builder()
                 .messages(UserMessage.from(chatInfo))
                 .parameters(QwenChatRequestParameters.builder()
                         .temperature(0.5)
                         .modelName("qwen-turbo") // 设置模型名称
+                        .enableSearch(true)
                         .build())
                 .build();
-
         ChatResponse chatResponse = qwenChatModel.chat(request);
         // 假设你想返回聊天响应的消息部分
         return chatResponse.aiMessage().text();
     }
+    @PostMapping("/processStringData")
+    public String processStringData(@RequestBody Object inputContent) {
+        String input = (String) inputContent;
+        String result = textProcessingService.processTextContent(input);
+        return result;
+    }
     @GetMapping("/processTextFiles")
     public String processTextFiles(@RequestParam String directoryPath) {
-        try {
-            textProcessingService.processTextFiles();
-            return "Files processed successfully.";
-        } catch (Exception e) {
-            return "Error processing files: " + e.getMessage();
-        }
+        textProcessingService.processTextFiles();
+        return "Files processed successfully.";
     }
 
     @GetMapping("/askWithTools")
@@ -83,4 +97,66 @@ public class TextProcessingController {
         return answer;
     }
 
+
+
+
+
+
+
+
+    String firstQuestion = """
+            输出json格式：
+            if 涉及人物或名词解释，输出:
+            {
+            	canReply: false,
+            	question: 提问关键词
+            }
+            else 输出:
+            {
+            	canReply: true,
+            	answer: 用猫娘的语气回答
+            }
+            我的问题是：
+            """;
+    private String workFlow(String question) {
+        // 第一次询问，获取是否需要再次询问的标志
+        String answer = chatWithModel(firstQuestion + question);
+        // 去除前后的代码块标记
+        String cleanJson = answer
+                .replace("```json", "")
+                .replace("```", "")
+                .trim();  // 移除首尾空格和换行
+
+        // 使用 Jackson 的 ObjectMapper 将 JSON 字符串解析为 Map
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> map = null;
+        try {
+            map = mapper.readValue(cleanJson, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        if(map.get("canReply").equals(true)){
+            return (String)map.get("answer");
+        }
+        // 第二次询问，获取答案
+        String preparedToSearch = (String)map.get("question");
+
+
+        // 输出结果
+        System.out.println(map);
+        return "";
+    }
+
+    private String chatWithModel(String question) {
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from(question))
+                .parameters(QwenChatRequestParameters.builder()
+                        .temperature(0.5)
+                        .modelName("qwen-turbo") // 设置模型名称
+                        .enableSearch(true)
+                        .build())
+                .build();
+        ChatResponse chatResponse = qwenChatModel.chat(request);
+        return chatResponse.aiMessage().text();
+    }
 }

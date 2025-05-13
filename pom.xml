@@ -123,6 +123,13 @@
             <artifactId>mongodb-driver-sync</artifactId>
             <version>5.4.0</version>
         </dependency>
+
+        <!--     爬虫    -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>

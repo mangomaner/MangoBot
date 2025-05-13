@@ -1,44 +1,36 @@
 package org.mango.mangobot.knowledgeLibrary.service;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.file.PathUtil;
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import dev.langchain4j.community.model.dashscope.QwenEmbeddingModel;
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.document.splitter.DocumentByParagraphSplitter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-
 import dev.langchain4j.store.embedding.mongodb.IndexMapping;
 import dev.langchain4j.store.embedding.mongodb.MongoDbEmbeddingStore;
 import jakarta.annotation.Resource;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.mango.mangobot.knowledgeLibrary.utils.FileUtils;
+import org.mango.mangobot.knowledgeLibrary.utils.VectorUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 import org.springframework.web.client.RestTemplate;
 
-
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -46,119 +38,108 @@ public class TextProcessingService {
 
     @Resource
     private RestTemplate restTemplate;
-
-    @Value("chat-model.api-key")
+    @Resource
+    private ObjectMapper objectMapper;
+    @Value("${chat-model.api-key}")
     private String apiKey;
-
-    private ObjectMapper objectMapper = new ObjectMapper();
-
-    @Autowired
+    
+    @Resource
     MongoClient mongoClient;
 
     /**
      * 处理指定目录下的文本文件，仅对未入库的段落进行向量化并保存。
      */
-    public String processTextFiles(){
-        java.net.URL url = this.getClass().getProtectionDomain().getCodeSource().getLocation();
-        String jarPath = null;
-        try {
-            jarPath = java.net.URLDecoder.decode(url.getFile(), "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
+    public String processTextFiles() {
+        String jarPath = getJarPath();
+        String baseDirectory = jarPath + "\\text_files\\put_here";
+        String processedDirectory = jarPath + "\\text_files\\knowledge_library";
 
-        // 如果是以 .jar 结尾，则表示是从 JAR 包运行的
-        if (jarPath.endsWith(".jar")) {
-            // 取到 JAR 文件所在目录
-            jarPath = new java.io.File(jarPath).getParentFile().getAbsolutePath();
-        } else {
-            // 否则是开发环境（IDE）运行，返回项目根目录或其他默认路径
-            jarPath = new java.io.File("").getAbsolutePath();
-        }
+        File dir = FileUtils.ensureDirectoryExists(baseDirectory);
+        File processedDir = FileUtils.ensureDirectoryExists(processedDirectory);
 
-        System.out.println(jarPath);
+        MongoDbEmbeddingStore embeddingStore = buildEmbeddingStore();
 
-        String baseDirectory = jarPath + "\\text_files\\knowledge_library";
-        String processedDirectory = jarPath + "\\text_files\\put_here";
-
-        File dir = null;
-        File processedDir = null;
-        try {
-            dir = new File(ResourceUtils.getURL(baseDirectory).getFile());
-            processedDir = new File(ResourceUtils.getURL(processedDirectory).getFile());
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-
-        // 确保 dir 文件夹存在
-        if (!dir.exists()) {
-            boolean created = dir.mkdirs();
-            if (!created) {
-                log.error("Failed to create dir directory");
-            }
-        }
-
-        // 确保 processed 文件夹存在
-        if (!processedDir.exists()) {
-            boolean created = processedDir.mkdirs();
-            if (!created) {
-                log.error("Failed to create processed directory");
-            }
-        }
-
-        IndexMapping indexMapping = IndexMapping.builder()
-                .dimension(1024)
-                .metadataFieldNames(new HashSet<>())
-                .build();
-
-        MongoDbEmbeddingStore embeddingStore = MongoDbEmbeddingStore.builder()
-                .databaseName("search")
-                .collectionName("langchaintest")
-                .createIndex(true)
-                .indexName("vector_index")
-                .indexMapping(indexMapping)
-                .fromClient(mongoClient)
-                .build();
-
-        // 获取所有待处理的 .txt 文件
         List<File> txtFiles = FileUtil.loopFiles(dir, file -> StrUtil.endWith(file.getName(), ".txt"));
 
         for (File file : txtFiles) {
             String content = FileUtil.readString(file, StandardCharsets.UTF_8);
+            List<String> segments = VectorUtil.splitByParagraph(content, 10);
 
-            Document document = Document.from(content, Metadata.from("documentName", file.getName()));
-            DocumentByParagraphSplitter splitter = new DocumentByParagraphSplitter(60, 30);
-            List<dev.langchain4j.data.segment.TextSegment> segments = splitter.split(document);
+            StringBuilder fileContentBuilder = new StringBuilder();
 
-            for (dev.langchain4j.data.segment.TextSegment segment : segments) {
-                // 构建查询请求
-                Embedding queryEmbedding = new Embedding(getVectorRepresentation(segment.text()));
+            for (String segment : segments) {
+                Embedding queryEmbedding = new Embedding(getVectorRepresentation(segment));
                 EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                         .queryEmbedding(queryEmbedding)
+                        .minScore(0.99)
                         .maxResults(1)
                         .build();
 
                 EmbeddingSearchResult<TextSegment> result = embeddingStore.search(searchRequest);
                 List<EmbeddingMatch<TextSegment>> matches = result.matches();
 
-                // 如果没有匹配项，说明这个段落还没入库
                 if (matches.isEmpty()) {
-                    embeddingStore.add(queryEmbedding, segment);
-                    log.info("✅ 新增段落到数据库: {}", segment.text().substring(0, Math.min(50, segment.text().length())) + "...");
+                    embeddingStore.add(segment, queryEmbedding);
+                    fileContentBuilder.append(segment).append("\n");
+                    log.info("新增段落到数据库: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
                 } else {
-                    log.info("🔁 段落已存在，跳过处理: {}", segment.text().substring(0, Math.min(50, segment.text().length())) + "...");
+                    fileContentBuilder.append(segment).append("\n");
+                    log.info("段落已存在，跳过处理: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
                 }
             }
 
-            // 将文件移动到 processed 文件夹
-            File targetFile = new File(processedDir, file.getName());
-            if (file.renameTo(targetFile)) {
-                log.info("📦 文件 '{}' 已移动至 processed 文件夹", file.getName());
+            // 将处理后的内容写入 processed 目录
+            String outputFilePath = Paths.get(processedDirectory, file.getName()).toString();
+            FileUtils.writeToFile(fileContentBuilder.toString(), outputFilePath);
+            if (file.delete()) {
+                log.info("原文件 '{}' 已删除", file.getName());
             } else {
-                log.warn("⚠️ 文件 '{}' 移动失败，请检查权限或目标路径", file.getName());
+                log.warn("无法删除原文件 '{}'", file.getName());
             }
         }
-        return "✅ 已处理所有文件";
+
+        return "已处理所有文件";
+    }
+
+    /**
+     * 处理传入的文本内容，仅对未入库的段落进行向量化并保存，并将结果写入到txt文件。
+     */
+    public String processTextContent(String content) {
+        MongoDbEmbeddingStore embeddingStore = buildEmbeddingStore();
+
+        List<String> segments = VectorUtil.splitByParagraph(content, 10);
+        StringBuilder fileContentBuilder = new StringBuilder();
+
+        for (String segment : segments) {
+            Embedding queryEmbedding = new Embedding(getVectorRepresentation(segment));
+            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                    .queryEmbedding(queryEmbedding)
+                    .minScore(0.99)
+                    .maxResults(1)
+                    .build();
+
+            EmbeddingSearchResult<TextSegment> result = embeddingStore.search(searchRequest);
+            List<EmbeddingMatch<TextSegment>> matches = result.matches();
+
+            if (matches.isEmpty()) {
+                embeddingStore.add(segment, queryEmbedding);
+                fileContentBuilder.append(segment).append("\n");
+                log.info("新增段落到数据库: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
+            } else {
+                fileContentBuilder.append(segment).append("\n");
+                log.info("段落已存在，跳过处理: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
+            }
+        }
+
+        // 写入文件
+        String jarPath = getJarPath();
+        String processedDirectory = jarPath + "\\text_files\\knowledge_library";
+        File dir = FileUtils.ensureDirectoryExists(processedDirectory);
+
+        String outputFilePath = processedDirectory + File.separator + "output_" + System.currentTimeMillis() + ".txt";
+        FileUtils.writeToFile(fileContentBuilder.toString(), outputFilePath);
+
+        return "已处理所有段落并写入文件：" + outputFilePath;
     }
 
     public List<String> queryVectorDatabase(String query, int maxResults) {
@@ -187,21 +168,56 @@ public class TextProcessingService {
 
         // 构建返回的字符串列表，仅包含文本内容
         List<String> result = matches.stream()
-                .map(match -> match.embedded().text())  // 只取文本内容
-                .toList();  // 或者使用 .collect(Collectors.toList()) 如果你使用的Java版本不支持 .toList()
+                .map(match -> match.embeddingId())  // 只取文本内容
+                .collect(Collectors.toList());  // 或者使用 .collect(Collectors.toList()) 如果你使用的Java版本不支持 .toList()
 
         // 如果你也想打印出来，保留打印逻辑
         for (EmbeddingMatch<TextSegment> embeddingMatch : matches) {
-            log.info("Response: " + embeddingMatch.embedded().text());
+            log.info("Response: " + embeddingMatch.embeddingId());
             log.info("Score: " + embeddingMatch.score());
         }
 
         return result;
     }
 
+    private MongoDbEmbeddingStore buildEmbeddingStore() {
+        IndexMapping indexMapping = IndexMapping.builder()
+                .dimension(1024)
+                .metadataFieldNames(new HashSet<>())
+                .build();
+
+        return MongoDbEmbeddingStore.builder()
+                .databaseName("search")
+                .collectionName("langchaintest")
+                .createIndex(true)
+                .indexName("vector_index")
+                .indexMapping(indexMapping)
+                .fromClient(mongoClient)
+                .build();
+    }
+
+    private String getJarPath() {
+        java.net.URL url = this.getClass().getProtectionDomain().getCodeSource().getLocation();
+        String jarPath = null;
+        try {
+            jarPath = java.net.URLDecoder.decode(url.getFile(), "UTF-8");
+            // 如果是以 .jar 结尾，则表示是从 JAR 包运行的
+            if (jarPath.endsWith(".jar")) {
+                // 取到 JAR 文件所在目录
+                jarPath = new java.io.File(jarPath).getParentFile().getAbsolutePath();
+            } else {
+                // 否则是开发环境（IDE）运行，返回项目根目录或其他默认路径
+                jarPath = new java.io.File("").getAbsolutePath();
+            }
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+        return jarPath;
+    }
+
     // 使用 HTTP + Jackson 获取 Embedding 向量
     // 调用多模态嵌入API获取向量表示
-    private float[] getVectorRepresentation(String text){
+    public float[] getVectorRepresentation(String text){
         // 构建请求体
         var requestBody = new EmbeddingRequestDto();
         requestBody.setModel("multimodal-embedding-v1");
