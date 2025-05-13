@@ -124,6 +124,26 @@ public class MessageReflect {
     }
 
     /**
+     * 处理发送消息后的 Echo 事件，将 MongoDB 中 id 为 echo 的消息更新为 messageId
+     * @param messageMap
+     */
+    public void handleEchoEvent(Map<String, Object> messageMap) {
+        String echo = (String) messageMap.get("echo");
+        Long messageId = Optional.ofNullable(messageMap)
+                .map(map -> (Map<String, Object>) map.get("data"))
+                .map(data -> data.get("message_id"))
+                .map(obj -> ((Number) obj).longValue()) // 安全地转为 long
+                .map(Long::valueOf)
+                .orElse(null);
+
+        if (echo != null && messageId != null) {
+            databaseHandler.updateSentMessageEchoId(echo, messageId);
+        } else {
+            log.warn("缺少必要字段，无法更新消息 ID");
+        }
+    }
+
+    /**
      * 判断是否是 at 自己，然后调用 invokeHandlers 遍历所有方法
      */
     private void dispatchMessage(QQMessage message) {

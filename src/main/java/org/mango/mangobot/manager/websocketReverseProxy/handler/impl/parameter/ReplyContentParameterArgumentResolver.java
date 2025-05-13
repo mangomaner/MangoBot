@@ -67,7 +67,7 @@ public class ReplyContentParameterArgumentResolver implements ParameterArgumentR
             if ("text".equals(type)) {
                 contentBuilder.append(data.getString("text"));
             } else if ("at".equals(type)) {
-                contentBuilder.append("@").append(data.getString("name"));
+                contentBuilder.append("@").append(data.getString("qq"));
             } else if ("image".equals(type)) {
                 contentBuilder.append(data.getString("url"));
             } else if ("file".equals(type)) {

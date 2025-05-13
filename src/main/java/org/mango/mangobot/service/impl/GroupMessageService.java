@@ -7,6 +7,10 @@ import org.mango.mangobot.common.ErrorCode;
 import org.mango.mangobot.exception.BusinessException;
 import org.mango.mangobot.manager.websocketReverseProxy.model.dto.Message;
 import org.mango.mangobot.manager.websocketReverseProxy.model.dto.groupMessage.*;
+import org.mango.mangobot.messageStore.DatabaseHandler;
+import org.mango.mangobot.model.QQ.MessageData;
+import org.mango.mangobot.model.QQ.QQMessage;
+import org.mango.mangobot.model.QQ.ReceiveMessageSegment;
 import org.mango.mangobot.service.GroupMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,137 +21,201 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 消息发送类，不仅要构建发送的消息，还要构建接收的消息，原因如下：
+ *      发送的消息并不会收到消息通知，只会收到一个回应的echo消息，echo消息则为自己发送时定义的唯一标识符
+ *      所以，发送的消息需要先保存到数据库中，且id为echo，这样在收到消息回传就可以根据 echo 值找到对应的消息，将消息id变为message_id
+ */
+
 @Service
 @Slf4j
 public class GroupMessageService implements GroupMessage {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Resource
-    private Map<String, WebSocketSession> sessionMap; // 假设 SessionMap 是你管理 WebSocketSession 的组件
+    private Map<String, WebSocketSession> sessionMap;
+
+    @Resource
+    private Map<String, QQMessage> echoMap;
+
+    @Resource
+    private DatabaseHandler databaseHandler;
 
     @Value("${QQ.botQQ}")
     private String selfId;
 
-    /**
-     * 发送纯文本消息
-     */
+    // ================== 工具方法：构建消息段 ==================
+    private static class MessageSegmentFactory {
+        static List<MessageSegment> buildSendSegments(String text, String qq, String imageUrl) {
+            List<MessageSegment> segments = new ArrayList<>();
+            if (qq != null && !qq.isEmpty()) {
+                AtMessageData at = new AtMessageData();
+                at.getData().setQq(qq);
+                segments.add(at);
+            }
+            if (text != null && !text.isEmpty()) {
+                TextMessageData textMsg = new TextMessageData();
+                textMsg.getData().setText(text);
+                segments.add(textMsg);
+            }
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                ImageMessageData image = new ImageMessageData();
+                image.getData().setFile(imageUrl);
+                segments.add(image);
+            }
+            return segments;
+        }
+
+        static List<ReceiveMessageSegment> buildReceiveSegments(String text, String qq, String imageUrl) {
+            List<ReceiveMessageSegment> segments = new ArrayList<>();
+            if (qq != null && !qq.isEmpty()) {
+                ReceiveMessageSegment seg = new ReceiveMessageSegment();
+                seg.setType("at");
+                MessageData data = new MessageData();
+                data.setQq(qq);
+                seg.setData(data);
+                segments.add(seg);
+            }
+            if (text != null && !text.isEmpty()) {
+                ReceiveMessageSegment seg = new ReceiveMessageSegment();
+                seg.setType("text");
+                MessageData data = new MessageData();
+                data.setText(text);
+                seg.setData(data);
+                segments.add(seg);
+            }
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                ReceiveMessageSegment seg = new ReceiveMessageSegment();
+                seg.setType("image");
+                MessageData data = new MessageData();
+                data.setUrl(imageUrl);
+                seg.setData(data);
+                segments.add(seg);
+            }
+            return segments;
+        }
+    }
+
+    // ================== 通用发送方法 ==================
+
+    private void sendGenericMessage(String groupId, List<MessageSegment> sendSegments,
+                                    List<ReceiveMessageSegment> receiveSegments) {
+        try {
+            QQMessage qqMessage = new QQMessage();
+            qqMessage.setSelf_id(selfId);
+            qqMessage.setGroup_id(groupId);
+            qqMessage.setMessage(receiveSegments);
+
+            SendGroupMessageRequest request = new SendGroupMessageRequest();
+            request.setGroup_id(groupId);
+            request.setMessage(sendSegments);
+
+            sendMessage("send_group_msg", request, qqMessage);
+        } catch (Exception e) {
+            log.error("通用消息发送失败", e);
+        }
+    }
+
+    // ================== 接口实现方法 ==================
+
     @Override
     public void sendTextMessage(String groupId, String text) {
-        SendGroupMessageRequest request = new SendGroupMessageRequest();
-        request.setGroup_id(groupId);
-        request.setMessage(List.of(new TextMessageData() {{
-            getData().setText(text);
-        }}));
-
-        sendMessage("send_group_msg", request);
+        List<MessageSegment> sendSegments = MessageSegmentFactory.buildSendSegments(text, null, null);
+        List<ReceiveMessageSegment> receiveSegments = MessageSegmentFactory.buildReceiveSegments(text, null, null);
+        sendGenericMessage(groupId, sendSegments, receiveSegments);
     }
 
-    /**
-     * 发送带 @ 的消息
-     */
     @Override
     public void sendAtMessage(String groupId, String qq, String text) {
-        SendGroupMessageRequest request = new SendGroupMessageRequest();
-        request.setGroup_id(groupId);
-        request.setMessage(List.of(
-                new AtMessageData() {{
-                    getData().setQq(qq);
-                }},
-                new TextMessageData() {{
-                    getData().setText(" " + text);
-                }}
-        ));
-
-        sendMessage("send_group_msg", request);
+        if (text != null && !text.isEmpty()) {
+            text = " " + text; // 添加空格以避免@后面直接接文字显示异常
+        }
+        List<MessageSegment> sendSegments = MessageSegmentFactory.buildSendSegments(text, qq, null);
+        List<ReceiveMessageSegment> receiveSegments = MessageSegmentFactory.buildReceiveSegments(text, qq, null);
+        sendGenericMessage(groupId, sendSegments, receiveSegments);
     }
 
-    /**
-     * 发送图片消息
-     */
     @Override
     public void sendImageMessage(String groupId, String fileUrlOrPath) {
-        SendGroupMessageRequest request = new SendGroupMessageRequest();
-        request.setGroup_id(groupId);
-        request.setMessage(List.of(new ImageMessageData() {{
-            getData().setFile(fileUrlOrPath);
-        }}));
-
-        sendMessage("send_group_msg", request);
+        List<MessageSegment> sendSegments = MessageSegmentFactory.buildSendSegments(null, null, fileUrlOrPath);
+        List<ReceiveMessageSegment> receiveSegments = MessageSegmentFactory.buildReceiveSegments(null, null, fileUrlOrPath);
+        sendGenericMessage(groupId, sendSegments, receiveSegments);
     }
 
-    /**
-     * 发送语音消息
-     */
     @Override
     public void sendRecordMessage(String groupId, String fileUrlOrPath) {
+        ReceiveMessageSegment audioSeg = new ReceiveMessageSegment();
+        audioSeg.setType("record");
+        MessageData data = new MessageData();
+        data.setUrl(fileUrlOrPath);
+        audioSeg.setData(data);
+
+        QQMessage qqMessage = new QQMessage();
+        qqMessage.setSelf_id(selfId);
+        qqMessage.setGroup_id(groupId);
+        qqMessage.setMessage(List.of(audioSeg));
+
         SendGroupMessageRequest request = new SendGroupMessageRequest();
         request.setGroup_id(groupId);
-        request.setMessage(List.of(new RecordMessageData() {{
-            getData().setFile(fileUrlOrPath);
-        }}));
 
-        sendMessage("send_group_msg", request);
+        RecordMessageData record = new RecordMessageData();
+        record.getData().setFile(fileUrlOrPath);
+        request.setMessage(List.of(record));
+
+        sendMessage("send_group_msg", request, qqMessage);
     }
 
-    /**
-     * 发送回复消息
-     */
     @Override
     public void sendReplyMessage(String groupId, String messageId, String message) {
-        SendGroupMessageRequest request = new SendGroupMessageRequest();
-        request.setGroup_id(groupId);
-        request.setMessage(List.of(
-                new ReplyMessageData() {{
-                    getData().setId(messageId);
-                }},
-                new TextMessageData() {{
-                    getData().setText(message);
-                }}
-        ));
+        List<MessageSegment> sendSegments = new ArrayList<>();
 
-        sendMessage("send_group_msg", request);
+        ReplyMessageData reply = new ReplyMessageData();
+        reply.getData().setId(messageId);
+        sendSegments.add(reply);
+
+        TextMessageData text = new TextMessageData();
+        text.getData().setText(message);
+        sendSegments.add(text);
+
+        List<ReceiveMessageSegment> receiveSegments = new ArrayList<>();
+
+        ReceiveMessageSegment replySeg = new ReceiveMessageSegment();
+        replySeg.setType("reply");
+        MessageData replyData = new MessageData();
+        replyData.setId(messageId);
+        replySeg.setData(replyData);
+        receiveSegments.add(replySeg);
+
+        ReceiveMessageSegment textSeg = new ReceiveMessageSegment();
+        textSeg.setType("text");
+        MessageData textData = new MessageData();
+        textData.setText(message);
+        textSeg.setData(textData);
+        receiveSegments.add(textSeg);
+
+        sendGenericMessage(groupId, sendSegments, receiveSegments);
     }
 
-    /**
-     * 发送混合消息（可自定义多个 MessageSegment）
-     */
     @Override
     public void sendCustomMessage(String groupId, String text, String qq, String imageUrl) {
-        if(text == null && qq == null && imageUrl == null) {
+        if (text == null && qq == null && imageUrl == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前发送的是空消息");
         }
 
-        SendGroupMessageRequest request = new SendGroupMessageRequest();
-        List<MessageSegment> segments = new ArrayList<>();
-
-        if (qq != null && !qq.isEmpty()) {
-            segments.add(new AtMessageData() {{
-                getData().setQq(qq);
-            }});
-        }
-
         if (text != null && !text.isEmpty()) {
-            segments.add(new TextMessageData() {{
-                getData().setText(" " + text);
-            }});
+            text = " " + text;
         }
 
-        if (imageUrl != null && !imageUrl.isEmpty()) {
-            segments.add(new ImageMessageData() {{
-                getData().setFile(imageUrl);
-            }});
-        }
+        List<MessageSegment> sendSegments = MessageSegmentFactory.buildSendSegments(text, qq, imageUrl);
+        List<ReceiveMessageSegment> receiveSegments = MessageSegmentFactory.buildReceiveSegments(text, qq, imageUrl);
 
-        request.setGroup_id(groupId);
-        request.setMessage(segments);
-
-        sendMessage("send_group_msg", request);
+        sendGenericMessage(groupId, sendSegments, receiveSegments);
     }
 
-    /**
-     * 内部方法：构造并发送 Message 对象
-     */
-    private <T> void sendMessage(String action, T params) {
+    // ================== 内部方法 ==================
+
+    private <T> void sendMessage(String action, T params, QQMessage qqMessage) {
         try {
             WebSocketSession session = sessionMap.get(selfId);
             if (session == null || !session.isOpen()) {
@@ -155,9 +223,13 @@ public class GroupMessageService implements GroupMessage {
                 return;
             }
 
+            String echo = java.util.UUID.randomUUID().toString();
             Message<T> messageWrapper = new Message<>();
             messageWrapper.setAction(action);
             messageWrapper.setParams(params);
+            messageWrapper.setEcho(echo);
+
+            echoMap.put(echo, qqMessage);   // 暂存echo，等待messageId
 
             String json = objectMapper.writeValueAsString(messageWrapper);
             session.sendMessage(new TextMessage(json));

@@ -1,5 +1,6 @@
 package org.mango.mangobot.config;
 
+import org.mango.mangobot.model.QQ.QQMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,4 +25,7 @@ public class WebSocketConfig {
     public Set<String> groupSet() {
         return new HashSet<>(groupList);
     }
+
+    @Bean
+    public Map<String, QQMessage> echoMap() { return new HashMap<>(); }
 }

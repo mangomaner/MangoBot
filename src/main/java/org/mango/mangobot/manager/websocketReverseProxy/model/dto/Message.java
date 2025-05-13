@@ -8,6 +8,6 @@ import lombok.Data;
 @Data
 public class Message<T> {
     private String action;
-    private String echo = java.util.UUID.randomUUID().toString();
+    private String echo;
     private T params;
 }

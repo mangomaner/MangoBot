@@ -1,5 +1,6 @@
 package org.mango.mangobot.messageStore;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -8,10 +9,12 @@ import com.mongodb.client.model.Updates;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
-import org.mango.mangobot.model.QQ.QQMessage;
 import org.mango.mangobot.messageStore.collection.QQMessageCollection;
+import org.mango.mangobot.model.QQ.QQMessage;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 import static com.mongodb.client.model.Filters.eq;
 
@@ -25,20 +28,28 @@ public class DatabaseHandler {
     @Resource
     private ObjectMapper objectMapper;
 
+    @Resource
+    private Map<String, QQMessage> echoMap;
+
     /**
      * 将消息存储到 MongoDB 中
      *
      * @param qqMessage 消息对象
      * @param groupId   群组 ID
      */
-    public void saveMessageToDatabase(QQMessage qqMessage, String groupId) throws Exception {
+    public void saveMessageToDatabase(QQMessage qqMessage, String groupId){
         MongoDatabase database = mongoClient.getDatabase("qq_message");
         MongoCollection<Document> collection = database.getCollection("messages_group_" + groupId);
 
         QQMessageCollection qqMessageCollection = new QQMessageCollection();
         BeanUtils.copyProperties(qqMessage, qqMessageCollection);
         // 使用 ObjectMapper 将对象转换为 Document
-        Document doc = Document.parse(objectMapper.writeValueAsString(qqMessageCollection));
+        Document doc = null;
+        try {
+            doc = Document.parse(objectMapper.writeValueAsString(qqMessageCollection));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
 
         // 设置 MongoDB 的 _id 字段为 message_id
         if (qqMessage.getMessage_id() != null) {
@@ -62,5 +73,16 @@ public class DatabaseHandler {
         MongoDatabase database = mongoClient.getDatabase("qq_message");
         MongoCollection<Document> collection = database.getCollection("messages_group_" + groupId);
         collection.updateOne(eq("_id", messageId), Updates.set("isDelete", true));
+    }
+
+    public void updateSentMessageEchoId(String echo, Long messageId) {
+        MongoDatabase database = mongoClient.getDatabase("qq_message");
+        QQMessage qqMessage = echoMap.get(echo);
+        qqMessage.setMessage_id(messageId);
+        if(qqMessage == null){
+            log.warn("echo 为空，无法更新发送的消息");
+            return;
+        }
+        saveMessageToDatabase(qqMessage, qqMessage.getGroup_id());
     }
 }
