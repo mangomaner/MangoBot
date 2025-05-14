@@ -1,10 +1,26 @@
 package org.mango.mangobot.knowledgeLibrary.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Resource;
+import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.web.client.RestTemplate;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class VectorUtil {
+
+    @Resource
+    private RestTemplate restTemplate;
+    @Resource
+    private ObjectMapper objectMapper;
+    @Value("${chat-model.api-key}")
+    private String apiKey;
 
     // 支持的句子结束符（英文句号、中文句号、问号、感叹号）
     private static final Pattern SENTENCE_END_PATTERN = Pattern.compile("[。\\.]");
@@ -117,5 +133,103 @@ public class VectorUtil {
             }
         }
         return -1;
+    }
+
+
+    // 使用 HTTP + Jackson 获取 Embedding 向量
+    // 调用多模态嵌入API获取向量表示
+    public float[] getVectorRepresentation(String text){
+        // 构建请求体
+        var requestBody = new EmbeddingRequestDto();
+        requestBody.setModel("multimodal-embedding-v1");
+
+        // 创建内容列表
+        List<ContentDto> contents = new ArrayList<>();
+        contents.add(new ContentDto(text, null, null));
+        requestBody.setInput(new EmbeddingInputDto(contents));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + apiKey); // 请确保使用正确的授权令牌
+
+        HttpEntity<EmbeddingRequestDto> entity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding",
+                entity,
+                String.class
+        );
+
+        if (response.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Failed to call embedding API: " + response.getBody());
+        }
+
+        // 使用 Jackson 解析响应
+        JsonNode rootNode = null;
+        try {
+            rootNode = objectMapper.readTree(response.getBody());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        JsonNode embeddingListNode = rootNode.path("output").path("embeddings");
+
+        if (embeddingListNode.isMissingNode()) {
+            throw new RuntimeException("Invalid response format: missing 'text_embedding'");
+        }
+
+        List<Float> embeddingList = new ArrayList<>();
+        for (JsonNode node : embeddingListNode) {
+            JsonNode embeddingArray = node.path("embedding");
+            if (!embeddingArray.isArray()) {
+                throw new RuntimeException("Expected an array for 'embedding'");
+            }
+            for (JsonNode embeddingValue : embeddingArray) {
+                embeddingList.add(embeddingValue.floatValue());
+            }
+        }
+
+// 转为 float[]
+        float[] embedding = new float[embeddingList.size()];
+        for (int i = 0; i < embedding.length; i++) {
+            embedding[i] = embeddingList.get(i);
+        }
+
+        return embedding;
+    }
+
+    // 请求 DTO
+    private static class EmbeddingRequestDto {
+        private String model;
+        private EmbeddingInputDto input;
+
+        // Getters and Setters
+        public String getModel() { return model; }
+        public void setModel(String model) { this.model = model; }
+        public EmbeddingInputDto getInput() { return input; }
+        public void setInput(EmbeddingInputDto input) { this.input = input; }
+    }
+
+    private static class EmbeddingInputDto {
+        private List<ContentDto> contents;
+
+        public EmbeddingInputDto(List<ContentDto> contents) {
+            this.contents = contents;
+        }
+
+        // Getter
+        public List<ContentDto> getContents() { return contents; }
+    }
+
+    @Data
+    private static class ContentDto {
+        private String text;
+        private String image;
+        private String video;
+
+        public ContentDto(String text, String image, String video) {
+            this.text = text;
+            this.image = image;
+            this.video = video;
+        }
     }
 }

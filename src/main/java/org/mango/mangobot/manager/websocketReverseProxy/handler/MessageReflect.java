@@ -6,12 +6,11 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.annotation.QQ.QQMessageHandlerType;
 import org.mango.mangobot.annotation.QQ.method.*;
-import org.mango.mangobot.annotation.QQ.parameter.ReplyContent;
-import org.mango.mangobot.manager.websocketReverseProxy.handler.impl.parameter.ReplyContentParameterArgumentResolver;
+import org.mango.mangobot.messageStore.ChatMessageStoreService;
 import org.mango.mangobot.model.QQ.QQMessage;
 import org.mango.mangobot.model.QQ.ReceiveMessageSegment;
 import org.mango.mangobot.messageHandler.GroupMessageHandler;
-import org.mango.mangobot.messageStore.DatabaseHandler;
+import org.mango.mangobot.messageStore.impl.MongodbChatMessageStoreService;
 import org.mango.mangobot.utils.MethodParameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +38,7 @@ public class MessageReflect {
     @Resource
     private GroupMessageHandler groupMessageHandler;
     @Resource
-    private DatabaseHandler databaseHandler;
+    private ChatMessageStoreService chatMessageStoreService;
     /**
      * 参数解析器列表，Spring 会自动注入所有实现了 ArgumentResolver 接口的 Bean
      */
@@ -93,7 +92,7 @@ public class MessageReflect {
             dispatchMessage(qqMessage);
 
             // 存储消息到 MongoDB
-            databaseHandler.saveMessageToDatabase(qqMessage, groupId);
+            chatMessageStoreService.saveMessageToDatabase(qqMessage, groupId);
 
         } catch (Exception e) {
             log.error("处理消息事件失败", e);
@@ -113,7 +112,7 @@ public class MessageReflect {
                 Long messageId = ((Number) messageMap.get("message_id")).longValue();
                 Long groupId = ((Number) messageMap.get("group_id")).longValue();
 
-                databaseHandler.updateRecallStatus(groupId, messageId);
+                chatMessageStoreService.updateRecallStatus(groupId, messageId);
             } else if ("notify".equals(noticeType)) { // 戳一戳等通知
                 QQMessage qqMessage = objectMapper.convertValue(messageMap, QQMessage.class);
                 dispatchNotifyMessage(qqMessage);
@@ -137,7 +136,7 @@ public class MessageReflect {
                 .orElse(null);
 
         if (echo != null && messageId != null) {
-            databaseHandler.updateSentMessageEchoId(echo, messageId);
+            chatMessageStoreService.updateSentMessageEchoId(echo, messageId);
         } else {
             log.warn("缺少必要字段，无法更新消息 ID");
         }

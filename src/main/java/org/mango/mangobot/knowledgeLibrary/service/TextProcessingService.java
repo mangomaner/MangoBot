@@ -37,12 +37,7 @@ import java.util.stream.Collectors;
 public class TextProcessingService {
 
     @Resource
-    private RestTemplate restTemplate;
-    @Resource
-    private ObjectMapper objectMapper;
-    @Value("${chat-model.api-key}")
-    private String apiKey;
-    
+    private VectorUtil vectorUtil;
     @Resource
     MongoClient mongoClient;
 
@@ -68,7 +63,7 @@ public class TextProcessingService {
             StringBuilder fileContentBuilder = new StringBuilder();
 
             for (String segment : segments) {
-                Embedding queryEmbedding = new Embedding(getVectorRepresentation(segment));
+                Embedding queryEmbedding = new Embedding(vectorUtil.getVectorRepresentation(segment));
                 EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                         .queryEmbedding(queryEmbedding)
                         .minScore(0.99)
@@ -111,7 +106,7 @@ public class TextProcessingService {
         StringBuilder fileContentBuilder = new StringBuilder();
 
         for (String segment : segments) {
-            Embedding queryEmbedding = new Embedding(getVectorRepresentation(segment));
+            Embedding queryEmbedding = new Embedding(vectorUtil.getVectorRepresentation(segment));
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(queryEmbedding)
                     .minScore(0.99)
@@ -156,7 +151,7 @@ public class TextProcessingService {
                 .fromClient(mongoClient)
                 .build();
 
-        Embedding queryEmbedding = new Embedding(getVectorRepresentation(query));
+        Embedding queryEmbedding = new Embedding(vectorUtil.getVectorRepresentation(query));
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
@@ -215,100 +210,5 @@ public class TextProcessingService {
         return jarPath;
     }
 
-    // 使用 HTTP + Jackson 获取 Embedding 向量
-    // 调用多模态嵌入API获取向量表示
-    public float[] getVectorRepresentation(String text){
-        // 构建请求体
-        var requestBody = new EmbeddingRequestDto();
-        requestBody.setModel("multimodal-embedding-v1");
 
-        // 创建内容列表
-        List<ContentDto> contents = new ArrayList<>();
-        contents.add(new ContentDto(text, null, null));
-        requestBody.setInput(new EmbeddingInputDto(contents));
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + apiKey); // 请确保使用正确的授权令牌
-
-        HttpEntity<EmbeddingRequestDto> entity = new HttpEntity<>(requestBody, headers);
-
-        ResponseEntity<String> response = restTemplate.postForEntity(
-                "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding",
-                entity,
-                String.class
-        );
-
-        if (response.getStatusCode() != HttpStatus.OK) {
-            throw new RuntimeException("Failed to call embedding API: " + response.getBody());
-        }
-
-        // 使用 Jackson 解析响应
-        JsonNode rootNode = null;
-        try {
-            rootNode = objectMapper.readTree(response.getBody());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        JsonNode embeddingListNode = rootNode.path("output").path("embeddings");
-
-        if (embeddingListNode.isMissingNode()) {
-            throw new RuntimeException("Invalid response format: missing 'text_embedding'");
-        }
-
-        List<Float> embeddingList = new ArrayList<>();
-        for (JsonNode node : embeddingListNode) {
-            JsonNode embeddingArray = node.path("embedding");
-            if (!embeddingArray.isArray()) {
-                throw new RuntimeException("Expected an array for 'embedding'");
-            }
-            for (JsonNode embeddingValue : embeddingArray) {
-                embeddingList.add(embeddingValue.floatValue());
-            }
-        }
-
-// 转为 float[]
-        float[] embedding = new float[embeddingList.size()];
-        for (int i = 0; i < embedding.length; i++) {
-            embedding[i] = embeddingList.get(i);
-        }
-
-        return embedding;
-    }
-
-    // 请求 DTO
-    private static class EmbeddingRequestDto {
-        private String model;
-        private EmbeddingInputDto input;
-
-        // Getters and Setters
-        public String getModel() { return model; }
-        public void setModel(String model) { this.model = model; }
-        public EmbeddingInputDto getInput() { return input; }
-        public void setInput(EmbeddingInputDto input) { this.input = input; }
-    }
-
-    private static class EmbeddingInputDto {
-        private List<ContentDto> contents;
-
-        public EmbeddingInputDto(List<ContentDto> contents) {
-            this.contents = contents;
-        }
-
-        // Getter
-        public List<ContentDto> getContents() { return contents; }
-    }
-
-    @Data
-    private static class ContentDto {
-        private String text;
-        private String image;
-        private String video;
-
-        public ContentDto(String text, String image, String video) {
-            this.text = text;
-            this.image = image;
-            this.video = video;
-        }
-    }
 }

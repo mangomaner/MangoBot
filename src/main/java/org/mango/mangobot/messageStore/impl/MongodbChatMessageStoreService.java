@@ -1,4 +1,4 @@
-package org.mango.mangobot.messageStore;
+package org.mango.mangobot.messageStore.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,6 +9,7 @@ import com.mongodb.client.model.Updates;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
+import org.mango.mangobot.messageStore.ChatMessageStoreService;
 import org.mango.mangobot.messageStore.collection.QQMessageCollection;
 import org.mango.mangobot.model.QQ.QQMessage;
 import org.springframework.beans.BeanUtils;
@@ -20,14 +21,12 @@ import static com.mongodb.client.model.Filters.eq;
 
 @Component
 @Slf4j
-public class DatabaseHandler {
+public class MongodbChatMessageStoreService implements ChatMessageStoreService {
 
     @Resource
     private MongoClient mongoClient;
-
     @Resource
     private ObjectMapper objectMapper;
-
     @Resource
     private Map<String, QQMessage> echoMap;
 

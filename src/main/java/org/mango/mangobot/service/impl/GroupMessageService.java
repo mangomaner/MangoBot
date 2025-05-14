@@ -7,7 +7,7 @@ import org.mango.mangobot.common.ErrorCode;
 import org.mango.mangobot.exception.BusinessException;
 import org.mango.mangobot.manager.websocketReverseProxy.model.dto.Message;
 import org.mango.mangobot.manager.websocketReverseProxy.model.dto.groupMessage.*;
-import org.mango.mangobot.messageStore.DatabaseHandler;
+import org.mango.mangobot.messageStore.impl.MongodbChatMessageStoreService;
 import org.mango.mangobot.model.QQ.MessageData;
 import org.mango.mangobot.model.QQ.QQMessage;
 import org.mango.mangobot.model.QQ.ReceiveMessageSegment;
@@ -40,7 +40,7 @@ public class GroupMessageService implements GroupMessage {
     private Map<String, QQMessage> echoMap;
 
     @Resource
-    private DatabaseHandler databaseHandler;
+    private MongodbChatMessageStoreService mongodbChatMessageService;
 
     @Value("${QQ.botQQ}")
     private String selfId;
