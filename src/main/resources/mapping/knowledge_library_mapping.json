@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "index": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "analysis": {
+        "analyzer": {
+          "ik_max_word": {
+            "type": "custom",
+            "tokenizer": "ik_max_word",
+            "filter": ["lowercase"]
+          }
+        },
+        "tokenizer": {
+          "ik_max_word": {
+            "type": "ik_max_word"
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "content": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "vector_embedding": {
+        "type": "dense_vector",
+        "dims": 1024,
+        "similarity": "cosine"
+      }
+    }
+  }
+}

@@ -10,9 +10,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import org.mango.mangobot.common.BaseResponse;
-import org.mango.mangobot.common.ErrorCode;
 import org.mango.mangobot.common.ResultUtils;
-import org.mango.mangobot.exception.BusinessException;
 import org.mango.mangobot.knowledgeLibrary.service.TextProcessingService;
 import org.mango.mangobot.manager.crawler.SearchByBrowser;
 import org.springframework.web.bind.annotation.*;
@@ -36,25 +34,19 @@ public class TextProcessingController {
     SearchByBrowser searchByBrowser;
     @GetMapping("/searchByBrowser")
     public BaseResponse<String> searchByBrowser(@RequestParam String query) {
-        try {
-            String result = searchByBrowser.searchBing(query);
-            return ResultUtils.success(result);
-        } catch (Exception e) {
-            // 处理异常情况
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "查询失败");
-        }
+
+        String result = searchByBrowser.searchBing(query);
+        return ResultUtils.success(result);
+
     }
 
     @GetMapping("/query")
     public BaseResponse<List<String>> query(@RequestParam String query,
                                             @RequestParam(defaultValue = "10") int maxResults) {
-        try {
-            List<String> results = textProcessingService.queryVectorDatabase(query, maxResults);
-            return ResultUtils.success(results);
-        } catch (Exception e) {
-            // 处理异常情况
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "查询失败");
-        }
+
+        List<String> results = textProcessingService.queryVectorDatabase(query, maxResults);
+        return ResultUtils.success(results);
+
     }
 
     @PostMapping("/chatTest")
