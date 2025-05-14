@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import org.mango.mangobot.model.document.TextDocument;
 import org.mango.mangobot.service.EsDocumentService;
+import org.mango.mangobot.utils.VectorUtil;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -42,6 +43,8 @@ public class EsDocumentServiceImpl implements EsDocumentService {
 
     @Resource
     private ObjectMapper objectMapper;
+    @Resource
+    private VectorUtil vectorUtil;
 
     /**
      * 创建索引
@@ -124,13 +127,162 @@ public class EsDocumentServiceImpl implements EsDocumentService {
     }
 
     @Override
+    public List<Map<String, Object>> fullTextSearch(String indexName, String queryText, String boostKeyword, int size) {
+
+        // 基础 match 查询
+        MatchQuery baseMatch = MatchQuery.of(b -> b
+                .field("content")
+                .query(queryText)
+        );
+
+        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder().should(Query.of(q1 -> q1.match(baseMatch)));
+
+        // 检查 boostKeyword 是否非空且不是纯空白字符
+        if (boostKeyword != null && !boostKeyword.trim().isEmpty()) {
+            // 对 boostKeyword 的额外 boost 查询
+            MatchQuery boostMatch = MatchQuery.of(b -> b
+                    .field("content")
+                    .query(boostKeyword)
+                    .boost(100.0f) // 权重加倍
+            );
+            boolQueryBuilder.should(Query.of(q2 -> q2.match(boostMatch)));
+        }
+
+        // 构建组合查询：基础 match + 加权 match（如果有）
+        SearchRequest request = SearchRequest.of(b -> b
+                .index(indexName)
+                .query(Query.of(q -> q.bool(boolQueryBuilder.build())))
+                .size(size)
+        );
+
+        SearchResponse<Map> response = null;
+        try {
+            response = client.search(request, Map.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        for (Hit<Map> hit : response.hits().hits()) {
+            Map<String, Object> source = hit.source();
+            if (source != null) {
+                source.put("id", hit.id());
+                source.remove("embedding");
+                source.put("score", hit.score());
+                results.add(source);
+            }
+        }
+
+        return results;
+    }
+
+
+    @Override
+    public List<Map<String, Object>> vectorSearch(String indexName, float[] vector, int size){
+
+        List<Float> vectorList = IntStream.range(0, vector.length).mapToObj(i -> vector[i]).toList();
+        KnnQuery knnQuery = KnnQuery.of(b -> b
+                .field("vector_embedding")
+                .queryVector(vectorList)
+                .numCandidates(100L)
+        );
+
+        SearchRequest request = SearchRequest.of(b -> b
+                .index(indexName)
+                .query(Query.of(q -> q.knn(knnQuery)))
+        );
+
+        SearchResponse<Map> response = null;
+        try {
+            response = client.search(request, Map.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        for (Hit<Map> hit : response.hits().hits()) {
+            Map<String, Object> source = hit.source();
+            if (source != null) {
+                source.put("id", hit.id());
+                source.remove("embedding");
+                source.put("score", hit.score());
+                results.add(source);
+            }
+        }
+        return results;
+    }
+
+    @Override
+    public boolean deleteDocumentById(String indexName, String docId) throws IOException {
+        DeleteRequest request = DeleteRequest.of(b -> b
+                .index(indexName)
+                .id(docId)
+        );
+
+        DeleteResponse response = client.delete(request);
+
+        return response.result() != null && !response.result().toString().contains("NotFound");
+    }
+
+    @Override
+    public boolean deleteIndex(String indexName) throws IOException {
+        // 检查索引是否存在
+        boolean exists = client.indices().exists(e -> e.index(indexName)).value();
+
+        if (!exists) {
+            System.out.println("索引 [" + indexName + "] 不存在");
+            return false;
+        }
+
+        // 删除索引
+        DeleteIndexRequest deleteRequest = DeleteIndexRequest.of(b -> b
+                .index(indexName)
+        );
+
+        AcknowledgedResponse response = client.indices().delete(deleteRequest);
+
+        return response.acknowledged();
+    }
+
+    @Override
+    public List<Map<String, Object>> getAllDocuments(String indexName) {
+        // 构建搜索请求：匹配所有文档
+        SearchRequest request = SearchRequest.of(b -> b
+                .index(indexName)
+                .query(Query.of(q -> q.matchAll(m -> m)))  // 查询所有文档
+                .size(100)  // 可调整大小，默认最多10,000条（受 max_result_window 限制）
+        );
+
+        SearchResponse<Map> response;
+        try {
+            response = client.search(request, Map.class);
+        } catch (IOException e) {
+            throw new RuntimeException("Elasticsearch search error", e);
+        }
+
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        for (Hit<Map> hit : response.hits().hits()) {
+            Map<String, Object> source = hit.source();
+            if (source != null) {
+                source.put("id", hit.id());
+                source.remove("embedding");
+                source.put("score", hit.score());
+                results.add(source);
+            }
+        }
+
+        return results;
+    }
+
+    @Override
     public List<Map<String, Object>> searchDocuments(
             String indexName,
             String queryText,
-            float[] vector,
             int size
     ){
-        List<Float> vectorList = IntStream.range(0, vector.length).mapToObj(i -> vector[i]).toList();
+        List<Float> vectorList = vectorUtil.getVectorRepresentation(queryText);
         // 构建 knn 查询
         KnnQuery knnQuery = KnnQuery.of(b -> b
                 .field("vector_embedding")
@@ -169,6 +321,7 @@ public class EsDocumentServiceImpl implements EsDocumentService {
             Map<String, Object> source = hit.source();
             if (source != null) {
                 source.put("id", hit.id());
+                source.remove("embedding");
                 source.put("score", hit.score());
                 results.add(source);
             }
@@ -176,110 +329,6 @@ public class EsDocumentServiceImpl implements EsDocumentService {
 
         return results;
     }
-
-    @Override
-    public List<Map<String, Object>> fullTextSearch(String indexName, String queryText, int size) {
-
-        MatchQuery matchQuery = MatchQuery.of(b -> b
-                .field("content")
-                .query(queryText)
-        );
-
-        SearchRequest request = SearchRequest.of(b -> b
-                .index(indexName)
-                .query(Query.of(q -> q.match(matchQuery)))
-                .size(size)
-        );
-
-        SearchResponse<Map> response = null;
-        try {
-            response = client.search(request, Map.class);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        List<Map<String, Object>> results = new ArrayList<>();
-
-        for (Hit<Map> hit : response.hits().hits()) {
-            Map<String, Object> source = hit.source();
-            if (source != null) {
-                source.put("id", hit.id());
-                source.put("score", hit.score());
-                results.add(source);
-            }
-        }
-
-        return results;
-    }
-
-    @Override
-    public List<Map<String, Object>> vectorSearch(String indexName, float[] vector, int size){
-
-        List<Float> vectorList = IntStream.range(0, vector.length).mapToObj(i -> vector[i]).toList();
-        KnnQuery knnQuery = KnnQuery.of(b -> b
-                .field("vector_embedding")
-                .queryVector(vectorList)
-                .numCandidates(100L)
-        );
-
-        SearchRequest request = SearchRequest.of(b -> b
-                .index(indexName)
-                .query(Query.of(q -> q.knn(knnQuery)))
-                .size(size)
-        );
-
-        SearchResponse<Map> response = null;
-        try {
-            response = client.search(request, Map.class);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        List<Map<String, Object>> results = new ArrayList<>();
-
-        for (Hit<Map> hit : response.hits().hits()) {
-            Map<String, Object> source = hit.source();
-            if (source != null) {
-                source.put("id", hit.id());
-                source.put("score", hit.score());
-                results.add(source);
-            }
-        }
-
-        return results;
-    }
-
-    @Override
-    public boolean deleteDocumentById(String indexName, String docId) throws IOException {
-        DeleteRequest request = DeleteRequest.of(b -> b
-                .index(indexName)
-                .id(docId)
-        );
-
-        DeleteResponse response = client.delete(request);
-
-        return response.result() != null && !response.result().toString().contains("NotFound");
-    }
-
-    @Override
-    public boolean deleteIndex(String indexName) throws IOException {
-        // 检查索引是否存在
-        boolean exists = client.indices().exists(e -> e.index(indexName)).value();
-
-        if (!exists) {
-            System.out.println("索引 [" + indexName + "] 不存在");
-            return false;
-        }
-
-        // 删除索引
-        DeleteIndexRequest deleteRequest = DeleteIndexRequest.of(b -> b
-                .index(indexName)
-        );
-
-        AcknowledgedResponse response = client.indices().delete(deleteRequest);
-
-        return response.acknowledged();
-    }
-
-
 
     private boolean indexExists(String indexName){
         ExistsRequest request = ExistsRequest.of(b -> b.index(indexName));
@@ -289,6 +338,4 @@ public class EsDocumentServiceImpl implements EsDocumentService {
             throw new RuntimeException(e);
         }
     }
-
-
 }

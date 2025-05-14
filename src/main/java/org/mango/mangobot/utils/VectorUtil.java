@@ -1,4 +1,4 @@
-package org.mango.mangobot.knowledgeLibrary.utils;
+package org.mango.mangobot.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -7,12 +7,19 @@ import jakarta.annotation.Resource;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * 两个工具：
+ *      1. 获取向量表示
+ *      2. 文本拆分（按照段落拆分，若超过限制大小则取最后一个句号作为结尾）
+ */
+@Component
 public class VectorUtil {
 
     @Resource
@@ -24,8 +31,67 @@ public class VectorUtil {
 
     // 支持的句子结束符（英文句号、中文句号、问号、感叹号）
     private static final Pattern SENTENCE_END_PATTERN = Pattern.compile("[。\\.]");
-    // 常见缩写（如 Mr., Dr.）中的句号不作为分割符
-    private static final String ABBREVIATION_PATTERN = "\\b[A-Za-z][a-z]{1,3}\\.";
+
+    // 使用 HTTP + Jackson 获取 Embedding 向量
+    // 调用多模态嵌入API获取向量表示
+    public List<Float> getVectorRepresentation(String text){
+        // 构建请求体
+        var requestBody = new EmbeddingRequestDto();
+        requestBody.setModel("multimodal-embedding-v1");
+
+        // 创建内容列表
+        List<ContentDto> contents = new ArrayList<>();
+        contents.add(new ContentDto(text, null, null));
+        requestBody.setInput(new EmbeddingInputDto(contents));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + apiKey); // 请确保使用正确的授权令牌
+
+        HttpEntity<EmbeddingRequestDto> entity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<String> response = null;
+        try{
+            response = restTemplate.postForEntity(
+                    "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding",
+                    entity,
+                    String.class
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if(response == null) return new ArrayList<>();
+
+//        if (response.getStatusCode() != HttpStatus.OK) {
+//            throw new RuntimeException("Failed to call embedding API: " + response.getBody());
+//        }
+
+        // 使用 Jackson 解析响应
+        JsonNode rootNode = null;
+        try {
+            rootNode = objectMapper.readTree(response.getBody());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        JsonNode embeddingListNode = rootNode.path("output").path("embeddings");
+
+        if (embeddingListNode.isMissingNode()) {
+            throw new RuntimeException("Invalid response format: missing 'text_embedding'");
+        }
+
+        List<Float> embeddingList = new ArrayList<>();
+        for (JsonNode node : embeddingListNode) {
+            JsonNode embeddingArray = node.path("embedding");
+            if (!embeddingArray.isArray()) {
+                throw new RuntimeException("Expected an array for 'embedding'");
+            }
+            for (JsonNode embeddingValue : embeddingArray) {
+                embeddingList.add(embeddingValue.floatValue());
+            }
+        }
+        return embeddingList;
+    }
 
     /**
      * 将输入文本按段落拆分为 List<String>
@@ -133,68 +199,6 @@ public class VectorUtil {
             }
         }
         return -1;
-    }
-
-
-    // 使用 HTTP + Jackson 获取 Embedding 向量
-    // 调用多模态嵌入API获取向量表示
-    public float[] getVectorRepresentation(String text){
-        // 构建请求体
-        var requestBody = new EmbeddingRequestDto();
-        requestBody.setModel("multimodal-embedding-v1");
-
-        // 创建内容列表
-        List<ContentDto> contents = new ArrayList<>();
-        contents.add(new ContentDto(text, null, null));
-        requestBody.setInput(new EmbeddingInputDto(contents));
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + apiKey); // 请确保使用正确的授权令牌
-
-        HttpEntity<EmbeddingRequestDto> entity = new HttpEntity<>(requestBody, headers);
-
-        ResponseEntity<String> response = restTemplate.postForEntity(
-                "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding",
-                entity,
-                String.class
-        );
-
-        if (response.getStatusCode() != HttpStatus.OK) {
-            throw new RuntimeException("Failed to call embedding API: " + response.getBody());
-        }
-
-        // 使用 Jackson 解析响应
-        JsonNode rootNode = null;
-        try {
-            rootNode = objectMapper.readTree(response.getBody());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        JsonNode embeddingListNode = rootNode.path("output").path("embeddings");
-
-        if (embeddingListNode.isMissingNode()) {
-            throw new RuntimeException("Invalid response format: missing 'text_embedding'");
-        }
-
-        List<Float> embeddingList = new ArrayList<>();
-        for (JsonNode node : embeddingListNode) {
-            JsonNode embeddingArray = node.path("embedding");
-            if (!embeddingArray.isArray()) {
-                throw new RuntimeException("Expected an array for 'embedding'");
-            }
-            for (JsonNode embeddingValue : embeddingArray) {
-                embeddingList.add(embeddingValue.floatValue());
-            }
-        }
-
-// 转为 float[]
-        float[] embedding = new float[embeddingList.size()];
-        for (int i = 0; i < embedding.length; i++) {
-            embedding[i] = embeddingList.get(i);
-        }
-
-        return embedding;
     }
 
     // 请求 DTO

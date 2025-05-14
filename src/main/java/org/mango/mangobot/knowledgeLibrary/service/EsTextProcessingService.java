@@ -2,27 +2,25 @@ package org.mango.mangobot.knowledgeLibrary.service;
 
 import cn.hutool.core.io.FileUtil;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.KnnSearch;
 import co.elastic.clients.elasticsearch.core.*;
-import co.elastic.clients.elasticsearch.core.knn_search.KnnSearchQuery;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import co.elastic.clients.elasticsearch.core.search.SourceFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.knowledgeLibrary.utils.FileUtils;
-import org.mango.mangobot.knowledgeLibrary.utils.VectorUtil;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static org.mango.mangobot.utils.VectorUtil.splitByParagraph;
 
 @Service
 @Slf4j
@@ -31,11 +29,8 @@ public class EsTextProcessingService {
 
     @Resource
     private ElasticsearchClient elasticsearchClient;
-    @Resource
-    private ObjectMapper objectMapper;
 
-    private static final String INDEX_NAME = "knowledge_segments";
-    private static final double SIMILARITY_THRESHOLD = 0.99;
+    private static final String INDEX_NAME = "knowledge_library";
 
     public String processTextFiles() {
         String jarPath = getJarPath();
@@ -49,18 +44,17 @@ public class EsTextProcessingService {
 
         for (File file : txtFiles) {
             String content = FileUtil.readString(file, StandardCharsets.UTF_8);
-            List<String> segments = VectorUtil.splitByParagraph(content, 10);
+            List<String> segments = splitByParagraph(content, 30); // 按段落分
 
             StringBuilder fileContentBuilder = new StringBuilder();
 
             for (String segment : segments) {
-                List<Float> embedding = getVectorRepresentation(segment);
+                String hashId = sha256Hash(segment);
 
-                // 搜索相似段落
-                boolean exists = searchSimilarEmbedding(embedding, segment);
+                boolean exists = checkDocumentExists(hashId);
 
                 if (!exists) {
-                    saveToElasticsearch(segment, embedding);
+                    saveToElasticsearch(segment, hashId);
                     fileContentBuilder.append(segment).append("\n");
                     log.info("新增段落到ES: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
                 } else {
@@ -83,15 +77,15 @@ public class EsTextProcessingService {
     }
 
     public String processTextContent(String content) {
-        List<String> segments = VectorUtil.splitByParagraph(content, 10);
+        List<String> segments = splitByParagraph(content, 30);
         StringBuilder fileContentBuilder = new StringBuilder();
 
         for (String segment : segments) {
-            List<Float> embedding = getVectorRepresentation(segment);
-            boolean exists = searchSimilarEmbedding(embedding, segment);
+            String hashId = sha256Hash(segment);
+            boolean exists = checkDocumentExists(hashId);
 
             if (!exists) {
-                saveToElasticsearch(segment, embedding);
+                saveToElasticsearch(segment, hashId);
                 fileContentBuilder.append(segment).append("\n");
                 log.info("新增段落到ES: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
             } else {
@@ -112,29 +106,21 @@ public class EsTextProcessingService {
     }
 
     public List<String> queryVectorDatabase(String query, int maxResults) {
-        List<Float> queryEmbedding = getVectorRepresentation(query);
-
         try {
-            // 创建 KNN 查询部分
-            KnnSearch knnSearch = KnnSearch.of(b -> b
-                    .field("embedding")
-                    .queryVector(queryEmbedding)
-                    .numCandidates(100L)
-                    .k(1L)
-            );
-
-            // 构建 source filter 只获取 content 字段
-            SourceConfig sourceConfig = SourceConfig.of(b -> b
-                    .filter(SourceFilter.of(f -> f
-                            .includes(Arrays.asList("content"))
-                    ))
-            );
-
-            // 构建完整的 SearchRequest
             SearchRequest request = SearchRequest.of(b -> b
                     .index(INDEX_NAME)
-                    .knn(knnSearch)  // 注意这里是 KnnSearch 而不是 KnnSearchQuery
-                    .source(sourceConfig)
+                    .query(q -> q
+                            .match(m -> m
+                                    .field("content")
+                                    .query(query)
+                            )
+                    )
+                    .source(SourceConfig.of(b1 -> b1
+                            .filter(SourceFilter.of(f -> f
+                                    .includes(Collections.singletonList("content"))
+                            ))
+                    ))
+                    .size(maxResults)
             );
 
             SearchResponse<Map> response = elasticsearchClient.search(request, Map.class);
@@ -146,7 +132,7 @@ public class EsTextProcessingService {
                 if (source != null && source.containsKey("content")) {
                     String content = source.get("content").toString();
                     double score = hit.score();
-                    log.info("匹配内容: {}, 相似度: {}", content, score);
+                    log.info("匹配内容: {}, 相似度评分: {}", content, score);
                     results.add(content);
                 }
             }
@@ -159,16 +145,13 @@ public class EsTextProcessingService {
         }
     }
 
-    private void saveToElasticsearch(String content, List<Float> embedding) {
+    private void saveToElasticsearch(String content, String id) {
         try {
-            String id = UUID.randomUUID().toString(); // 可替换为 hash 避免重复插入
-
             IndexRequest<Map<String, Object>> request = IndexRequest.of(b -> b
                     .index(INDEX_NAME)
                     .id(id)
                     .document(Map.of(
-                            "content", content,
-                            "embedding", embedding
+                            "content", content
                     ))
             );
 
@@ -179,44 +162,38 @@ public class EsTextProcessingService {
         }
     }
 
-    private boolean searchSimilarEmbedding(List<Float> embedding, String segment) {
+    private boolean checkDocumentExists(String id) {
         try {
-            // 创建 KNN 查询部分
-            KnnSearch knnSearch = KnnSearch.of(b -> b
-                    .field("embedding")
-                    .queryVector(embedding)
-                    .numCandidates(100L)
-                    .k(1L)
-            );
-
-            // 构建 source filter 只获取 content 字段
-            SourceConfig sourceConfig = SourceConfig.of(b -> b
-                    .filter(SourceFilter.of(f -> f
-                            .includes(Arrays.asList("content"))
-                    ))
-            );
-
-            // 构建完整的 SearchRequest
-            SearchRequest request = SearchRequest.of(b -> b
+            GetRequest getRequest = GetRequest.of(b -> b
                     .index(INDEX_NAME)
-                    .knn(knnSearch)  // 注意这里是 KnnSearch 而不是 KnnSearchQuery
-                    .source(sourceConfig)
+                    .id(id)
             );
 
-            SearchResponse<Map> response = elasticsearchClient.search(request, Map.class);
-            List<Hit<Map>> hits = response.hits().hits();
-
-            if (!hits.isEmpty()) {
-                Hit<Map> hit = hits.get(0);
-                double score = hit.score();
-                if (score > SIMILARITY_THRESHOLD) {
-                    return true; // 存在高度相似的段落
-                }
-            }
-            return false;
+            GetResponse<Map> response = elasticsearchClient.get(getRequest, Map.class);
+            return response.found();
         } catch (IOException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("搜索相似段落失败", e);
+            throw new RuntimeException("检查文档是否存在失败", e);
+        }
+    }
+
+    private String sha256Hash(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 算法不可用", e);
         }
     }
 
@@ -234,11 +211,5 @@ public class EsTextProcessingService {
             throw new RuntimeException(e);
         }
         return jarPath;
-    }
-
-    // TODO: 实现你的 getVectorRepresentation 方法
-    private List<Float> getVectorRepresentation(String text) {
-        // 调用模型或 mock 返回向量
-        return Collections.emptyList();
     }
 }

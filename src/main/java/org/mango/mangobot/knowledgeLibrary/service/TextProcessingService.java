@@ -2,9 +2,6 @@ package org.mango.mangobot.knowledgeLibrary.service;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoClient;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -14,20 +11,15 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.mongodb.IndexMapping;
 import dev.langchain4j.store.embedding.mongodb.MongoDbEmbeddingStore;
 import jakarta.annotation.Resource;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.knowledgeLibrary.utils.FileUtils;
-import org.mango.mangobot.knowledgeLibrary.utils.VectorUtil;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.mango.mangobot.utils.VectorUtil;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -63,7 +55,7 @@ public class TextProcessingService {
             StringBuilder fileContentBuilder = new StringBuilder();
 
             for (String segment : segments) {
-                Embedding queryEmbedding = new Embedding(vectorUtil.getVectorRepresentation(segment));
+                Embedding queryEmbedding = new Embedding(convert(vectorUtil.getVectorRepresentation(segment)));
                 EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                         .queryEmbedding(queryEmbedding)
                         .minScore(0.99)
@@ -106,7 +98,7 @@ public class TextProcessingService {
         StringBuilder fileContentBuilder = new StringBuilder();
 
         for (String segment : segments) {
-            Embedding queryEmbedding = new Embedding(vectorUtil.getVectorRepresentation(segment));
+            Embedding queryEmbedding = new Embedding(convert(vectorUtil.getVectorRepresentation(segment)));
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(queryEmbedding)
                     .minScore(0.99)
@@ -151,7 +143,7 @@ public class TextProcessingService {
                 .fromClient(mongoClient)
                 .build();
 
-        Embedding queryEmbedding = new Embedding(vectorUtil.getVectorRepresentation(query));
+        Embedding queryEmbedding = new Embedding(convert(vectorUtil.getVectorRepresentation(query)));
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
@@ -166,7 +158,7 @@ public class TextProcessingService {
                 .map(match -> match.embeddingId())  // 只取文本内容
                 .collect(Collectors.toList());  // 或者使用 .collect(Collectors.toList()) 如果你使用的Java版本不支持 .toList()
 
-        // 如果你也想打印出来，保留打印逻辑
+        // 保留打印逻辑
         for (EmbeddingMatch<TextSegment> embeddingMatch : matches) {
             log.info("Response: " + embeddingMatch.embeddingId());
             log.info("Score: " + embeddingMatch.score());
@@ -210,5 +202,15 @@ public class TextProcessingService {
         return jarPath;
     }
 
+    private float[] convert(List<Float> list) {
+        if (list == null || list.isEmpty()) {
+            return new float[0];
+        }
 
+        float[] array = new float[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            array[i] = list.get(i); // 自动拆箱 Float -> float
+        }
+        return array;
+    }
 }

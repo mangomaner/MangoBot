@@ -16,16 +16,11 @@ public class SearchByBrowser {
     @Resource
     private TextProcessingService textProcessingService;
 
-    public String searchBing(String query) {
+    public String searchBing(String query) throws IOException {
         String url = "https://mzh.moegirl.org.cn/" + query; // 要抓取的网页地址
 
         // 发送HTTP请求，获取网页内容
-        Document document = null;
-        try {
-            document = Jsoup.connect(url).get();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        Document document = Jsoup.connect(url).get();
         Elements contentParagraphs = document.select("p");
         StringBuilder contentBuilder = new StringBuilder();
         for (Element p : contentParagraphs) {
@@ -35,7 +30,6 @@ public class SearchByBrowser {
             }
         }
         String mainContent = contentBuilder.toString().trim();
-        System.out.println("正文：" + mainContent);
         return mainContent;
 
     }

@@ -25,7 +25,7 @@ public class MyChatModelListener implements ChatModelListener {
         ChatRequest chatRequest = requestContext.chatRequest();
 
         List<ChatMessage> messages = chatRequest.messages();
-        log.info("Send data: " + messages.toString());
+        //log.info("Send data: " + messages.toString());
 
         Map<Object, Object> attributes = requestContext.attributes();
         attributes.put("my-attribute", "my-value");
@@ -35,7 +35,7 @@ public class MyChatModelListener implements ChatModelListener {
     public void onResponse(ChatModelResponseContext responseContext) {
         ChatResponse chatResponse = responseContext.chatResponse();
         AiMessage aiMessage = chatResponse.aiMessage();
-        log.info("Receive answer: " + aiMessage);
+        //log.info("Receive answer: " + aiMessage);
 
         ChatResponseMetadata metadata = chatResponse.metadata();
 

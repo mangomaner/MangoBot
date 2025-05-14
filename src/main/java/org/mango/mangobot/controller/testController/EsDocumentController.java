@@ -58,15 +58,14 @@ public class EsDocumentController {
         }
     }
 
-    @PostMapping("/search")
+    @GetMapping("/search")
     public ResponseEntity<List<Map<String, Object>>> searchDocuments(
             @RequestParam String indexName,
             @RequestParam String queryText,
-            @RequestBody float[] vector,
             @RequestParam(defaultValue = "5") int size
     ) {
         try {
-            List<Map<String, Object>> result = esDocumentService.searchDocuments(indexName, queryText, vector, size);
+            List<Map<String, Object>> result = esDocumentService.searchDocuments(indexName, queryText, size);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -79,7 +78,16 @@ public class EsDocumentController {
             @RequestParam String queryText,
             @RequestParam(defaultValue = "5") int size
     ) throws IOException, InterruptedException {
-        List<Map<String, Object>> result = esDocumentService.fullTextSearch(indexName, queryText, size);
+        List<Map<String, Object>> result = esDocumentService.fullTextSearch(indexName, queryText, "", size);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/get-alldoc")
+    public ResponseEntity<List<Map<String, Object>>> getAllDoc(
+            @RequestParam String indexName,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        List<Map<String, Object>> result = esDocumentService.getAllDocuments(indexName);
         return ResponseEntity.ok(result);
     }
 

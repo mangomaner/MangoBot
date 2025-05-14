@@ -2,11 +2,6 @@ package org.mango.mangobot.work;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.community.model.dashscope.QwenChatModel;
-import dev.langchain4j.community.model.dashscope.QwenChatRequestParameters;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +20,11 @@ import java.util.Random;
 @Slf4j
 public class MyGroupMessageHandle implements GroupMessageHandler {
 
-    @Resource
-    private QwenChatModel qwenChatModel;
+
     @Resource
     private GroupMessageService groupMessageService;
+    @Resource
+    private WorkFlow workFlow;
     @Value("${QQ.botQQ}")
     private String botQQ;
     private List<String> pokeResponses = new ArrayList<>();
@@ -62,8 +58,7 @@ public class MyGroupMessageHandle implements GroupMessageHandler {
 
         if(!targetId.equals(botQQ)) return;
 
-        // 假设你想返回聊天响应的消息部分
-        String result = chatWithModel(content);
+        String result = workFlow.start(content, 1, groupId);
         groupMessageService.sendTextMessage(groupId, result);
     }
 
@@ -75,21 +70,5 @@ public class MyGroupMessageHandle implements GroupMessageHandler {
         groupMessageService.sendTextMessage(groupId, response);
     }
 
-    private String workFlow(String question) {
 
-        return "";
-    }
-
-    private String chatWithModel(String question) {
-        ChatRequest request = ChatRequest.builder()
-                .messages(UserMessage.from(question))
-                .parameters(QwenChatRequestParameters.builder()
-                        .temperature(0.5)
-                        .modelName("qwen-turbo") // 设置模型名称
-                        .enableSearch(true)
-                        .build())
-                .build();
-        ChatResponse chatResponse = qwenChatModel.chat(request);
-        return chatResponse.aiMessage().text();
-    }
 }

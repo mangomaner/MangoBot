@@ -11,10 +11,12 @@ import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import org.mango.mangobot.common.BaseResponse;
 import org.mango.mangobot.common.ResultUtils;
+import org.mango.mangobot.knowledgeLibrary.service.EsTextProcessingService;
 import org.mango.mangobot.knowledgeLibrary.service.TextProcessingService;
 import org.mango.mangobot.manager.crawler.SearchByBrowser;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -27,13 +29,15 @@ public class TextProcessingController {
     private QwenChatModel qwenChatModel;
     @Resource
     private ObjectMapper objectMapper;
+    @Resource
+    private EsTextProcessingService esTextProcessingService;
 
 
 
     @Resource
     SearchByBrowser searchByBrowser;
     @GetMapping("/searchByBrowser")
-    public BaseResponse<String> searchByBrowser(@RequestParam String query) {
+    public BaseResponse<String> searchByBrowser(@RequestParam String query) throws IOException {
 
         String result = searchByBrowser.searchBing(query);
         return ResultUtils.success(result);
@@ -44,7 +48,7 @@ public class TextProcessingController {
     public BaseResponse<List<String>> query(@RequestParam String query,
                                             @RequestParam(defaultValue = "10") int maxResults) {
 
-        List<String> results = textProcessingService.queryVectorDatabase(query, maxResults);
+        List<String> results = esTextProcessingService.queryVectorDatabase(query, maxResults);
         return ResultUtils.success(results);
 
     }
@@ -67,12 +71,12 @@ public class TextProcessingController {
     @PostMapping("/processStringData")
     public String processStringData(@RequestBody Object inputContent) {
         String input = (String) inputContent;
-        String result = textProcessingService.processTextContent(input);
+        String result = esTextProcessingService.processTextContent(input);
         return result;
     }
     @GetMapping("/processTextFiles")
     public String processTextFiles(@RequestParam String directoryPath) {
-        textProcessingService.processTextFiles();
+        esTextProcessingService.processTextFiles();
         return "Files processed successfully.";
     }
 

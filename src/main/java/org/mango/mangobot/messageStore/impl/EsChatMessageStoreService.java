@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.messageStore.ChatMessageStoreService;
+import org.mango.mangobot.messageStore.collection.QQMessageCollection;
 import org.mango.mangobot.model.QQ.QQMessage;
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -40,10 +42,11 @@ public class EsChatMessageStoreService implements ChatMessageStoreService {
             System.out.println("message_id 为空或无效，跳过该条消息");
             return;
         }
-
+        QQMessageCollection collection = new QQMessageCollection();
+        BeanUtils.copyProperties(qqMessage, collection);
         try {
             String indexName = getIndexName(groupId);
-            String json = objectMapper.writeValueAsString(qqMessage);
+            String json = objectMapper.writeValueAsString(collection);
 
             IndexRequest<ByteArrayInputStream> request = IndexRequest.of(b -> b
                     .index(indexName)
