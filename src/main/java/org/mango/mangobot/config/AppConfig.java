@@ -26,7 +26,7 @@ public class AppConfig {
 
     @Bean QwenChatModel qwenChatModel(){
         return QwenChatModel.builder()
-                .apiKey("sk-e1fcd49b360d4f088cbe1ce6b8e2f5db")
+                .apiKey(apiKey)
                 .modelName("qwen-turbo")
                 .listeners(List.of(new MyChatModelListener()))
                 .build();
