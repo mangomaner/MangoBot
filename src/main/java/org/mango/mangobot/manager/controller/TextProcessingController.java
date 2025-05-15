@@ -31,9 +31,6 @@ public class TextProcessingController {
     private ObjectMapper objectMapper;
     @Resource
     private EsTextProcessingService esTextProcessingService;
-
-
-
     @Resource
     SearchByBrowser searchByBrowser;
     @GetMapping("/searchByBrowser")
@@ -54,6 +51,9 @@ public class TextProcessingController {
 
     @PostMapping("/chatTest")
     public String qwenChatModelTest(@RequestBody String chatInfo) {
+        QwenChatRequestParameters.SearchOptions searchOptions = QwenChatRequestParameters.SearchOptions.builder()
+                .forcedSearch(true)
+                .build();
 
         ChatRequest request = ChatRequest.builder()
                 .messages(UserMessage.from(chatInfo))
@@ -61,6 +61,7 @@ public class TextProcessingController {
                         .temperature(0.5)
                         .modelName("qwen-turbo") // 设置模型名称
                         .enableSearch(true)
+                        .searchOptions(searchOptions)
                         .build())
                 .build();
         ChatResponse chatResponse = qwenChatModel.chat(request);
