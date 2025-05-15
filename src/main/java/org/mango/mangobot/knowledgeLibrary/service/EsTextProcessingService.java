@@ -44,7 +44,7 @@ public class EsTextProcessingService {
 
         for (File file : txtFiles) {
             String content = FileUtil.readString(file, StandardCharsets.UTF_8);
-            List<String> segments = splitByParagraph(content, 30); // 按段落分
+            List<String> segments = splitByParagraph(content, 30, "123"); // 按段落分
 
             StringBuilder fileContentBuilder = new StringBuilder();
 
@@ -76,8 +76,8 @@ public class EsTextProcessingService {
         return "已处理所有文件";
     }
 
-    public String processTextContent(String content) {
-        List<String> segments = splitByParagraph(content, 30);
+    public String processTextContent(String content, String keyWord) {
+        List<String> segments = splitByParagraph(content, 10, keyWord);
         StringBuilder fileContentBuilder = new StringBuilder();
 
         for (String segment : segments) {
@@ -99,8 +99,15 @@ public class EsTextProcessingService {
         String processedDirectory = jarPath + "\\text_files\\knowledge_library";
         File dir = FileUtils.ensureDirectoryExists(processedDirectory);
 
-        String outputFilePath = processedDirectory + File.separator + "output_" + System.currentTimeMillis() + ".txt";
-        FileUtils.writeToFile(fileContentBuilder.toString(), outputFilePath);
+
+        String outputFilePath = processedDirectory + File.separator + keyWord + System.currentTimeMillis() + ".txt";
+        // 防止文件格式不合规
+        try {
+            FileUtils.writeToFile(fileContentBuilder.toString(), outputFilePath);
+        } finally {
+            FileUtils.writeToFile(fileContentBuilder.toString(), processedDirectory + File.separator + System.currentTimeMillis() + ".txt");
+        }
+
 
         return "已处理所有段落并写入文件：" + outputFilePath;
     }
@@ -212,4 +219,5 @@ public class EsTextProcessingService {
         }
         return jarPath;
     }
+
 }

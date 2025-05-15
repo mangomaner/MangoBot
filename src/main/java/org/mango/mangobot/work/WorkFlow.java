@@ -36,11 +36,16 @@ public class WorkFlow {
     private SearchByBrowser searchByBrowser;
 
     // 用prompt规范大模型输出，需返回json，且包含 canAns字段 和 message字段
-    public String start(String question, int level, String groupId){
+    public String start(String question, int level){
         // 1. 判断是否可以直接回答（涉及 人物/作品 的问题canAns=false，并提取出问题中的 人物/作品 作为message）
+        List<Map<String, Object>> knowledge = esDocumentService.fullTextSearch("knowledge_library", question, "", 2);
+        StringBuilder knowledgeText = new StringBuilder();
+        for(Map<String, Object> k : knowledge){
+            knowledgeText.append(k.get("content")).append("\n");
+        }
         String step1Prompt = String.format(
-                "请严格按此格式输出：{\"canAns\": , \"message\": \"\"}；若问题涉及人物/作品，ans=false，message=[人物/作品名称]，否则canAns=true,message=[你的回答]。问题：%s",
-                question
+                "请严格按此格式输出：{\"canAns\": , \"message\": \"\"}；若涉及人物/作品/事件资料未提到，ans=false，message=[人物/作品/事件名称]，否则canAns=true,message=[你的回答]。问题：%s，资料：%s",
+                question, knowledgeText
         );
         String step1Response = chatWithModel(step1Prompt);
         log.info("step1Response: {}", step1Response);
@@ -53,8 +58,8 @@ public class WorkFlow {
         }
 
         // 2. 搜索知识库，将 问题和资料 发给大模型。若 Level 等级较高，或大模型仍无法回答，则message返回 3个针对于该资料和原问题的 提问
-        List<Map<String, Object>> knowledge = esDocumentService.fullTextSearch("knowledge_library", question, messageStep1, 5); // 假设已有搜索方法
-        StringBuilder knowledgeText = new StringBuilder();
+        knowledge = esDocumentService.fullTextSearch("knowledge_library", question, messageStep1, 2);
+        knowledgeText = new StringBuilder();
         for(Map<String, Object> k : knowledge){
             knowledgeText.append(k.get("content")).append("\n");
         }
@@ -76,18 +81,20 @@ public class WorkFlow {
         // 调用爬虫方法a获取数据并入库
         String browserData = null;
         try {
-            browserData = searchByBrowser.searchBing(messageStep1);
+            browserData = searchByBrowser.searchMengNiang(messageStep1);
         } catch (IOException e) {
             browserData = "failed";
             log.error("爬虫执行失败", e);
         }
-        esTextProcessingService.processTextContent(browserData);
+
         // 将问题和资料发给大模型
         String step3Prompt = String.format(
-                "请严格按此格式输出：{\"ans\": \"\"}；ans=[你的回答]。问题 %s ;资料 %s",
+                "请严格按此格式输出：{\"ans\": \"\", \"keyWords\": \"\"}；ans=[你的回答，说些细节]，keyWords=[资料的关键词]。问题 %s ;资料 %s",
                 question, browserData.substring(0, Math.min(10000, browserData.length()))
         );
         String finalAnswer = chatWithModel(step3Prompt);
+        String keyWords = parseJson(finalAnswer).get("keyWords").toString();
+        esTextProcessingService.processTextContent(browserData, keyWords);
         return parseJson(finalAnswer).get("ans").toString();
 
 

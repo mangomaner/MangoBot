@@ -58,7 +58,7 @@ public class MyGroupMessageHandle implements GroupMessageHandler {
 
         if(!targetId.equals(botQQ)) return;
 
-        String result = workFlow.start(content, 1, groupId);
+        String result = workFlow.start(content, 1);
         groupMessageService.sendTextMessage(groupId, result);
     }
 

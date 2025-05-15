@@ -6,7 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -94,49 +97,69 @@ public class VectorUtil {
     }
 
     /**
-     * 将输入文本按段落拆分为 List<String>
+     * 将输入文本按段落拆分为 List<String> 并在每个段落末尾添加关键词
      *
      * @param content 输入文本内容
      * @param minParagraphLength 最小段落长度（防止空行或无效段落）
+     * @param keyWord 要添加到每个段落末尾的关键词
      * @return 段落列表
      */
-    public static List<String> splitByParagraph(String content, int minParagraphLength) {
+    public static List<String> splitByParagraph(String content, int minParagraphLength, String keyWord) {
         List<String> paragraphs = new ArrayList<>();
-        String[] lines = content.split("[\\r\\n,\\n\\n]"); // 支持 Windows 和 Linux 换行符
 
-        StringBuilder currentParagraph = new StringBuilder();
-        for (String line : lines) {
-            String trimmedLine = line.trim();
+        // 使用正则表达式按两个及以上换行符分割为段落
+        String[] rawParagraphs = content.split("[\\r\\n,\\n\\n]");
 
-            if (!trimmedLine.isEmpty()) {
-                if (currentParagraph.length() > 0) {
-                    currentParagraph.append("\n");
-                }
-                currentParagraph.append(line);
-            }
-
-            // 判断是否应该结束当前段落（遇到空行 or 达到最小长度）
-            if (trimmedLine.isEmpty() || (currentParagraph.length() >= minParagraphLength && !trimmedLine.isEmpty())) {
-                if (currentParagraph.length() > 0) {
-                    String paragraphContent = currentParagraph.toString();
-                    // 递归分割段落
-                    List<String> splitResult = splitLongParagraph(paragraphContent, 500);
-                    paragraphs.addAll(splitResult);
-                    currentParagraph.setLength(0); // 清空缓存
+        for (String rawParagraph : rawParagraphs) {
+            String trimmedParagraph = rawParagraph.trim();
+            if (!trimmedParagraph.isEmpty() && trimmedParagraph.length() >= minParagraphLength) {
+                // 分割长段落
+                List<String> splitResult = splitLongParagraph(trimmedParagraph, 500);
+                // 添加关键词并加入结果列表
+                for (String part : splitResult) {
+                    if(!isStructuredData(part)) {
+                        paragraphs.add(part + " " + keyWord);
+                    }
                 }
             }
-        }
-
-        // 添加最后一个段落（如果有剩余）
-        if (currentParagraph.length() > 0) {
-            String finalContent = currentParagraph.toString();
-            List<String> splitResult = splitLongParagraph(finalContent, 500);
-            paragraphs.addAll(splitResult);
         }
 
         return paragraphs;
     }
+    private static boolean isStructuredData(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
 
+        // 快速过滤：如果段落中没有结构化数据的关键符号，直接返回 false
+        if (text.indexOf('•') == -1) {
+            return false;
+        }
+
+        // 统计结构化数据的字符数（通过关键符号密度估算）
+        int structuredCharCount = 0;
+        int totalLength = text.length();
+
+        // 统计 "•" 的数量
+        int bulletCount = countOccurrences(text, '•');
+
+        // 假设每个 "•" 代表一个结构化数据单元
+        structuredCharCount = (bulletCount) * 8; // 估算每个单元的平均长度
+
+        // 如果结构化数据占比 > 80%，判定为无效段落
+        return (double) structuredCharCount / totalLength > 0.8;
+    }
+
+    // 辅助方法：统计字符出现次数
+    private static int countOccurrences(String text, char target) {
+        int count = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == target) {
+                count++;
+            }
+        }
+        return count;
+    }
     /**
      * 递归分割长段落
      *
@@ -146,22 +169,21 @@ public class VectorUtil {
      */
     private static List<String> splitLongParagraph(String paragraph, int maxLength) {
         List<String> result = new ArrayList<>();
-        if (paragraph == null || paragraph.isEmpty() || paragraph.length() <= maxLength) {
+        if (paragraph == null || paragraph.length() <= maxLength) {
             result.add(paragraph);
             return result;
         }
 
-        // 查找最后一个句子结束符的位置（排除缩写）
+        // 查找最后一个句子结束符的位置
         int splitIndex = findLastSentenceEnd(paragraph, maxLength);
         if (splitIndex != -1) {
             String firstPart = paragraph.substring(0, splitIndex + 1).trim();
             String remaining = paragraph.substring(splitIndex + 1).trim();
-            if (!firstPart.isEmpty()) {
-                result.add(firstPart);
-            }
-            result.addAll(splitLongParagraph(remaining, maxLength)); // 递归处理剩余部分
+
+            result.add(firstPart);
+            result.addAll(splitLongParagraph(remaining, maxLength));
         } else {
-            // 无法找到合适分割点，直接截断
+            // 找不到合适的句子结尾，直接截断
             result.add(paragraph.substring(0, maxLength));
             result.addAll(splitLongParagraph(paragraph.substring(maxLength), maxLength));
         }
@@ -170,7 +192,7 @@ public class VectorUtil {
     }
 
     /**
-     * 查找最后一个句子结束符的位置（排除缩写）
+     * 查找最后一个句子结束符的位置（简单版）
      *
      * @param text      输入文本
      * @param maxLength 最大允许长度
@@ -178,24 +200,10 @@ public class VectorUtil {
      */
     private static int findLastSentenceEnd(String text, int maxLength) {
         int maxIndex = Math.min(text.length(), maxLength);
-        for (int i = maxIndex; i >= 0; i--) {
+        for (int i = maxIndex - 1; i >= 0; i--) {
             char c = text.charAt(i);
             if (SENTENCE_END_PATTERN.matcher(String.valueOf(c)).matches()) {
-                // 检查是否是缩写（如 Mr., Dr.）
-                if (i > 0 && Character.isLetter(text.charAt(i - 1))) {
-                    // 检查前面是否有字母（如 Mr. 中的 r）
-                    int j = i - 2;
-                    while (j >= 0 && Character.isLetter(text.charAt(j))) {
-                        j--;
-                    }
-                    if (j >= 0 && Character.isWhitespace(text.charAt(j))) {
-                        // 是句子结束符
-                        return i;
-                    }
-                } else {
-                    // 是句子结束符
-                    return i;
-                }
+                return i;
             }
         }
         return -1;

@@ -16,3 +16,7 @@ spring:
 # 访问 http://localhost:8765/doc.html# 进入接口文档
 knife4j:
   enable: true
+
+es:
+  host: localhost
+  port: 9200

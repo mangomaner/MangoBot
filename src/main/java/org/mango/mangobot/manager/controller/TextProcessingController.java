@@ -50,7 +50,6 @@ public class TextProcessingController {
 
         List<String> results = esTextProcessingService.queryVectorDatabase(query, maxResults);
         return ResultUtils.success(results);
-
     }
 
     @PostMapping("/chatTest")
@@ -71,7 +70,7 @@ public class TextProcessingController {
     @PostMapping("/processStringData")
     public String processStringData(@RequestBody Object inputContent) {
         String input = (String) inputContent;
-        String result = esTextProcessingService.processTextContent(input);
+        String result = esTextProcessingService.processTextContent(input, "");
         return result;
     }
     @GetMapping("/processTextFiles")

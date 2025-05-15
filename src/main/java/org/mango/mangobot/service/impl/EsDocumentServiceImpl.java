@@ -6,6 +6,7 @@ import co.elastic.clients.elasticsearch._types.KnnQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
@@ -128,49 +129,60 @@ public class EsDocumentServiceImpl implements EsDocumentService {
 
     @Override
     public List<Map<String, Object>> fullTextSearch(String indexName, String queryText, String boostKeyword, int size) {
+        // 构建 bool 查询
+        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
 
-        // 基础 match 查询
-        MatchQuery baseMatch = MatchQuery.of(b -> b
-                .field("content")
-                .query(queryText)
-        );
-
-        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder().should(Query.of(q1 -> q1.match(baseMatch)));
-
-        // 检查 boostKeyword 是否非空且不是纯空白字符
+        // 如果 boostKeyword 非空，添加强制匹配条件（must）
         if (boostKeyword != null && !boostKeyword.trim().isEmpty()) {
-            // 对 boostKeyword 的额外 boost 查询
+            // 使用 match 查询实现部分匹配，并设置 boost 提升相关性
             MatchQuery boostMatch = MatchQuery.of(b -> b
-                    .field("content")
+                    .field("content")  // 使用 text 类型字段支持分词匹配
                     .query(boostKeyword)
-                    .boost(100.0f) // 权重加倍
+                    .boost(2.0f)       // 提升匹配到 boostKeyword 的文档得分
+                    .fuzziness("AUTO") // 允许拼写错误（可选）
             );
-            boolQueryBuilder.should(Query.of(q2 -> q2.match(boostMatch)));
+            boolQueryBuilder.must(Query.of(q -> q.match(boostMatch)));
         }
 
-        // 构建组合查询：基础 match + 加权 match（如果有）
+        // 添加基础 match 查询（可选匹配）
+        if (queryText != null && !queryText.trim().isEmpty()) {
+            MatchQuery baseMatch = MatchQuery.of(b -> b
+                    .field("content")
+                    .query(queryText)
+            );
+            boolQueryBuilder.should(Query.of(q -> q.match(baseMatch)));
+        }
+
+//        // 设置 minimum_should_match = 0
+//        if (boolQueryBuilder.build().should() != null && !boolQueryBuilder.build().should().isEmpty()) {
+//            boolQueryBuilder.minimumShouldMatch(0);
+//        }
+
+        // 构建最终查询
         SearchRequest request = SearchRequest.of(b -> b
                 .index(indexName)
                 .query(Query.of(q -> q.bool(boolQueryBuilder.build())))
-                .size(size)
+                .size(20)
         );
+
 
         SearchResponse<Map> response = null;
         try {
             response = client.search(request, Map.class);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Elasticsearch 查询失败", e);
         }
 
         List<Map<String, Object>> results = new ArrayList<>();
-
-        for (Hit<Map> hit : response.hits().hits()) {
+        for (int i = 0; i < Math.min(size, response.hits().hits().size()); i ++) {
+            Hit<Map> hit = response.hits().hits().get(i);
             Map<String, Object> source = hit.source();
             if (source != null) {
+                source.put("score", hit.score());
                 source.put("id", hit.id());
                 source.remove("embedding");
-                source.put("score", hit.score());
                 results.add(source);
+                System.out.println("score: " + hit.score() + ", source: " + source);
             }
         }
 
