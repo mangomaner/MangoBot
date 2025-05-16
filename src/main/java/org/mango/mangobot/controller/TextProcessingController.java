@@ -1,5 +1,6 @@
-package org.mango.mangobot.manager.controller;
+package org.mango.mangobot.controller;
 
+import cn.hutool.core.math.Calculator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
@@ -11,6 +12,7 @@ import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import org.mango.mangobot.common.BaseResponse;
 import org.mango.mangobot.common.ResultUtils;
+import org.mango.mangobot.controller.tools.MathGenius;
 import org.mango.mangobot.knowledgeLibrary.service.EsTextProcessingService;
 import org.mango.mangobot.knowledgeLibrary.service.TextProcessingService;
 import org.mango.mangobot.manager.crawler.SearchByBrowser;
@@ -36,7 +38,7 @@ public class TextProcessingController {
     @GetMapping("/searchByBrowser")
     public BaseResponse<String> searchByBrowser(@RequestParam String query) throws IOException {
 
-        String result = searchByBrowser.searchBing(query);
+        String result = searchByBrowser.searchSougou(query);
         return ResultUtils.success(result);
 
     }

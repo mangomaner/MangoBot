@@ -1,4 +1,4 @@
-package org.mango.mangobot.manager.controller;
+package org.mango.mangobot.controller.tools;
 
 import dev.langchain4j.agent.tool.Tool;
 

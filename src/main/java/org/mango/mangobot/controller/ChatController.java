@@ -14,6 +14,6 @@ public class ChatController {
     private WorkFlow workFlow;
     @GetMapping("/workFlowTest")
     public String chat(@RequestParam String question, int level) {
-        return workFlow.start(question, level);
+        return workFlow.startNew(question);
     }
 }

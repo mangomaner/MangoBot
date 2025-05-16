@@ -29,7 +29,6 @@ public class AppConfig {
                 .apiKey(apiKey)
                 .modelName("qwen-turbo")
                 .listeners(List.of(new MyChatModelListener()))
-                .enableSearch(true)
                 .build();
     }
 

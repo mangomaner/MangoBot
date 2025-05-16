@@ -2,14 +2,18 @@ package org.mango.mangobot.work;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hankcs.hanlp.dictionary.CustomDictionary;
+import com.hankcs.hanlp.seg.common.Term;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenChatRequestParameters;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import io.micrometer.common.util.StringUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.knowledgeLibrary.service.EsTextProcessingService;
+import org.mango.mangobot.manager.crawler.PlaywrightBrowser;
 import org.mango.mangobot.manager.crawler.SearchByBrowser;
 import org.mango.mangobot.service.EsDocumentService;
 import org.springframework.stereotype.Component;
@@ -17,7 +21,9 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-
+import java.util.stream.Collectors;
+import com.hankcs.hanlp.tokenizer.*;
+import com.hankcs.hanlp.*;
 /**
  * 工作流，
  */
@@ -34,6 +40,39 @@ public class WorkFlow {
     private EsDocumentService esDocumentService;
     @Resource
     private SearchByBrowser searchByBrowser;
+    @Resource
+    private PlaywrightBrowser playwrightBrowser;
+
+    //todo
+    public String startNew(String question){
+        // 1. 询问AI，从问题中提取关键词
+        String step1Prompt = String.format(
+                "请严格按json格式输出：{jud:`问题为名词或涉及人物/作品/事件=true，否则=false`,keyWords:[`问题的关键词或作品、人物名`]}；问题：%s",
+                question
+        );
+        String step1Response = chatWithModel(step1Prompt);
+        log.info("step1Response: {}", step1Response);
+        Map<String, Object> step1Result = parseJson(step1Response);
+        boolean jud = (boolean) step1Result.get("jud");
+        List<String> messageStep1 = (List<String>) step1Result.get("keyWords");
+        if(!jud) return null;
+        // 2. 爬虫百度搜索，获取所有搜索结果
+        String searchResult = playwrightBrowser.searchBaidu(messageStep1.stream().map(s -> s + " ").collect(Collectors.joining()));
+
+        System.out.println(searchResult);
+        // 3. 分词器添加第一步的关键词，并对爬虫结果进行分词，取最高的几个。至此获取准确的关键词
+        //System.out.println(HanLP.segment("你好，欢迎使用HanLP汉语处理包！"));
+        for(String s : messageStep1){
+            CustomDictionary.insert(s);
+        }
+        List<String> keywordList = HanLP.extractKeyword(searchResult, 5);
+        System.out.println(keywordList);
+        // 4. 根据关键词搜索知识库，若得分较低则按关键词搜索百科，并加入知识库(存储文章全部内容)
+        // 5. 查询知识库，对文章进行段落分割，取相关性最高的几段
+        // 6. 将问题和知识库发给AI，整理结果。
+        return null;
+    }
+
 
     // 用prompt规范大模型输出，需返回json，且包含 canAns字段 和 message字段
     public String start(String question, int level){

@@ -1,4 +1,4 @@
-package org.mango.mangobot.controller.testController;
+package org.mango.mangobot.controller;
 
 import org.mango.mangobot.model.document.TextDocument;
 import org.mango.mangobot.service.EsDocumentService;

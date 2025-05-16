@@ -1,4 +1,4 @@
-package org.mango.mangobot.controller.testController;
+package org.mango.mangobot.controller;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

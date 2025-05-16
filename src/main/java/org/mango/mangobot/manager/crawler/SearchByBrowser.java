@@ -146,6 +146,62 @@ public class SearchByBrowser {
 
         return resultBuilder.toString();
     }
+    public String searchSougou(String query) throws IOException {
+        // 搜狗搜索URL
+        String url = "https://www.sogou.com/web?query=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
+
+        // 发送HTTP请求，获取网页内容
+        Document document = Jsoup.connect(url)
+                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
+                .timeout(10000)
+                .get();
+
+        // 选择所有符合条件的搜索结果项
+        Elements searchItems = document.select(".vrwrap");
+
+        StringBuilder resultBuilder = new StringBuilder();
+
+        for (Element result : searchItems) {
+            // 获取标题
+            Element titleElement = result.selectFirst("h3");
+            String title = titleElement != null ? titleElement.text() : "无标题";
+
+            // 获取摘要
+            Element summaryElement = result.selectFirst(".str-info");
+            String summary = summaryElement != null ? summaryElement.text() : "暂无摘要";
+
+            // 获取链接
+            Element linkElement = result.selectFirst("a[href]");
+            String linkUrl = linkElement != null ? linkElement.absUrl("href") : "未知链接";
+
+            // 如果链接为空或不符合要求，则跳过
+            if (linkUrl == null || linkUrl.isEmpty()) {
+                continue;
+            }
+
+            // 解析链接的内容（可选）
+            String content = fetchAndParsePageContent(linkUrl);
+
+            // 拼接最终结果
+            resultBuilder
+                    .append("【标题】").append(title).append("\n")
+                    .append("【链接】").append(linkUrl).append("\n")
+                    .append("------------------------------\n\n")
+                    .append(content)
+                    .append("\n\n");
+
+            // 示例中只处理前几个链接，可根据需求调整
+            if (resultBuilder.length() > 10000) { // 假设限制总长度不超过10000字符
+                break;
+            }
+        }
+
+        if (resultBuilder.length() == 0) {
+            return "未找到相关内容。";
+        }
+
+        return resultBuilder.toString();
+    }
 
     // 抓取指定网页的内容并解析
     private String fetchAndParsePageContent(String pageUrl) throws IOException {
