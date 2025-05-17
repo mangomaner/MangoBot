@@ -50,7 +50,7 @@ public class TextProcessingService {
 
         for (File file : txtFiles) {
             String content = FileUtil.readString(file, StandardCharsets.UTF_8);
-            List<String> segments = VectorUtil.splitByParagraph(content, 10, "");
+            List<String> segments = VectorUtil.splitByParagraph(content, 5000, "");
 
             StringBuilder fileContentBuilder = new StringBuilder();
 
@@ -94,7 +94,7 @@ public class TextProcessingService {
     public String processTextContent(String content) {
         MongoDbEmbeddingStore embeddingStore = buildEmbeddingStore();
 
-        List<String> segments = VectorUtil.splitByParagraph(content, 10, "");
+        List<String> segments = VectorUtil.splitByParagraph(content, 5000, "");
         StringBuilder fileContentBuilder = new StringBuilder();
 
         for (String segment : segments) {

@@ -73,7 +73,7 @@ public class TextProcessingController {
     @PostMapping("/processStringData")
     public String processStringData(@RequestBody Object inputContent) {
         String input = (String) inputContent;
-        String result = esTextProcessingService.processTextContent(input, "");
+        String result = esTextProcessingService.processTextContent(input, "", 5000);
         return result;
     }
     @GetMapping("/processTextFiles")

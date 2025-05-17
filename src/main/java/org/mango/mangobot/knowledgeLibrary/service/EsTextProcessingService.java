@@ -44,7 +44,7 @@ public class EsTextProcessingService {
 
         for (File file : txtFiles) {
             String content = FileUtil.readString(file, StandardCharsets.UTF_8);
-            List<String> segments = splitByParagraph(content, 30, "123"); // 按段落分
+            List<String> segments = splitByParagraph(content, 5000, "123"); // 按段落分
 
             StringBuilder fileContentBuilder = new StringBuilder();
 
@@ -76,8 +76,8 @@ public class EsTextProcessingService {
         return "已处理所有文件";
     }
 
-    public String processTextContent(String content, String keyWord) {
-        List<String> segments = splitByParagraph(content, 10, keyWord);
+    public String processTextContent(String content, String keyWord, Integer maxLength) {
+        List<String> segments = splitByParagraph(content, maxLength, keyWord);
         StringBuilder fileContentBuilder = new StringBuilder();
 
         for (String segment : segments) {

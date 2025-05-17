@@ -1,9 +1,8 @@
-package org.mango.mangobot.work;
+package org.mango.mangobot.messageHandler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hankcs.hanlp.dictionary.CustomDictionary;
-import com.hankcs.hanlp.seg.common.Term;
 import com.hankcs.hanlp.suggest.Suggester;
 import com.microsoft.playwright.Page;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
@@ -11,7 +10,6 @@ import dev.langchain4j.community.model.dashscope.QwenChatRequestParameters;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import io.micrometer.common.util.StringUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.knowledgeLibrary.service.EsTextProcessingService;
@@ -25,7 +23,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-import com.hankcs.hanlp.tokenizer.*;
+
 import com.hankcs.hanlp.*;
 /**
  * 工作流，
@@ -73,6 +71,7 @@ public class WorkFlow {
         }
         List<String> keywordList = HanLP.extractKeyword(searchResult, 5);
         keywordList = removeStopWords(keywordList);
+
         log.info("keyWordsList:{}",keywordList);
         String keyWords = keywordList.stream().map(s -> s + " ").collect(Collectors.joining());
 
@@ -87,32 +86,42 @@ public class WorkFlow {
         String article = knowledgeText.toString();
         double jaccardSimilarity = jaccardSimilarity(checkList, keywordList);
         if(jaccardSimilarity < 0.3){
-            article = playwrightBrowser.searchBaiduBaike(keywordList.get(0));
-            TextDocument articleDocument = new TextDocument();
-            articleDocument.setContent(article);
-            //esDocumentService.addDocument("knowledge_library", articleDocument);
+            // 获取作品名
+            String step5Prompt = String.format(
+                    "请严格按json格式输出：{name:`文本提到最多的作品名或人名`}；文本：%s",
+                    searchResult.substring(0, 100)
+            );
+            String step5Response = chatWithModel(step5Prompt);
+            Map<String, Object> step5Result = parseJson(step5Response);
+            String name = (String) step5Result.get("name");
+            log.info("作品名: {}", name);
+            // 搜索百度百科后添加到知识库
+            article = playwrightBrowser.searchBaiduBaike(name);
+            esTextProcessingService.processTextContent(article, "", 5000);
+//            TextDocument articleDocument = new TextDocument();
+//            articleDocument.setContent(article);
+//            esDocumentService.addDocument("knowledge_library", articleDocument);
         }
         // 5. 对文章进行段落分割，取相关性最高的几段
         List<String> paragraphs = vectorUtil.splitByParagraph(article, 500, "");
-        String[] scoredParagraphs = new String[paragraphs.size()];
-        for(int i = 0; i < paragraphs.size(); i++){
-            scoredParagraphs[i] = paragraphs.get(i);
-        }
+        // 对分割出的段落进行打分
         Suggester suggester = new Suggester();
-        for(String p : paragraphs){
-            suggester.addSentence(p);
+        for(int i = 0; i < paragraphs.size(); i++){
+            suggester.addSentence(paragraphs.get(i));
         }
-        List<String> mostRelevantParagraphs = suggester.suggest(question, 2);
+        List<String> mostRelevantParagraphs = suggester.suggest(question, 3);
 
         // 6. 将问题和知识库发给AI，整理结果。
         String step6Prompt = String.format(
-                "请严格按json格式输出：{ans:`对该问题的回答`}；问题：%s；你知道的：%s",
+                "请严格按json格式输出：{ans:`问题的回答`}；问题：%s；你知道的：%s",
                 question, mostRelevantParagraphs.stream().map(s -> s + " ").collect(Collectors.joining())
         );
         String aiResponse = chatWithModel(step6Prompt);
-        log.info("Final AI Response: {}", aiResponse);
+        Map<String, Object> step6Response = parseJson(aiResponse);
+        String ans = (String) step6Response.get("ans");
+        log.info("Final AI Response: {}", ans);
 
-        return aiResponse;
+        return ans;
 
     }
 
@@ -176,7 +185,7 @@ public class WorkFlow {
         );
         String finalAnswer = chatWithModel(step3Prompt);
         String keyWords = parseJson(finalAnswer).get("keyWords").toString();
-        esTextProcessingService.processTextContent(browserData, keyWords);
+        esTextProcessingService.processTextContent(browserData, keyWords, 10000);
         return parseJson(finalAnswer).get("ans").toString();
 
 
@@ -208,7 +217,7 @@ public class WorkFlow {
         }
     }
     private List<String> removeStopWords(List<String> words){
-        List<String> stopWords = Arrays.asList("百度", "百科", "角色", "简介", "免费", "作品", "com", "分享", "图片", "小说", "-", "_");
+        List<String> stopWords = Arrays.asList("百度", "百科", "角色", "简介", "免费", "作品", "com", "分享", "图片", "小说", "-", "_", "日");
         return words.stream()
                 .filter(word -> !stopWords.contains(word))
                 .collect(Collectors.toList());

@@ -33,7 +33,7 @@ public class VectorUtil {
     private String apiKey;
 
     // 支持的句子结束符（英文句号、中文句号、问号、感叹号）
-    private static final Pattern SENTENCE_END_PATTERN = Pattern.compile("[。\\.]");
+    private static final Pattern SENTENCE_END_PATTERN = Pattern.compile("[。\\.\n]");
 
     // 使用 HTTP + Jackson 获取 Embedding 向量
     // 调用多模态嵌入API获取向量表示
@@ -100,29 +100,28 @@ public class VectorUtil {
      * 将输入文本按段落拆分为 List<String> 并在每个段落末尾添加关键词
      *
      * @param content 输入文本内容
-     * @param minParagraphLength 最小段落长度（防止空行或无效段落）
      * @param keyWord 要添加到每个段落末尾的关键词
      * @return 段落列表
      */
-    public static List<String> splitByParagraph(String content, int minParagraphLength, String keyWord) {
+    public static List<String> splitByParagraph(String content, int maxLength, String keyWord) {
         List<String> paragraphs = new ArrayList<>();
 
         // 使用正则表达式按两个及以上换行符分割为段落
-        String[] rawParagraphs = content.split("[\\r\\n,\\n\\n]");
+//        String[] rawParagraphs = content.split("[\\r\\n,\\n\\n]");
 
-        for (String rawParagraph : rawParagraphs) {
-            String trimmedParagraph = rawParagraph.trim();
-            if (!trimmedParagraph.isEmpty() && trimmedParagraph.length() >= minParagraphLength) {
-                // 分割长段落
-                List<String> splitResult = splitLongParagraph(trimmedParagraph, 500);
-                // 添加关键词并加入结果列表
-                for (String part : splitResult) {
-                    if(!isStructuredData(part)) {
-                        paragraphs.add(part + " " + keyWord);
-                    }
+
+        String trimmedParagraph = content.trim();
+        if (!trimmedParagraph.isEmpty() && trimmedParagraph.length() >= maxLength) {
+            // 分割长段落
+            List<String> splitResult = splitLongParagraph(trimmedParagraph, maxLength);
+            // 添加关键词并加入结果列表
+            for (String part : splitResult) {
+                if(!isStructuredData(part)) {
+                    paragraphs.add(part + " " + keyWord);
                 }
             }
         }
+
 
         return paragraphs;
     }
@@ -201,8 +200,8 @@ public class VectorUtil {
     private static int findLastSentenceEnd(String text, int maxLength) {
         int maxIndex = Math.min(text.length(), maxLength);
         for (int i = maxIndex - 1; i >= 0; i--) {
-            char c = text.charAt(i);
-            if (SENTENCE_END_PATTERN.matcher(String.valueOf(c)).matches()) {
+            Character c = text.charAt(i);
+            if (SENTENCE_END_PATTERN.matcher(c.toString()).matches()) {
                 return i;
             }
         }

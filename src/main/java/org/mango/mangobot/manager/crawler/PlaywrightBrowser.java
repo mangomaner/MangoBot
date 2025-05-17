@@ -2,6 +2,7 @@ package org.mango.mangobot.manager.crawler;
 
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.LoadState;
 import org.springframework.stereotype.Component;
 
 import javax.naming.Context;
@@ -20,6 +21,7 @@ public class PlaywrightBrowser {
         browser = Playwright.create().chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
         context = browser.newContext();
         page = context.newPage();
+        page.navigate("https://www.baidu.com");
     }
 
     public String test(){
@@ -46,14 +48,24 @@ public class PlaywrightBrowser {
 
     public String searchBaiduBaike(String query) {
         Locator locator = page.locator("text=百度百科");
-        Page page1 = page.waitForPopup(() -> {
-            locator.first().click();
-        });
+        String baikeResult;
+        if(locator.count() > 0) {
+            Page page1 = page.waitForPopup(() -> {
+                locator.first().click();
+            });
 
-        System.out.println("title = " + page1.title());
-        Locator locatorBaikeResult = page1.locator(".mainContent_TWv4s");
-
-        return locatorBaikeResult.innerText();
+            page1.waitForLoadState(LoadState.NETWORKIDLE);
+            System.out.println("title = " + page1.title());
+            Locator locatorBaikeResult = page1.locator(".mainContent_TWv4s");
+            baikeResult = locatorBaikeResult.innerText();
+            page.close();
+            page = page1;
+        } else {
+            page.navigate("https://baike.baidu.com/item/" + query);
+            Locator locatorBaikeResult = page.locator(".mainContent_TWv4s");
+            baikeResult = locatorBaikeResult.innerText();
+        }
+        return baikeResult;
     }
 
 }

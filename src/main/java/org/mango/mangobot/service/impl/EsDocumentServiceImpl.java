@@ -84,17 +84,25 @@ public class EsDocumentServiceImpl implements EsDocumentService {
 
     @Override
     public void addDocument(String indexName, TextDocument document) throws IOException {
-        String json = objectMapper.writeValueAsString(Map.of(
-                "content", document.getContent(),
-                "vector_embedding", document.getVectorEmbedding()
-        ));
-
-        IndexRequest<InputStream> request = IndexRequest.of(b -> b
-                .index(indexName)
-                .id(document.getId())
-                .withJson(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)))
-        );
-
+        IndexRequest<Map<String, Object>> request = null;
+        if(document.getVectorEmbedding() ==  null) {
+            request = IndexRequest.of(b -> b
+                    .index(indexName)
+                    .id(document.getId())
+                    .document(Map.of(
+                            "content", document.getContent()
+                    ))
+            );
+        }else {
+            request = IndexRequest.of(b -> b
+                    .index(indexName)
+                    .id(document.getId())
+                    .document(Map.of(
+                            "content", document.getContent(),
+                            "vector_embedding", document.getVectorEmbedding()
+                    ))
+            );
+        }
         client.index(request);
     }
 

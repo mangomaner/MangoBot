@@ -1,11 +1,10 @@
-package org.mango.mangobot.work;
+package org.mango.mangobot.messageHandler;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.mango.mangobot.messageHandler.GroupMessageHandler;
 import org.mango.mangobot.service.impl.GroupMessageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
