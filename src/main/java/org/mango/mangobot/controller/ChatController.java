@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/api/chat")
 public class ChatController {
@@ -14,6 +16,10 @@ public class ChatController {
     private WorkFlow workFlow;
     @GetMapping("/workFlowTest")
     public String chat(@RequestParam String question, int level) {
-        return workFlow.startNew(question);
+        try {
+            return workFlow.startNew(question);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
