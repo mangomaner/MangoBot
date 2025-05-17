@@ -173,7 +173,6 @@ public class EsDocumentServiceImpl implements EsDocumentService {
                 .size(20)
         );
 
-
         SearchResponse<Map> response = null;
         try {
             response = client.search(request, Map.class);
@@ -190,7 +189,7 @@ public class EsDocumentServiceImpl implements EsDocumentService {
                 source.put("id", hit.id());
                 source.remove("embedding");
                 results.add(source);
-                System.out.println("score: " + hit.score() + ", source: " + source);
+                System.out.println("score: " + hit.score() + ", source: " + source.get("content").toString().substring(0, 20));
             }
         }
 

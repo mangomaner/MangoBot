@@ -73,6 +73,4 @@ public class MyGroupMessageHandle implements GroupMessageHandler {
         String response = pokeResponses.get(random.nextInt(pokeResponses.size()));
         groupMessageService.sendTextMessage(groupId, response);
     }
-
-
 }

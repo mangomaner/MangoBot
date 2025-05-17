@@ -39,33 +39,70 @@ public class PlaywrightBrowser {
         return baikeResult;
     }
 
-    public Page searchBaidu(String query) {
-        page.navigate("https://baidu.com");
-        page.locator("#kw").fill(query);
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("百度一下")).click();
-        return page;
+    public String searchBaidu(String query) {
+        page.navigate("https://www.baidu.com/s?ie=utf-8&f=8&rsv_bp=1&rsv_idx=1&tn=baidu&wd=" + query);
+//        page.locator("#kw").fill(query);
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("百度一下")).first().click();
+        Locator locatorSearchResult = page.locator("#content_left");
+        if(locatorSearchResult.count() == 0)
+            return "";
+        return page.locator("#content_left").innerText();
+    }
+
+    public String searchBing(String query){
+        page.navigate("https://cn.bing.com/search?q=" + query);
+        Locator locatorMostValueResult = page.locator(".b_viewport").first();
+        Locator locatorResult = page.locator("#b_results");
+        String result = locatorResult.innerText();
+        if(locatorMostValueResult.count() == 0)
+            result += locatorMostValueResult.innerText();
+        result += "\n" + locatorMostValueResult.innerText();
+        return result;
     }
 
     public String searchBaiduBaike(String query) {
-        Locator locator = page.locator("text=百度百科");
-        String baikeResult;
-        if(locator.count() > 0) {
-            Page page1 = page.waitForPopup(() -> {
-                locator.first().click();
-            });
+        try {
+            // 查看当前搜索界面是否有百度百科
+            Locator locator = page.locator("text=- 百度百科");
+            String baikeResult;
+            if (locator.count() > 0) {
+                Page page1 = page.waitForPopup(() -> {
+                    locator.first().click();
+                });
 
-            page1.waitForLoadState(LoadState.NETWORKIDLE);
-            System.out.println("title = " + page1.title());
-            Locator locatorBaikeResult = page1.locator(".mainContent_TWv4s");
-            baikeResult = locatorBaikeResult.innerText();
-            page.close();
-            page = page1;
-        } else {
-            page.navigate("https://baike.baidu.com/item/" + query);
-            Locator locatorBaikeResult = page.locator(".mainContent_TWv4s");
-            baikeResult = locatorBaikeResult.innerText();
+                page1.waitForLoadState(LoadState.NETWORKIDLE);
+                System.out.println("title = " + page1.title());
+                Locator locatorBaikeResult = page1.locator(".mainContent_TWv4s");
+                baikeResult = locatorBaikeResult.innerText();
+                page.close();
+                page = page1;
+            } else {
+                // 没有则直接搜索
+                page.navigate("https://baike.baidu.com/item/" + query);
+                Locator locatorBaikeResult = page.locator(".mainContent_TWv4s");
+                if(locatorBaikeResult.count() == 0)
+                    return null;
+                baikeResult = locatorBaikeResult.innerText();
+            }
+            return baikeResult;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return baikeResult;
+    }
+
+    // todo
+    public String kuaidongBaike(String query) {
+        page.navigate("https://www.baike.com/search?keyword=" + query);
+        return null;
+    }
+
+    // 风控严格，请谨慎调用
+    public String searchMengniangBaike(String query) {
+        page.navigate("https://mzh.moegirl.org.cn/" + query);
+        Locator locator = page.locator(".mw-content-text");
+        if(locator.count() == 0) return "";
+        return locator.innerText();
     }
 
 }

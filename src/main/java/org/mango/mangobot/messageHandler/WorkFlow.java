@@ -46,8 +46,7 @@ public class WorkFlow {
     @Resource
     private VectorUtil vectorUtil;
 
-    //todo
-    public String startNew(String question) throws IOException {
+    public synchronized String startNew(String question) throws IOException {
         // 1. 询问AI，从问题中提取关键词
         String step1Prompt = String.format(
                 "请严格按json格式输出：{jud:`问题为名词或涉及人物/作品/事件=true，否则=false`,keyWords:[`问题的关键词或作品、人物名`]}；问题：%s",
@@ -61,8 +60,7 @@ public class WorkFlow {
         if(!jud) return null;
 
         // 2. 爬虫百度搜索，获取所有搜索结果
-        Page searchResultPage = playwrightBrowser.searchBaidu(messageStep1.stream().map(s -> s + " ").collect(Collectors.joining()));
-        String searchResult = searchResultPage.locator("#content_left").innerText();
+        String searchResult = playwrightBrowser.searchBaidu(messageStep1.stream().map(s -> s + " ").collect(Collectors.joining()));
 
         // 3. 分词器添加第一步的关键词，并对爬虫结果进行分词，取最高的几个。至此获取准确的关键词
         //System.out.println(HanLP.segment("你好，欢迎使用HanLP汉语处理包！"));
@@ -76,17 +74,26 @@ public class WorkFlow {
         String keyWords = keywordList.stream().map(s -> s + " ").collect(Collectors.joining());
 
         // 4. 根据关键词搜索知识库，若相关度较低则按关键词搜索百科，并加入知识库(存储文章全部内容)
-        List<Map<String, Object>> knowledgeList = esDocumentService.fullTextSearch("knowledge_library", question + keyWords, question, 1);
+        List<Map<String, Object>> knowledgeList = esDocumentService.fullTextSearch("knowledge_library", keyWords, "", 4);
         StringBuilder knowledgeText = new StringBuilder();
+        double highestScore = 0;
+        // 对评分进行归一化处理
+        if(!knowledgeList.isEmpty())
+            highestScore = (double) knowledgeList.get(0).get("score");
         for(Map<String, Object> k : knowledgeList){
-            knowledgeText.append(k.get("content")).append("\n");
+            // 若相似度 > 85% 则认为是与当前内容相关
+            if((double) k.get("score") /  highestScore > 0.85)
+                knowledgeText.append(k.get("content")).append("\n");
         }
         List<String> checkList = HanLP.extractKeyword(knowledgeText.toString(), 5);
+        checkList = removeStopWords(checkList);
         log.info("checkList:{}", checkList);
+
+        // 判断关键词相关性 (防止刚才从知识库搜索出的内容全都是低分不相关内容)
         String article = knowledgeText.toString();
         double jaccardSimilarity = jaccardSimilarity(checkList, keywordList);
         if(jaccardSimilarity < 0.3){
-            // 获取作品名
+            // 若相关度低，从搜索结果获取作品名
             String step5Prompt = String.format(
                     "请严格按json格式输出：{name:`文本提到最多的作品名或人名`}；文本：%s",
                     searchResult.substring(0, 100)
@@ -97,17 +104,17 @@ public class WorkFlow {
             log.info("作品名: {}", name);
             // 搜索百度百科后添加到知识库
             article = playwrightBrowser.searchBaiduBaike(name);
-            esTextProcessingService.processTextContent(article, "", 5000);
-//            TextDocument articleDocument = new TextDocument();
-//            articleDocument.setContent(article);
-//            esDocumentService.addDocument("knowledge_library", articleDocument);
+            if(article == null)
+                article = searchResult;
+            esTextProcessingService.processTextContent(article, name, 5000);
         }
+
         // 5. 对文章进行段落分割，取相关性最高的几段
-        List<String> paragraphs = vectorUtil.splitByParagraph(article, 500, "");
+        List<String> paragraphs = VectorUtil.splitByParagraph(article, 500, "");
         // 对分割出的段落进行打分
         Suggester suggester = new Suggester();
-        for(int i = 0; i < paragraphs.size(); i++){
-            suggester.addSentence(paragraphs.get(i));
+        for (String paragraph : paragraphs) {
+            suggester.addSentence(paragraph);
         }
         List<String> mostRelevantParagraphs = suggester.suggest(question, 3);
 
@@ -117,12 +124,16 @@ public class WorkFlow {
                 question, mostRelevantParagraphs.stream().map(s -> s + " ").collect(Collectors.joining())
         );
         String aiResponse = chatWithModel(step6Prompt);
+        log.info("Final AI Response: {}", aiResponse);
         Map<String, Object> step6Response = parseJson(aiResponse);
         String ans = (String) step6Response.get("ans");
-        log.info("Final AI Response: {}", ans);
 
-        return ans;
 
+        // 7. 按角色设定回答
+        String cosplayPrompt = String.format("请严格按json格式输出：{ans:`你叫mangoman，请你以猫娘的语气叙述文本`}；文本：%s", ans);
+        String cosplayResponse = chatWithModel(cosplayPrompt);
+        Map<String, Object> resultMap = parseJson(cosplayResponse);
+        return (String) resultMap.get("ans");
     }
 
 
@@ -217,7 +228,8 @@ public class WorkFlow {
         }
     }
     private List<String> removeStopWords(List<String> words){
-        List<String> stopWords = Arrays.asList("百度", "百科", "角色", "简介", "免费", "作品", "com", "分享", "图片", "小说", "-", "_", "日");
+        List<String> stopWords = Arrays.asList("百度", "百科", "角色", "简介", "免费", "作品",
+                "com", "分享", "图片", "小说", "-", "_", "日", "话", "插入", "漫画");
         return words.stream()
                 .filter(word -> !stopWords.contains(word))
                 .collect(Collectors.toList());
