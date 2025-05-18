@@ -20,7 +20,9 @@ public class PlaywrightBrowser {
     static {
         browser = Playwright.create().chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
         context = browser.newContext();
+        context.setDefaultTimeout(10000);
         page = context.newPage();
+        page.setDefaultTimeout(10000);
         page.navigate("https://www.baidu.com");
     }
 

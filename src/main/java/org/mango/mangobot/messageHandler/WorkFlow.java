@@ -57,7 +57,12 @@ public class WorkFlow {
         Map<String, Object> step1Result = parseJson(step1Response);
         boolean jud = (boolean) step1Result.get("jud");
         List<String> messageStep1 = (List<String>) step1Result.get("keyWords");
-        if(!jud) return null;
+        if(!jud){
+            String cosplayPrompt = String.format("请严格按json格式输出：{ans:`请你以猫娘的语气回答问题`}；问题：%s；人设：你叫mangoman，是一只猫娘，别人在和你聊天", question);
+            String cosplayResponse = chatWithModel(cosplayPrompt);
+            Map<String, Object> resultMap = parseJson(cosplayResponse);
+            return (String) resultMap.get("ans");
+        }
 
         // 2. 爬虫百度搜索，获取所有搜索结果
         String searchResult = playwrightBrowser.searchBaidu(messageStep1.stream().map(s -> s + " ").collect(Collectors.joining()));
@@ -120,7 +125,7 @@ public class WorkFlow {
 
         // 6. 将问题和知识库发给AI，整理结果。
         String step6Prompt = String.format(
-                "请严格按json格式输出：{ans:`问题的回答`}；问题：%s；你知道的：%s",
+                "请严格按json格式输出：{ans:`用猫娘的语气回答问题`}；问题：%s；你知道的：%s",
                 question, mostRelevantParagraphs.stream().map(s -> s + " ").collect(Collectors.joining())
         );
         String aiResponse = chatWithModel(step6Prompt);
@@ -129,11 +134,11 @@ public class WorkFlow {
         String ans = (String) step6Response.get("ans");
 
 
-        // 7. 按角色设定回答
-        String cosplayPrompt = String.format("请严格按json格式输出：{ans:`你叫mangoman，请你以猫娘的语气叙述文本`}；文本：%s", ans);
-        String cosplayResponse = chatWithModel(cosplayPrompt);
-        Map<String, Object> resultMap = parseJson(cosplayResponse);
-        return (String) resultMap.get("ans");
+//        // 7. 按角色设定回答
+//        String cosplayPrompt = String.format("请严格按json格式输出：{ans:`请你以猫娘的方式叙述文本`}；文本：%s；人设：你叫mangoman，是一只猫娘，别人在向你提问", ans);
+//        String cosplayResponse = chatWithModel(cosplayPrompt);
+//        Map<String, Object> resultMap = parseJson(cosplayResponse);
+        return ans;
     }
 
 
@@ -219,7 +224,11 @@ public class WorkFlow {
     // JSON解析工具（需替换为实际解析逻辑）
     private Map<String, Object> parseJson(String json) {
         if(json.charAt(1) == '`'){
-            json = json.substring(7, json.length() - 3);
+            if (json.charAt(json.length()-1) == '`'){
+                json = json.substring(7, json.length()-3);
+            } else {
+                json = json.substring(7, json.length());
+            }
         }
         try {
             return objectMapper.readValue(json, Map.class);
@@ -229,7 +238,7 @@ public class WorkFlow {
     }
     private List<String> removeStopWords(List<String> words){
         List<String> stopWords = Arrays.asList("百度", "百科", "角色", "简介", "免费", "作品",
-                "com", "分享", "图片", "小说", "-", "_", "日", "话", "插入", "漫画");
+                "com", "分享", "图片", "小说", "-", "_", "日", "话", "插入", "漫画", "会", "木");
         return words.stream()
                 .filter(word -> !stopWords.contains(word))
                 .collect(Collectors.toList());

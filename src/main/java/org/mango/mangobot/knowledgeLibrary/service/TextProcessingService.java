@@ -12,7 +12,7 @@ import dev.langchain4j.store.embedding.mongodb.IndexMapping;
 import dev.langchain4j.store.embedding.mongodb.MongoDbEmbeddingStore;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.mango.mangobot.knowledgeLibrary.utils.FileUtils;
+import org.mango.mangobot.utils.FileUtils;
 import org.mango.mangobot.utils.VectorUtil;
 import org.springframework.stereotype.Service;
 

@@ -1,4 +1,4 @@
-package org.mango.mangobot.knowledgeLibrary.utils;
+package org.mango.mangobot.utils;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -24,5 +24,21 @@ public class FileUtils {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String getJarPath() {
+        java.net.URL url = this.getClass().getProtectionDomain().getCodeSource().getLocation();
+        String jarPath = null;
+        try {
+            jarPath = java.net.URLDecoder.decode(url.getFile(), "UTF-8");
+            if (jarPath.endsWith(".jar")) {
+                jarPath = new java.io.File(jarPath).getParentFile().getAbsolutePath();
+            } else {
+                jarPath = new java.io.File("").getAbsolutePath();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return jarPath;
     }
 }

@@ -9,7 +9,7 @@ import co.elastic.clients.elasticsearch.core.search.SourceFilter;
 import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.mango.mangobot.knowledgeLibrary.utils.FileUtils;
+import org.mango.mangobot.utils.FileUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -56,10 +56,10 @@ public class EsTextProcessingService {
                 if (!exists) {
                     saveToElasticsearch(segment, hashId);
                     fileContentBuilder.append(segment).append("\n");
-                    log.info("新增段落到ES: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
+                    log.info("新增段落到ES: {}", segment.substring(0, Math.min(15, segment.length())) + "...");
                 } else {
                     fileContentBuilder.append(segment).append("\n");
-                    log.info("段落已存在，跳过处理: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
+                    log.info("段落已存在，跳过处理: {}", segment.substring(0, Math.min(15, segment.length())) + "...");
                 }
             }
 
@@ -87,10 +87,10 @@ public class EsTextProcessingService {
             if (!exists) {
                 saveToElasticsearch(segment, hashId);
                 fileContentBuilder.append(segment).append("\n");
-                log.info("新增段落到ES: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
+                log.info("新增段落到ES: {}", segment.substring(0, Math.min(15, segment.length())) + "...");
             } else {
                 fileContentBuilder.append(segment).append("\n");
-                log.info("段落已存在，跳过处理: {}", segment.substring(0, Math.min(50, segment.length())) + "...");
+                log.info("段落已存在，跳过处理: {}", segment.substring(0, Math.min(15, segment.length())) + "...");
             }
         }
 
@@ -101,13 +101,7 @@ public class EsTextProcessingService {
 
 
         String outputFilePath = processedDirectory + File.separator + keyWord + System.currentTimeMillis() + ".txt";
-        // 防止文件格式不合规
-        try {
-            FileUtils.writeToFile(fileContentBuilder.toString(), outputFilePath);
-        } finally {
-            FileUtils.writeToFile(fileContentBuilder.toString(), processedDirectory + File.separator + System.currentTimeMillis() + ".txt");
-        }
-
+        FileUtils.writeToFile(fileContentBuilder.toString(), outputFilePath);
 
         return "已处理所有段落并写入文件：" + outputFilePath;
     }

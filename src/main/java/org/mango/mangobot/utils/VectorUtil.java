@@ -111,7 +111,7 @@ public class VectorUtil {
 
 
         String trimmedParagraph = content.trim();
-        if (!trimmedParagraph.isEmpty() && trimmedParagraph.length() >= maxLength) {
+        if (!trimmedParagraph.isEmpty()) {
             // 分割长段落
             List<String> splitResult = splitLongParagraph(trimmedParagraph, maxLength);
             // 添加关键词并加入结果列表
