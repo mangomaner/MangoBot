@@ -5,11 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.mango.mangobot.manager.websocketReverseProxy.handler.MessageReflect;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -23,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
-public class BotMessageHandler extends TextWebSocketHandler {
+public class BotMessageHandler extends TextWebSocketHandler implements HandshakeInterceptor {
 
     @Resource
     private Map<String, WebSocketSession> sessionMap;
@@ -199,4 +203,17 @@ public class BotMessageHandler extends TextWebSocketHandler {
         }
     }
 
+    @Override
+    public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                                   WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
+        // 在握手之前执行的操作
+        // 可以根据请求信息决定是否允许握手继续进行
+        return true; // 返回 false 将阻止握手
+    }
+
+    @Override
+    public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                               WebSocketHandler wsHandler, Exception exception) {
+        // 在握手之后执行的操作
+    }
 }
