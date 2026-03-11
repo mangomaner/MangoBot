@@ -3,7 +3,7 @@ package io.github.mangomaner.mangobot.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.github.mangomaner.mangobot.manager.GlobalConfigCache;
-import io.github.mangomaner.mangobot.manager.event.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
 import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
 import io.github.mangomaner.mangobot.model.domain.MangobotConfig;
 import io.github.mangomaner.mangobot.model.dto.config.CreateConfigRequest;
@@ -12,10 +12,10 @@ import io.github.mangomaner.mangobot.model.dto.config.UpdateConfigRequest;
 import io.github.mangomaner.mangobot.model.vo.ConfigVO;
 import io.github.mangomaner.mangobot.service.MangobotConfigService;
 import io.github.mangomaner.mangobot.mapper.MangobotConfigMapper;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -44,11 +44,11 @@ public class MangobotConfigServiceImpl extends ServiceImpl<MangobotConfigMapper,
         refreshCache();
     }
 
-    /**
-     * 定时任务：每小时刷新一次配置缓存
-     * 作为兜底策略，确保缓存与数据库的最终一致性
-     */
-    @Scheduled(fixedRate = 3600000, initialDelay = 3600000) // 1小时 = 60 * 60 * 1000 毫秒
+//    /**
+//     * 定时任务：每小时刷新一次配置缓存
+//     * 作为兜底策略，确保缓存与数据库的最终一致性
+//     */
+    // @Scheduled(fixedRate = 3600000, initialDelay = 3600000) // 1小时 = 60 * 60 * 1000 毫秒
     public void refreshCache() {
         try {
             List<MangobotConfig> list = this.list();

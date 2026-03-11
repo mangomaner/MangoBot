@@ -1,6 +1,6 @@
-package io.github.mangomaner.mangobot.manager.filter;
+package io.github.mangomaner.mangobot.manager.event.filter;
 
-import io.github.mangomaner.mangobot.manager.event.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.Event;
 
 /**

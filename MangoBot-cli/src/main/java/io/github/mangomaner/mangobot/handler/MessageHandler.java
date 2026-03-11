@@ -2,7 +2,7 @@ package io.github.mangomaner.mangobot.handler;
 
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
-import io.github.mangomaner.mangobot.manager.event.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
 import io.github.mangomaner.mangobot.service.GroupMessagesService;

@@ -2,9 +2,8 @@ package io.github.mangomaner.mangobot.manager.event;
 
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
-import io.github.mangomaner.mangobot.config.AiConfig;
-import io.github.mangomaner.mangobot.handler.MessageHandler;
-import io.github.mangomaner.mangobot.manager.filter.EventFilter;
+import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.manager.event.filter.EventFilter;
 import io.github.mangomaner.mangobot.model.onebot.event.Event;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;

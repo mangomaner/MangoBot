@@ -20,12 +20,12 @@ INSERT INTO mangobot_config (config_key, config_value, config_type, description,
     -- 配置群组白名单、黑名单和启用黑/白名单 三项配置
     ('main.QQ.group.whitelist', '{}', 'JSON', '群组白名单', 'key为QQ号(long)，value为long列表。示例：{"1234567890": [12421412,4263153]}', 'BW_list', 1),
     ('main.QQ.group.blacklist', '{}', 'JSON', '群组黑名单', 'key为QQ号(long)，value为long列表。示例：{"1234567890": [12421412,4263153]}', 'BW_list', 1),
-    ('main.QQ.group.enable_list', '0', 'BOOLEAN', '启用黑/白名单', '', 'BW_list', 1),
+    ('main.QQ.group.enable_list', '1', 'BOOLEAN', '启用黑/白名单', '', 'BW_list', 1),
 
     -- 配置群组白名单、黑名单和启用黑/白名单 三项配置
     ('main.QQ.private.whitelist', '{}', 'JSON', '私聊白名单', 'key为QQ号(long)，value为long列表。示例：{"1234567890": [12421412,4263153]}', 'BW_list', 1),
     ('main.QQ.private.blacklist', '{}', 'JSON', '私聊黑名单', 'key为QQ号(long)，value为long列表。示例：{"1234567890": [12421412,4263153]}', 'BW_list', 1),
-    ('main.QQ.private.enable_list', '0', 'BOOLEAN', '启用黑/白名单', '', 'BW_list', 1),
+    ('main.QQ.private.enable_list', '1', 'BOOLEAN', '启用黑/白名单', '', 'BW_list', 1),
 
     -- 配置大模型
     ('main.model.main_model', '{"base_url": "https://xxx.xxxxx.xx/xx", "api-key": "sk-xxx", "model_name": "xxx"}', 'JSON', '主模型', '', 'model', 1),

@@ -8,7 +8,7 @@ import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventList
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
 import io.github.mangomaner.mangobot.annotation.web.MangoRequestMethod;
 import io.github.mangomaner.mangobot.manager.GlobalConfigCache;
-import io.github.mangomaner.mangobot.manager.event.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
 import io.github.mangomaner.mangobot.plugin.Plugin;
 import io.github.mangomaner.mangobot.service.OneBotApiService;

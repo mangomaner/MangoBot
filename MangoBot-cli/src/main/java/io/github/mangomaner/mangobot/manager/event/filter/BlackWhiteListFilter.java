@@ -1,9 +1,9 @@
-package io.github.mangomaner.mangobot.manager.filter;
+package io.github.mangomaner.mangobot.manager.event.filter;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.manager.GlobalConfigCache;
-import io.github.mangomaner.mangobot.manager.event.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.Event;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;

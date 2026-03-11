@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
-import io.github.mangomaner.mangobot.manager.event.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.manager.event;
+package io.github.mangomaner.mangobot.manager.event.events;
 
 import io.github.mangomaner.mangobot.model.onebot.event.Event;
 import lombok.Getter;
