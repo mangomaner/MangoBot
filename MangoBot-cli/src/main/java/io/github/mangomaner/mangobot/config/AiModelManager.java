@@ -2,8 +2,7 @@ package io.github.mangomaner.mangobot.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
+import io.agentscope.core.model.OpenAIChatModel;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -16,13 +15,11 @@ public class AiModelManager {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 配置键常量
     public static final String MAIN_MODEL_KEY = "main.model.main_model";
     public static final String ASSISTANT_MODEL_KEY = "main.model.assistant_model";
     public static final String IMAGE_MODEL_KEY = "main.model.image_model";
     public static final String EmbeddingModelKey = "main.model.embedding_model";
 
-    // JSON 字段常量
     private static final String BASE_URL_FIELD = "base_url";
     private static final String API_KEY_FIELD = "api-key";
     private static final String MODEL_NAME_FIELD = "model_name";
@@ -32,18 +29,17 @@ public class AiModelManager {
     public boolean configChangeListener(ConfigChangeEvent event) {
         String key = event.getKey();
 
-        // 只处理我们关心的三个模型配置
         if (!MAIN_MODEL_KEY.equals(key) &&
                 !ASSISTANT_MODEL_KEY.equals(key) &&
                 !IMAGE_MODEL_KEY.equals(key) &&
                 !EmbeddingModelKey.equals(key)
         ) {
-            return true; // 明确表示：这个事件我不处理
+            return true;
         }
 
         try {
             ModelConfig config = parseModelConfig(event.getValue());
-            ChatLanguageModel model = createOpenAiChatModel(config);
+            OpenAIChatModel model = createOpenAiChatModel(config);
 
             switch (key) {
                 case MAIN_MODEL_KEY:
@@ -71,7 +67,6 @@ public class AiModelManager {
         return true;
     }
 
-    // 解析 JSON 配置为内部 DTO
     private ModelConfig parseModelConfig(String jsonValue) throws Exception {
         JsonNode node = objectMapper.readTree(jsonValue);
         String baseUrl = getRequiredText(node, BASE_URL_FIELD);
@@ -80,7 +75,6 @@ public class AiModelManager {
         return new ModelConfig(baseUrl, apiKey, modelName);
     }
 
-    // 辅助方法：确保字段存在且非空
     private String getRequiredText(JsonNode node, String fieldName) {
         JsonNode field = node.get(fieldName);
         if (field == null || !field.isTextual() || field.asText().isBlank()) {
@@ -89,16 +83,14 @@ public class AiModelManager {
         return field.asText();
     }
 
-    // 创建模型实例
-    private ChatLanguageModel createOpenAiChatModel(ModelConfig config) {
-        return OpenAiChatModel.builder()
+    private OpenAIChatModel createOpenAiChatModel(ModelConfig config) {
+        return OpenAIChatModel.builder()
                 .baseUrl(config.baseUrl)
                 .apiKey(config.apiKey)
                 .modelName(config.modelName)
                 .build();
     }
 
-    // 内部 DTO，封装模型配置
     private static class ModelConfig {
         final String baseUrl;
         final String apiKey;
