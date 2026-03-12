@@ -7,9 +7,11 @@
     <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.configuration.model.domain.PluginConfigEntity">
             <id property="id" column="id" jdbcType="INTEGER"/>
             <result property="pluginId" column="plugin_id" jdbcType="INTEGER"/>
+            <result property="botId" column="bot_id" jdbcType="INTEGER"/>
             <result property="configKey" column="config_key" jdbcType="VARCHAR"/>
             <result property="configValue" column="config_value" jdbcType="VARCHAR"/>
             <result property="configType" column="config_type" jdbcType="VARCHAR"/>
+            <result property="metadata" column="metadata" jdbcType="VARCHAR"/>
             <result property="description" column="description" jdbcType="VARCHAR"/>
             <result property="explain" column="explain" jdbcType="VARCHAR"/>
             <result property="editable" column="editable" jdbcType="INTEGER"/>
@@ -18,6 +20,6 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,plugin_id,config_key,config_value,config_type,description,explain,editable,created_at,updated_at
+        id,plugin_id,bot_id,config_key,config_value,config_type,metadata,description,explain,editable,created_at,updated_at
     </sql>
 </mapper>

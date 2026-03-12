@@ -1,17 +1,18 @@
 package io.github.mangomaner.mangobot.configuration.model.vo;
 
+import io.github.mangomaner.mangobot.configuration.model.config.ConfigMetadata;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-/**
- * 系统配置视图对象
- */
 @Data
 @Schema(description = "系统配置信息")
 public class SystemConfigVO {
 
     @Schema(description = "配置ID")
     private Long id;
+
+    @Schema(description = "Bot ID（null 表示默认配置）")
+    private Long botId;
 
     @Schema(description = "配置键")
     private String configKey;
@@ -21,6 +22,9 @@ public class SystemConfigVO {
 
     @Schema(description = "配置类型")
     private String configType;
+
+    @Schema(description = "前端元数据（选项列表、范围限制等）")
+    private ConfigMetadata metadata;
 
     @Schema(description = "描述")
     private String description;

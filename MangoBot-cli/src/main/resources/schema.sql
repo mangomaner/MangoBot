@@ -65,20 +65,25 @@ CREATE INDEX IF NOT EXISTS idx_model_roles_config ON model_roles (model_config_i
 -- 系统配置表：存储框架级配置（白名单、黑名单等）
 CREATE TABLE IF NOT EXISTS system_configs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    config_key      TEXT NOT NULL UNIQUE,            -- 配置键
+    bot_id          INTEGER,                         -- Bot ID（null 表示默认配置）
+    config_key      TEXT NOT NULL,                   -- 配置键
     config_value    TEXT,                            -- 配置值（支持 JSON）
-    config_type     TEXT NOT NULL DEFAULT 'STRING',  -- 类型：STRING, INTEGER, BOOLEAN, JSON, SELECT
+    config_type     TEXT NOT NULL DEFAULT 'STRING',  -- 类型：见 ConfigType 枚举
+    metadata        TEXT,                            -- 前端元数据（JSON格式：选项列表、范围限制等）
     description     TEXT,                            -- 描述
     explain         TEXT,                            -- 详细说明
     category        TEXT DEFAULT 'general',          -- 分类
     editable        INTEGER DEFAULT 1,               -- 是否可编辑：0-不可编辑, 1-可编辑
     created_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-    updated_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+    updated_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+    UNIQUE(bot_id, config_key)
 );
 
 -- 系统配置索引
 CREATE INDEX IF NOT EXISTS idx_system_configs_key ON system_configs (config_key);
 CREATE INDEX IF NOT EXISTS idx_system_configs_category ON system_configs (category);
+CREATE INDEX IF NOT EXISTS idx_system_configs_bot_id ON system_configs (bot_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_system_configs_unique ON system_configs (bot_id, config_key);
 
 -- ============================================
 -- 插件配置表
@@ -88,21 +93,24 @@ CREATE INDEX IF NOT EXISTS idx_system_configs_category ON system_configs (catego
 CREATE TABLE IF NOT EXISTS plugin_configs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     plugin_id       INTEGER NOT NULL,                -- 关联插件
+    bot_id          INTEGER,                         -- Bot ID（null 表示默认配置）
     config_key      TEXT NOT NULL,                   -- 配置键（相对于插件）
     config_value    TEXT,                            -- 配置值
-    config_type     TEXT NOT NULL DEFAULT 'STRING',  -- 类型：STRING, INTEGER, BOOLEAN, JSON
+    config_type     TEXT NOT NULL DEFAULT 'STRING',  -- 类型：见 ConfigType 枚举
+    metadata        TEXT,                            -- 前端元数据（JSON格式：选项列表、范围限制等）
     description     TEXT,                            -- 描述
     explain         TEXT,                            -- 详细说明
     editable        INTEGER DEFAULT 1,               -- 是否可编辑：0-不可编辑, 1-可编辑
     created_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000),
     updated_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-    UNIQUE(plugin_id, config_key),
+    UNIQUE(plugin_id, bot_id, config_key),
     FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE
 );
 
 -- 插件配置索引
 CREATE INDEX IF NOT EXISTS idx_plugin_configs_plugin ON plugin_configs (plugin_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_configs_unique ON plugin_configs (plugin_id, config_key);
+CREATE INDEX IF NOT EXISTS idx_plugin_configs_bot_id ON plugin_configs (bot_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_configs_unique ON plugin_configs (plugin_id, bot_id, config_key);
 
 -- ============================================
 -- 初始数据
@@ -127,14 +135,14 @@ INSERT INTO model_roles (role_key, role_name, model_config_id, description) VALU
     ('image', '图片模型', 3, '用于图片理解任务'),
     ('embedding', '向量模型', 4, '用于文本向量化');
 
--- 系统配置初始数据
-INSERT INTO system_configs (config_key, config_value, config_type, description, explain, category) VALUES
-    ('group.whitelist', '{}', 'JSON', '群组白名单', 'key为Bot QQ号，value为群号列表。示例：{"1234567890": [111111, 222222]}', 'BW_list'),
-    ('group.blacklist', '{}', 'JSON', '群组黑名单', 'key为Bot QQ号，value为群号列表。示例：{"1234567890": [111111, 222222]}', 'BW_list'),
-    ('group.enable_list', '1', 'BOOLEAN', '启用群组黑白名单', '', 'BW_list'),
-    ('private.whitelist', '{}', 'JSON', '私聊白名单', 'key为Bot QQ号，value为用户QQ列表。示例：{"1234567890": [111111, 222222]}', 'BW_list'),
-    ('private.blacklist', '{}', 'JSON', '私聊黑名单', 'key为Bot QQ号，value为用户QQ列表。示例：{"1234567890": [111111, 222222]}', 'BW_list'),
-    ('private.enable_list', '1', 'BOOLEAN', '启用私聊黑白名单', '', 'BW_list');
+-- 系统配置初始数据（bot_id 为 null 表示默认配置，用于无 Bot 连接时显示）
+INSERT INTO system_configs (bot_id, config_key, config_value, config_type, metadata, description, explain, category) VALUES
+    (NULL, 'group.whitelist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组白名单', '群号列表，示例：[111111, 222222]', 'BW_list'),
+    (NULL, 'group.blacklist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组黑名单', '群号列表，示例：[111111, 222222]', 'BW_list'),
+    (NULL, 'group.enable_list', '1', 'BOOLEAN', NULL, '启用群组黑白名单', '', 'BW_list'),
+    (NULL, 'private.whitelist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊白名单', '用户QQ列表，示例：[111111, 222222]', 'BW_list'),
+    (NULL, 'private.blacklist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊黑名单', '用户QQ列表，示例：[111111, 222222]', 'BW_list'),
+    (NULL, 'private.enable_list', '1', 'BOOLEAN', NULL, '启用私聊黑白名单', '', 'BW_list');
 
 -- ============================================
 -- 消息存储表

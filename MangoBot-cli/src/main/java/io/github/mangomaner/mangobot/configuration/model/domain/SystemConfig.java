@@ -19,11 +19,15 @@ public class SystemConfig implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long botId;
+
     private String configKey;
 
     private String configValue;
 
     private String configType;
+
+    private String metadata;
 
     private String description;
 

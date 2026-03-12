@@ -103,33 +103,100 @@ configuration/
 
 ### 4. system_configs（系统配置表）
 
-存储框架级配置（白名单、黑名单等）。
+存储框架级配置（白名单、黑名单等），支持多 Bot 配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | INTEGER | 主键 |
+| bot_id | INTEGER | Bot ID（null 表示默认配置） |
 | config_key | TEXT | 配置键 |
 | config_value | TEXT | 配置值（支持 JSON） |
-| config_type | TEXT | 类型（STRING, INTEGER, BOOLEAN, JSON, SELECT） |
+| config_type | TEXT | 类型（见 ConfigType 枚举） |
+| metadata | TEXT | 前端元数据（JSON 格式） |
 | description | TEXT | 描述 |
 | explain | TEXT | 详细说明 |
 | category | TEXT | 分类 |
 | editable | INTEGER | 是否可编辑 |
 
+**多 Bot 配置说明：**
+- `bot_id = null` 表示默认配置，用于无 Bot 连接时显示
+- 当有新的 Bot 连接时，不会立即复制配置，而是采用"懒加载"模式
+- 在修改配置时，若 Bot 专属配置不存在则自动创建，已存在则更新
+- 查询时优先返回 Bot 专属配置，其次返回默认配置
+
 ### 5. plugin_configs（插件配置表）
 
-存储插件自定义配置。
+存储插件自定义配置，支持多 Bot 配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | INTEGER | 主键 |
 | plugin_id | INTEGER | 关联插件 |
+| bot_id | INTEGER | Bot ID（null 表示默认配置） |
 | config_key | TEXT | 配置键（相对于插件） |
 | config_value | TEXT | 配置值 |
-| config_type | TEXT | 类型 |
+| config_type | TEXT | 类型（见 ConfigType 枚举） |
+| metadata | TEXT | 前端元数据（JSON 格式） |
 | description | TEXT | 描述 |
 | explain | TEXT | 详细说明 |
 | editable | INTEGER | 是否可编辑 |
+
+**多 Bot 配置说明：**
+- 与 system_configs 相同的懒加载机制
+- 每个 Bot 可以有独立的插件配置
+
+## 配置类型（ConfigType）
+
+支持丰富的配置类型，满足前端多样化展示需求：
+
+| 类型 | 前端组件 | 数据库存储格式 | 说明 |
+|------|----------|----------------|------|
+| STRING | 文本输入框 | 原始字符串 | 基础字符串 |
+| INTEGER | 数字输入框 | 数字字符串 | 整数 |
+| LONG | 数字输入框 | 数字字符串 | 长整数 |
+| DOUBLE | 数字输入框 | 数字字符串 | 浮点数 |
+| BOOLEAN | 开关 | `"true"`/`"false"` 或 `"1"`/`"0"` | 布尔值 |
+| SELECT | 下拉选择 | 选中的 value | 单选下拉 |
+| MULTI_SELECT | 多选下拉 | JSON 数组 `["a","b"]` | 多选下拉 |
+| DATE | 日期选择 | ISO 格式 `"2024-01-15"` | 日期 |
+| DATETIME | 日期时间选择 | ISO 格式 `"2024-01-15T10:30:00"` | 日期时间 |
+| TIMESTAMP | 时间戳显示 | 毫秒时间戳 | 时间戳 |
+| LIST | 列表编辑器 | JSON 数组 `["item1","item2"]` | 字符串列表 |
+| KEY_VALUE | 键值对编辑器 | JSON 对象 `{"key1":"value1"}` | 键值对 |
+| KEY_VALUE_LIST | 键值对列表 | JSON 数组 `[{"key":"k1","value":"v1"}]` | 键值对列表 |
+| RANGE_INTEGER | 整数范围滑块 | JSON `{"min":0,"max":100}` | 整数范围 |
+| RANGE_DOUBLE | 浮点范围滑块 | JSON `{"min":0.0,"max":1.0}` | 浮点范围 |
+| JSON | JSON 编辑器 | 原始 JSON 字符串 | 自定义 JSON |
+| COLOR | 颜色选择器 | 十六进制 `"#FF5733"` | 颜色 |
+| URL | URL 输入框 | URL 字符串 | 网址链接 |
+| PASSWORD | 密码输入框 | 加密/明文字符串 | 密码 |
+
+### metadata 字段说明
+
+metadata 用于存储前端渲染所需的额外信息：
+
+```json
+{
+  "options": [
+    {"label": "选项1", "value": "1"},
+    {"label": "选项2", "value": "2"}
+  ],
+  "min": 0,
+  "max": 100,
+  "step": 1,
+  "placeholder": "请输入",
+  "format": "yyyy-MM-dd",
+  "clearable": true,
+  "filterable": true
+}
+```
+
+**metadata 字段用途：**
+- `SELECT/MULTI_SELECT`: `options` 选项列表
+- `RANGE_INTEGER/RANGE_DOUBLE`: `min`, `max`, `step` 范围参数
+- `LIST`: `itemType` 列表项类型
+- `KEY_VALUE`: `keyPlaceholder`, `valuePlaceholder`
+- `DATE/DATETIME`: `format`, `minDate`, `maxDate`
 
 ## API 接口
 
@@ -162,23 +229,30 @@ configuration/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | /api/configuration/system | 获取所有系统配置 |
-| GET | /api/configuration/system/category/{category} | 按分类获取配置 |
-| GET | /api/configuration/system/{configKey} | 获取指定配置 |
+| GET | /api/configuration/system | 获取所有默认系统配置（bot_id 为 null） |
+| GET | /api/configuration/system/bot/{botId} | 根据 Bot ID 获取配置（懒加载模式） |
+| GET | /api/configuration/system/category/{category} | 按分类获取默认配置 |
+| GET | /api/configuration/system/{configKey} | 获取指定默认配置 |
+| GET | /api/configuration/system/{configKey}/bot/{botId} | 根据 Key 和 Bot ID 获取配置 |
 | POST | /api/configuration/system | 创建系统配置 |
 | PUT | /api/configuration/system | 更新系统配置 |
-| PUT | /api/configuration/system/{configKey} | 更新配置值 |
+| PUT | /api/configuration/system/{configKey} | 更新默认配置值 |
+| PUT | /api/configuration/system/{configKey}/bot/{botId} | 更新 Bot 专属配置值（懒加载） |
 | DELETE | /api/configuration/system/{id} | 删除系统配置 |
 
 ### 插件配置 API
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | /api/configuration/plugin | 获取所有插件配置 |
-| GET | /api/configuration/plugin/{pluginId} | 获取插件的配置列表 |
-| GET | /api/configuration/plugin/{pluginId}/{configKey} | 获取单个插件配置 |
+| GET | /api/configuration/plugin | 获取所有默认插件配置（bot_id 为 null） |
+| GET | /api/configuration/plugin/bot/{botId} | 根据 Bot ID 获取配置（懒加载模式） |
+| GET | /api/configuration/plugin/{pluginId} | 获取插件的默认配置列表 |
+| GET | /api/configuration/plugin/{pluginId}/bot/{botId} | 获取插件的 Bot 专属配置列表 |
+| GET | /api/configuration/plugin/{pluginId}/{configKey} | 获取单个默认插件配置 |
+| GET | /api/configuration/plugin/{pluginId}/{configKey}/bot/{botId} | 获取单个 Bot 专属插件配置 |
 | PUT | /api/configuration/plugin | 更新插件配置 |
-| PUT | /api/configuration/plugin/{pluginId}/{configKey} | 更新插件配置值 |
+| PUT | /api/configuration/plugin/{pluginId}/{configKey} | 更新默认插件配置值 |
+| PUT | /api/configuration/plugin/{pluginId}/{configKey}/bot/{botId} | 更新 Bot 专属插件配置值（懒加载） |
 
 ## 事件系统
 
@@ -350,3 +424,47 @@ public class ExamplePlugin implements Plugin {
 4. **类型选择**：根据配置值选择合适的类型（STRING, INTEGER, BOOLEAN, JSON）
 5. **事件监听**：需要响应配置变更时，监听对应的事件类型
 6. **插件配置**：使用 `@InjectConfig` 注解实现类型安全的配置注入
+
+## 多 Bot 配置机制
+
+### 设计理念
+
+配置系统支持多 Bot 场景，采用"懒加载"模式，避免在 Bot 连接时立即复制大量配置数据。
+
+### 工作流程
+
+1. **初始化阶段**
+   - 数据库中存在 `bot_id = null` 的默认配置
+   - 前端在无 Bot 连接时显示默认配置
+
+2. **Bot 连接阶段**
+   - 新 Bot 连接时，不立即复制配置
+   - 前端请求配置时，返回默认配置和 Bot 专属配置（优先展示 Bot 专属配置）
+
+3. **配置修改阶段**
+   - 用户修改配置时，检查是否存在 Bot 专属配置
+   - 若存在：直接更新
+   - 若不存在：创建新的 Bot 专属配置（复制默认配置的结构，使用新的值）
+
+### 前端集成建议
+
+```typescript
+// 获取配置时传入当前 Bot ID
+const botId = botStore.currentBotId;
+const configs = await getSystemConfigsByBotId(botId);
+
+// 更新配置时使用懒加载接口
+await updateSystemConfigValueByBotId(configKey, botId, newValue);
+```
+
+### 配置优先级
+
+查询配置时的优先级：
+1. Bot 专属配置（`bot_id = {具体Bot ID}`）
+2. 默认配置（`bot_id = null`）
+
+### 数据隔离
+
+- 每个 Bot 的专属配置完全独立
+- 修改默认配置不会影响已有 Bot 专属配置
+- 删除 Bot 时可选择是否删除其专属配置
