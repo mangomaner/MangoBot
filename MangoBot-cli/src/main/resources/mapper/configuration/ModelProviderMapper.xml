@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.mangomaner.mangobot.mapper.configuration.ModelProviderMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.configuration.model.domain.ModelProvider">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="baseUrl" column="base_url" jdbcType="VARCHAR"/>
+            <result property="apiKey" column="api_key" jdbcType="VARCHAR"/>
+            <result property="timeout" column="timeout" jdbcType="INTEGER"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="isEnabled" column="is_enabled" jdbcType="INTEGER"/>
+            <result property="createdAt" column="created_at" jdbcType="BIGINT"/>
+            <result property="updatedAt" column="updated_at" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,name,base_url,api_key,timeout,description,is_enabled,created_at,updated_at
+    </sql>
+</mapper>

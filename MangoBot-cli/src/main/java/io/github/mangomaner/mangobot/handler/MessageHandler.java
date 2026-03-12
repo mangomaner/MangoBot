@@ -2,7 +2,7 @@ package io.github.mangomaner.mangobot.handler;
 
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
-import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.configuration.event.SystemConfigChangedEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
 import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
 import io.github.mangomaner.mangobot.service.GroupMessagesService;
@@ -47,8 +47,8 @@ public class MessageHandler {
     }
 
     @MangoBotEventListener
-    public boolean onConfigChange(ConfigChangeEvent event) {    
-        log.info("收到配置变更通知: key={}, value={}", event.getKey(), event.getValue());
+    public boolean onConfigChange(SystemConfigChangedEvent event) {    
+        log.info("收到配置变更通知: key={}, value={}", event.getConfigKey(), event.getNewValue());
         return true;
     }
 

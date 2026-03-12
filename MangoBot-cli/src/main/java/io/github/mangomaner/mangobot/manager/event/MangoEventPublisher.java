@@ -1,9 +1,7 @@
 package io.github.mangomaner.mangobot.manager.event;
 
-import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
-import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
-import io.github.mangomaner.mangobot.manager.event.filter.EventFilter;
+import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.model.onebot.event.Event;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
@@ -23,8 +21,6 @@ import java.util.concurrent.TimeUnit;
 public class MangoEventPublisher {
 
     // 注入事件过滤器（目前只有一个，如果有多个可以注入 List<EventFilter> 并遍历）
-    @Resource
-    private EventFilter eventFilter;
 
     @Resource
     private ApplicationContext applicationContext;
@@ -62,15 +58,6 @@ public class MangoEventPublisher {
      * @param event
      */
     public void publish(Event event) {
-        // 1. 处理配置变更事件（优先通知过滤器更新状态）
-        if (event instanceof ConfigChangeEvent) {
-            eventFilter.handleConfigChange((ConfigChangeEvent) event);
-        }
-
-        // 2. 过滤器检查
-        if (!eventFilter.allow(event)) {
-            return;
-        }
 
         // 3. 分发事件
         executor.execute(() -> {

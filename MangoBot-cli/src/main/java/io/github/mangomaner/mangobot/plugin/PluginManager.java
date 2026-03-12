@@ -5,13 +5,13 @@ import io.github.mangomaner.mangobot.annotation.PluginConfig;
 import io.github.mangomaner.mangobot.annotation.PluginConfigs;
 import io.github.mangomaner.mangobot.annotation.PluginDescribe;
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
+import io.github.mangomaner.mangobot.configuration.annotation.InjectConfig;
+import io.github.mangomaner.mangobot.configuration.service.PluginConfigService;
 import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
 import io.github.mangomaner.mangobot.model.domain.Plugins;
-import io.github.mangomaner.mangobot.model.dto.config.CreateConfigRequest;
 import io.github.mangomaner.mangobot.model.plugin.PluginInfo;
 import io.github.mangomaner.mangobot.plugin.register.PluginRegistrar;
 import io.github.mangomaner.mangobot.plugin.unregister.PluginUnloader;
-import io.github.mangomaner.mangobot.service.MangobotConfigService;
 import io.github.mangomaner.mangobot.service.PluginsService;
 import io.github.mangomaner.mangobot.utils.FileUtils;
 import jakarta.annotation.PostConstruct;
@@ -23,12 +23,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+/**
+ * 插件管理器
+ * 负责插件的注册、加载、卸载和配置管理
+ */
 @Component
 @Slf4j
 public class PluginManager {
@@ -49,9 +54,8 @@ public class PluginManager {
     private PluginsService pluginsService;
 
     @Resource
-    private MangobotConfigService mangobotConfigService;
+    private PluginConfigService pluginConfigService;
 
-    // 统一管理插件资源
     private final Map<String, PluginRuntimeWrapper> pluginRegistry = new ConcurrentHashMap<>();
     private String pluginDir = "plugins";
 
@@ -59,10 +63,10 @@ public class PluginManager {
         Path baseDir = FileUtils.getBaseDirectory();
         Path currentPlugins = baseDir.resolve("plugins");
         Path parentPlugins = baseDir.resolve("../plugins");
-        
+
         File current = currentPlugins.toFile();
         File parent = parentPlugins.toFile();
-        
+
         if (!current.exists() && parent.exists() && parent.isDirectory()) {
             this.pluginDir = parent.getAbsolutePath();
             log.info("检测到上一级目录存在 plugins 文件夹，将使用: {}", parent.getAbsolutePath());
@@ -73,7 +77,6 @@ public class PluginManager {
 
         pluginRegistrar.registerWebComponents();
         syncPlugins();
-        mangobotConfigService.init();
     }
 
     public File getPluginDirectory() {
@@ -131,11 +134,9 @@ public class PluginManager {
      * 处理新增文件（供 Watcher 调用）
      */
     public void handleNewFile(File file) {
-        // 1. 注册
         Long pluginId = scanAndRegister(file);
         if (pluginId == null) return;
 
-        // 2. 检查是否需要加载
         Plugins p = pluginsService.getById(pluginId);
         if (p != null && p.getEnabled() == 1) {
             loadPlugin(file);
@@ -159,7 +160,6 @@ public class PluginManager {
                     if (!entry.getName().endsWith(".class")) continue;
 
                     String className = entry.getName().replace("/", ".").replace(".class", "");
-                    // 包名检查
                     String[] parts = className.split("\\.");
                     if (!(parts.length > 3 && parts[0].equals("io") && parts[1].equals("github") && parts[3].equals("mangobot"))) {
                         continue;
@@ -170,7 +170,6 @@ public class PluginManager {
                         if (Plugin.class.isAssignableFrom(clazz) && !clazz.isInterface() && clazz.isAnnotationPresent(PluginDescribe.class)) {
                             PluginDescribe describe = clazz.getAnnotation(PluginDescribe.class);
 
-                            // 1. 保存/更新 Plugins 表
                             Plugins plugin = getOrCreatePlugin(jarName);
                             plugin.setPluginName(describe.name());
                             plugin.setAuthor(describe.author());
@@ -178,34 +177,14 @@ public class PluginManager {
                             plugin.setDescription(describe.description());
                             plugin.setPackageName(className);
                             plugin.setEnabledWeb(describe.enableWeb() ? 1 : 0);
-                            // 默认启用状态：如果是新记录，使用注解默认值；如果是旧记录，保持原样（但这里假设是新注册）
                             if (plugin.getId() == null) {
-//                                plugin.setEnabled(describe.enable() ? 1 : 0);
                                 plugin.setEnabled(0);
                             }
                             pluginsService.saveOrUpdate(plugin);
 
-                            // 2. 解析配置 @PluginConfig / @PluginConfigs
-                            mangobotConfigService.deleteByPluginId(plugin.getId()); // 重置配置
+                            pluginConfigService.deleteByPluginId(plugin.getId());
 
-                            List<PluginConfig> configs = new ArrayList<>();
-                            if (clazz.isAnnotationPresent(PluginConfigs.class)) {
-                                configs.addAll(Arrays.asList(clazz.getAnnotation(PluginConfigs.class).value()));
-                            }
-                            if (clazz.isAnnotationPresent(PluginConfig.class)) {
-                                configs.add(clazz.getAnnotation(PluginConfig.class));
-                            }
-
-                            for (PluginConfig pc : configs) {
-                                CreateConfigRequest req = new CreateConfigRequest();
-                                req.setPluginId(plugin.getId());
-                                req.setKey(pc.key());
-                                req.setValue(pc.value());
-                                req.setType(pc.type());
-                                req.setDesc(pc.description());
-                                req.setExplain(pc.explain());
-                                mangobotConfigService.registeConfigWithoutPublish(req);
-                            }
+                            registerPluginConfigs(clazz, plugin.getId());
 
                             log.info("插件注册成功: {}", jarName);
                             return plugin.getId();
@@ -223,6 +202,44 @@ public class PluginManager {
             }
         }
         return null;
+    }
+
+    /**
+     * 注册插件配置（支持 @PluginConfig 和 @InjectConfig 注解）
+     */
+    private void registerPluginConfigs(Class<?> clazz, Long pluginId) {
+        List<PluginConfig> configs = new ArrayList<>();
+        if (clazz.isAnnotationPresent(PluginConfigs.class)) {
+            configs.addAll(Arrays.asList(clazz.getAnnotation(PluginConfigs.class).value()));
+        }
+        if (clazz.isAnnotationPresent(PluginConfig.class)) {
+            configs.add(clazz.getAnnotation(PluginConfig.class));
+        }
+
+        for (PluginConfig pc : configs) {
+            pluginConfigService.registerConfig(
+                    pluginId,
+                    pc.key(),
+                    pc.value(),
+                    pc.type(),
+                    pc.description(),
+                    pc.explain()
+            );
+        }
+
+        for (Field field : clazz.getDeclaredFields()) {
+            if (field.isAnnotationPresent(InjectConfig.class)) {
+                InjectConfig ic = field.getAnnotation(InjectConfig.class);
+                pluginConfigService.registerConfig(
+                        pluginId,
+                        ic.key(),
+                        ic.defaultValue(),
+                        ic.type(),
+                        ic.description(),
+                        ""
+                );
+            }
+        }
     }
 
     private Plugins getOrCreatePlugin(String jarName) {
@@ -251,7 +268,6 @@ public class PluginManager {
             Thread.currentThread().setContextClassLoader(loader);
             PluginRuntimeWrapper wrapper = new PluginRuntimeWrapper(pluginId, loader);
 
-            // 查找已注册的主类
             Plugins p = pluginsService.getOne(new LambdaQueryWrapper<Plugins>().eq(Plugins::getJarName, pluginId));
             if (p == null) {
                 log.error("插件未注册，无法加载: {}", pluginId);
@@ -260,7 +276,6 @@ public class PluginManager {
 
             Class<?> clazz = loader.loadClass(p.getPackageName());
 
-            // 重新获取注解信息填充 wrapper
             if (clazz.isAnnotationPresent(PluginDescribe.class)) {
                 wrapper.setDescribe(clazz.getAnnotation(PluginDescribe.class));
             }
@@ -268,7 +283,6 @@ public class PluginManager {
             boolean isRequestMapping = clazz.isAnnotationPresent(MangoBotRequestMapping.class);
             Object instance = null;
 
-            // 解析 @MangoBotRequestMapping
             if (isRequestMapping) {
                 pluginRegistrar.registerController(clazz, wrapper);
                 String beanName = clazz.getName();
@@ -279,9 +293,10 @@ public class PluginManager {
             Plugin plugin = (Plugin) instance;
             wrapper.setPluginInstance(plugin);
 
-            // 注入和注册
             pluginRegistrar.injectFields(clazz, instance);
             pluginRegistrar.registerEventListeners(clazz, instance, wrapper);
+
+            injectPluginConfigs(clazz, instance, p.getId());
 
             plugin.onEnable();
             pluginRegistry.put(pluginId, wrapper);
@@ -297,6 +312,61 @@ public class PluginManager {
         }
     }
 
+    /**
+     * 注入插件配置到字段
+     */
+    private void injectPluginConfigs(Class<?> clazz, Object instance, Long pluginId) {
+        for (Field field : clazz.getDeclaredFields()) {
+            if (field.isAnnotationPresent(InjectConfig.class)) {
+                InjectConfig ic = field.getAnnotation(InjectConfig.class);
+                String configValue = pluginConfigService.getConfigValue(pluginId, ic.key(), ic.defaultValue());
+
+                try {
+                    field.setAccessible(true);
+                    Object convertedValue = convertValue(configValue, field.getType());
+                    field.set(instance, convertedValue);
+                    log.debug("注入配置: {} = {}", ic.key(), configValue);
+                } catch (Exception e) {
+                    log.warn("注入配置失败: {} -> {}", ic.key(), field.getName(), e);
+                }
+            }
+        }
+    }
+
+    /**
+     * 类型转换
+     */
+    private Object convertValue(String value, Class<?> targetType) {
+        if (value == null || value.isEmpty()) {
+            return getDefaultValue(targetType);
+        }
+
+        if (targetType == String.class) {
+            return value;
+        } else if (targetType == Integer.class || targetType == int.class) {
+            return Integer.parseInt(value);
+        } else if (targetType == Long.class || targetType == long.class) {
+            return Long.parseLong(value);
+        } else if (targetType == Double.class || targetType == double.class) {
+            return Double.parseDouble(value);
+        } else if (targetType == Boolean.class || targetType == boolean.class) {
+            return Boolean.parseBoolean(value);
+        }
+
+        return value;
+    }
+
+    /**
+     * 获取默认值
+     */
+    private Object getDefaultValue(Class<?> targetType) {
+        if (targetType == boolean.class) return false;
+        if (targetType == int.class) return 0;
+        if (targetType == long.class) return 0L;
+        if (targetType == double.class) return 0.0;
+        return null;
+    }
+
     public void unloadPlugin(String pluginId) {
         PluginRuntimeWrapper wrapper = pluginRegistry.remove(pluginId);
         if (wrapper != null) {
@@ -310,16 +380,13 @@ public class PluginManager {
      */
     @Transactional(rollbackFor = Exception.class)
     public void uninstallPlugin(String pluginId) {
-        // 1. 卸载运行实例
         unloadPlugin(pluginId);
 
-        // 2. 删除文件
         File file = new File(getPluginDirectory(), pluginId);
         if (file.exists()) {
             file.delete();
         }
 
-        // 3. 删除 DB 数据
         LambdaQueryWrapper<Plugins> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Plugins::getJarName, pluginId);
         Plugins p = pluginsService.getOne(wrapper);
@@ -329,13 +396,10 @@ public class PluginManager {
     }
 
     private void uninstallPluginData(Plugins p) {
-        // 删除 Web 资源
         if (p.getEnabledWeb() != null && p.getEnabledWeb() == 1) {
             deleteWebResources(p.getJarName());
         }
-        // 删除配置
-        mangobotConfigService.deleteByPluginId(p.getId());
-        // 删除插件记录
+        pluginConfigService.deleteByPluginId(p.getId());
         pluginsService.removeById(p.getId());
     }
 
@@ -344,10 +408,10 @@ public class PluginManager {
         Path baseDir = FileUtils.getBaseDirectory();
         Path webDir = baseDir.resolve("web").resolve(folderName);
         Path parentWebDir = baseDir.resolve("../web").resolve(folderName);
-        
+
         File webDirFile = webDir.toFile();
         File parentWebDirFile = parentWebDir.toFile();
-        
+
         if (webDirFile.exists()) {
             deleteDirectory(webDirFile);
         } else if (parentWebDirFile.exists()) {

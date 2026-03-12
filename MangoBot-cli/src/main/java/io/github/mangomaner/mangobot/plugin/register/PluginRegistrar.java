@@ -8,7 +8,10 @@ import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
 import io.github.mangomaner.mangobot.plugin.PluginRuntimeWrapper;
 import io.github.mangomaner.mangobot.plugin.register.web.MangoArgumentResolvers;
 import io.github.mangomaner.mangobot.plugin.register.web.MangoReturnValueHandler;
-import io.github.mangomaner.mangobot.service.*;
+import io.github.mangomaner.mangobot.service.BotFilesService;
+import io.github.mangomaner.mangobot.service.GroupMessagesService;
+import io.github.mangomaner.mangobot.service.OneBotApiService;
+import io.github.mangomaner.mangobot.service.PrivateMessagesService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -48,9 +51,6 @@ public class PluginRegistrar {
 
     @Resource
     private OneBotApiService oneBotApiService;
-
-    @Resource
-    private MangobotConfigService mangobotConfigService;
 
     @Resource
     private GroupMessagesService groupMessagesService;
