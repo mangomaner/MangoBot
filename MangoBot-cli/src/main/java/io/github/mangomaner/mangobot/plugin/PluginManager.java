@@ -1,11 +1,9 @@
 package io.github.mangomaner.mangobot.plugin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import io.github.mangomaner.mangobot.annotation.PluginConfig;
-import io.github.mangomaner.mangobot.annotation.PluginConfigs;
 import io.github.mangomaner.mangobot.annotation.PluginDescribe;
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
-import io.github.mangomaner.mangobot.configuration.annotation.InjectConfig;
+import io.github.mangomaner.mangobot.configuration.service.PluginConfigRegistry;
 import io.github.mangomaner.mangobot.configuration.service.PluginConfigService;
 import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
 import io.github.mangomaner.mangobot.model.domain.Plugins;
@@ -14,7 +12,6 @@ import io.github.mangomaner.mangobot.plugin.register.PluginRegistrar;
 import io.github.mangomaner.mangobot.plugin.unregister.PluginUnloader;
 import io.github.mangomaner.mangobot.service.PluginsService;
 import io.github.mangomaner.mangobot.utils.FileUtils;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -30,10 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-/**
- * 插件管理器
- * 负责插件的注册、加载、卸载和配置管理
- */
 @Component
 @Slf4j
 public class PluginManager {
@@ -55,6 +48,9 @@ public class PluginManager {
 
     @Resource
     private PluginConfigService pluginConfigService;
+
+    @Resource
+    private PluginConfigRegistry pluginConfigRegistry;
 
     private final Map<String, PluginRuntimeWrapper> pluginRegistry = new ConcurrentHashMap<>();
     private String pluginDir = "plugins";
@@ -83,9 +79,6 @@ public class PluginManager {
         return new File(pluginDir);
     }
 
-    /**
-     * 启动时同步检测
-     */
     @Transactional(rollbackFor = Exception.class)
     public void syncPlugins() {
         log.info("开始同步插件...");
@@ -130,9 +123,6 @@ public class PluginManager {
         log.info("插件同步完成");
     }
 
-    /**
-     * 处理新增文件（供 Watcher 调用）
-     */
     public void handleNewFile(File file) {
         Long pluginId = scanAndRegister(file);
         if (pluginId == null) return;
@@ -143,10 +133,6 @@ public class PluginManager {
         }
     }
 
-    /**
-     * 扫描 Jar 并注册到数据库
-     * @return 插件ID，如果失败返回 null
-     */
     @Transactional(rollbackFor = Exception.class)
     public Long scanAndRegister(File jarFile) {
         String jarName = jarFile.getName();
@@ -182,15 +168,12 @@ public class PluginManager {
                             }
                             pluginsService.saveOrUpdate(plugin);
 
-                            pluginConfigService.deleteByPluginId(plugin.getId());
-
-                            registerPluginConfigs(clazz, plugin.getId());
+                            pluginConfigRegistry.scanAndRegister(clazz, plugin.getId());
 
                             log.info("插件注册成功: {}", jarName);
                             return plugin.getId();
                         }
                     } catch (Throwable t) {
-                        // 忽略非主类加载错误
                     }
                 }
             }
@@ -202,44 +185,6 @@ public class PluginManager {
             }
         }
         return null;
-    }
-
-    /**
-     * 注册插件配置（支持 @PluginConfig 和 @InjectConfig 注解）
-     */
-    private void registerPluginConfigs(Class<?> clazz, Long pluginId) {
-        List<PluginConfig> configs = new ArrayList<>();
-        if (clazz.isAnnotationPresent(PluginConfigs.class)) {
-            configs.addAll(Arrays.asList(clazz.getAnnotation(PluginConfigs.class).value()));
-        }
-        if (clazz.isAnnotationPresent(PluginConfig.class)) {
-            configs.add(clazz.getAnnotation(PluginConfig.class));
-        }
-
-        for (PluginConfig pc : configs) {
-            pluginConfigService.registerConfig(
-                    pluginId,
-                    pc.key(),
-                    pc.value(),
-                    pc.type(),
-                    pc.description(),
-                    pc.explain()
-            );
-        }
-
-        for (Field field : clazz.getDeclaredFields()) {
-            if (field.isAnnotationPresent(InjectConfig.class)) {
-                InjectConfig ic = field.getAnnotation(InjectConfig.class);
-                pluginConfigService.registerConfig(
-                        pluginId,
-                        ic.key(),
-                        ic.defaultValue(),
-                        ic.type(),
-                        ic.description(),
-                        ""
-                );
-            }
-        }
     }
 
     private Plugins getOrCreatePlugin(String jarName) {
@@ -312,13 +257,11 @@ public class PluginManager {
         }
     }
 
-    /**
-     * 注入插件配置到字段
-     */
     private void injectPluginConfigs(Class<?> clazz, Object instance, Long pluginId) {
         for (Field field : clazz.getDeclaredFields()) {
-            if (field.isAnnotationPresent(InjectConfig.class)) {
-                InjectConfig ic = field.getAnnotation(InjectConfig.class);
+            if (field.isAnnotationPresent(io.github.mangomaner.mangobot.configuration.annotation.InjectConfig.class)) {
+                io.github.mangomaner.mangobot.configuration.annotation.InjectConfig ic = 
+                    field.getAnnotation(io.github.mangomaner.mangobot.configuration.annotation.InjectConfig.class);
                 String configValue = pluginConfigService.getConfigValue(pluginId, ic.key(), ic.defaultValue());
 
                 try {
@@ -329,13 +272,23 @@ public class PluginManager {
                 } catch (Exception e) {
                     log.warn("注入配置失败: {} -> {}", ic.key(), field.getName(), e);
                 }
+            } else if (field.isAnnotationPresent(io.github.mangomaner.mangobot.annotation.PluginConfigItem.class)) {
+                io.github.mangomaner.mangobot.annotation.PluginConfigItem pci = 
+                    field.getAnnotation(io.github.mangomaner.mangobot.annotation.PluginConfigItem.class);
+                String configValue = pluginConfigService.getConfigValue(pluginId, pci.key(), pci.value());
+
+                try {
+                    field.setAccessible(true);
+                    Object convertedValue = convertValue(configValue, field.getType());
+                    field.set(instance, convertedValue);
+                    log.debug("注入配置: {} = {}", pci.key(), configValue);
+                } catch (Exception e) {
+                    log.warn("注入配置失败: {} -> {}", pci.key(), field.getName(), e);
+                }
             }
         }
     }
 
-    /**
-     * 类型转换
-     */
     private Object convertValue(String value, Class<?> targetType) {
         if (value == null || value.isEmpty()) {
             return getDefaultValue(targetType);
@@ -356,9 +309,6 @@ public class PluginManager {
         return value;
     }
 
-    /**
-     * 获取默认值
-     */
     private Object getDefaultValue(Class<?> targetType) {
         if (targetType == boolean.class) return false;
         if (targetType == int.class) return 0;
@@ -375,9 +325,6 @@ public class PluginManager {
         }
     }
 
-    /**
-     * 彻底卸载插件（删除文件、DB、Web资源）
-     */
     @Transactional(rollbackFor = Exception.class)
     public void uninstallPlugin(String pluginId) {
         unloadPlugin(pluginId);

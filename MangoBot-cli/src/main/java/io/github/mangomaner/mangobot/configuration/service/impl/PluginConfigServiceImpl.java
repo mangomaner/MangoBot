@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.configuration.enums.ConfigType;
 import io.github.mangomaner.mangobot.configuration.event.PluginConfigChangedEvent;
 import io.github.mangomaner.mangobot.configuration.model.config.ConfigMetadata;
+import io.github.mangomaner.mangobot.configuration.model.config.PluginConfigDefinition;
 import io.github.mangomaner.mangobot.configuration.util.ConfigTypeHandler;
 import io.github.mangomaner.mangobot.mapper.configuration.PluginConfigMapper;
 import io.github.mangomaner.mangobot.configuration.model.domain.PluginConfigEntity;
@@ -206,6 +207,56 @@ public class PluginConfigServiceImpl extends ServiceImpl<PluginConfigMapper, Plu
             this.save(config);
             log.debug("注册插件配置: pluginId={}, key={}, type={}", pluginId, configKey, type);
         }
+    }
+
+    @Override
+    public void registerDefinition(Long pluginId, PluginConfigDefinition definition) {
+        if (definition == null) {
+            return;
+        }
+        
+        LambdaQueryWrapper<PluginConfigEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PluginConfigEntity::getPluginId, pluginId)
+                .eq(PluginConfigEntity::getConfigKey, definition.getKey())
+                .isNull(PluginConfigEntity::getBotId);
+        PluginConfigEntity existing = this.getOne(wrapper);
+
+        String metadataJson = serializeMetadata(definition.getMetadata());
+        
+        if (existing != null) {
+            existing.setConfigValue(definition.getValue());
+            existing.setConfigType(definition.getType().getCode());
+            existing.setDescription(definition.getDescription());
+            existing.setExplain(definition.getExplain());
+            existing.setMetadata(metadataJson);
+            existing.setEditable(definition.getEditable() ? 1 : 0);
+            existing.setUpdatedAt(System.currentTimeMillis());
+            this.updateById(existing);
+            log.debug("更新插件配置定义: pluginId={}, key={}", pluginId, definition.getKey());
+        } else {
+            PluginConfigEntity config = new PluginConfigEntity();
+            config.setPluginId(pluginId);
+            config.setConfigKey(definition.getKey());
+            config.setConfigValue(definition.getValue());
+            config.setConfigType(definition.getType().getCode());
+            config.setDescription(definition.getDescription());
+            config.setExplain(definition.getExplain());
+            config.setMetadata(metadataJson);
+            config.setEditable(definition.getEditable() ? 1 : 0);
+            this.save(config);
+            log.debug("注册插件配置定义: pluginId={}, key={}, type={}", pluginId, definition.getKey(), definition.getType());
+        }
+    }
+
+    @Override
+    public void registerDefinitions(Long pluginId, List<PluginConfigDefinition> definitions) {
+        if (definitions == null || definitions.isEmpty()) {
+            return;
+        }
+        for (PluginConfigDefinition definition : definitions) {
+            registerDefinition(pluginId, definition);
+        }
+        log.info("批量注册插件配置: pluginId={}, count={}", pluginId, definitions.size());
     }
 
     @Override

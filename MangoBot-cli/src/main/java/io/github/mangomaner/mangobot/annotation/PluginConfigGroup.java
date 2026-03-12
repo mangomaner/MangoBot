@@ -7,6 +7,11 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface PluginConfigs {
-    PluginConfig[] value();
+public @interface PluginConfigGroup {
+    
+    String name() default "";
+    
+    String category() default "general";
+    
+    int order() default 0;
 }

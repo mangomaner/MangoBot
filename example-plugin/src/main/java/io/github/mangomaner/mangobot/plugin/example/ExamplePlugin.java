@@ -1,50 +1,114 @@
 package io.github.mangomaner.mangobot.plugin.example;
 
 import io.github.mangomaner.mangobot.annotation.MangoBotApiService;
-import io.github.mangomaner.mangobot.annotation.PluginConfig;
+import io.github.mangomaner.mangobot.annotation.PluginConfigGroup;
+import io.github.mangomaner.mangobot.annotation.PluginConfigItem;
 import io.github.mangomaner.mangobot.annotation.PluginDescribe;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
+import io.github.mangomaner.mangobot.annotation.web.MangoBotPathVariable;
+import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestBody;
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
+import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestParam;
 import io.github.mangomaner.mangobot.annotation.web.MangoRequestMethod;
-import io.github.mangomaner.mangobot.manager.GlobalConfigCache;
-import io.github.mangomaner.mangobot.manager.event.events.ConfigChangeEvent;
+import io.github.mangomaner.mangobot.api.MangoOneBotApi;
+import io.github.mangomaner.mangobot.configuration.annotation.ConfigMeta;
+import io.github.mangomaner.mangobot.configuration.annotation.InjectConfig;
+import io.github.mangomaner.mangobot.configuration.enums.ConfigType;
+import io.github.mangomaner.mangobot.configuration.event.PluginConfigChangedEvent;
+import io.github.mangomaner.mangobot.model.onebot.SendMessage;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
+import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
+import io.github.mangomaner.mangobot.model.onebot.segment.TextSegment;
 import io.github.mangomaner.mangobot.plugin.Plugin;
+import io.github.mangomaner.mangobot.plugin.example.MessageService.MessageStatistics;
 import io.github.mangomaner.mangobot.service.OneBotApiService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-import java.util.logging.Logger;
+import java.util.List;
 
-// 这里包含了所有能注入的东西，包括web部分
-@MangoBotRequestMapping("/plugin")
-@PluginConfig(key = "plugin.example.hello", value = "你好", description = "测试配置")
-@PluginDescribe(name = "ExamplePlugin", author = "mangomaner", version = "1.0.0", description = "一个示例插件", enableWeb = true)
+@Slf4j
+@MangoBotRequestMapping("/example")
+@PluginDescribe(
+    name = "ExamplePlugin",
+    author = "mangomaner",
+    version = "1.0.0",
+    description = "MangoBot 示例插件，演示插件系统的完整功能",
+    enableWeb = true
+)
+@PluginConfigGroup(name = "基础设置", category = "basic", order = 1)
 public class ExamplePlugin implements Plugin {
 
-    private static final Logger logger = Logger.getLogger("123");
     private AnnotationConfigApplicationContext applicationContext;
 
     @MangoBotApiService
     private OneBotApiService oneBotApiService;
 
-    public ExamplePlugin() {
+    @InjectConfig(
+        key = "plugin.example.enabled",
+        defaultValue = "true",
+        type = ConfigType.BOOLEAN,
+        description = "是否启用自动回复功能",
+        explain = "开启后，机器人会自动回复特定消息",
+        category = "basic",
+        metadata = @ConfigMeta(placeholder = "开启/关闭自动回复")
+    )
+    private Boolean autoReplyEnabled;
 
-    }
+    @InjectConfig(
+        key = "plugin.example.replyPrefix",
+        defaultValue = "[示例插件]",
+        type = ConfigType.STRING,
+        description = "回复消息前缀",
+        explain = "机器人回复消息时添加的前缀",
+        category = "basic",
+        metadata = @ConfigMeta(placeholder = "请输入前缀", maxLength = 20)
+    )
+    private String replyPrefix;
+
+    @PluginConfigItem(
+        key = "plugin.example.maxReplyLength",
+        value = "500",
+        type = ConfigType.INTEGER,
+        description = "最大回复长度",
+        explain = "机器人回复消息的最大字符数",
+        category = "advanced",
+        metadata = @ConfigMeta(min = 1, max = 2000, placeholder = "1-2000")
+    )
+    private Integer maxReplyLength;
+
+    @PluginConfigItem(
+        key = "plugin.example.apiTimeout",
+        value = "30",
+        type = ConfigType.INTEGER,
+        description = "API超时时间",
+        explain = "请求外部API的超时时间，单位秒",
+        category = "network",
+        metadata = @ConfigMeta(min = 5, max = 120, placeholder = "5-120秒")
+    )
+    private Integer apiTimeout;
+
+    private MessageProcessor messageProcessor;
+    private MessageService messageService;
 
     @Override
     public void onEnable() {
         applicationContext = new AnnotationConfigApplicationContext();
-        // 扫描org.mango包
         applicationContext.scan("io.github.mangomaner.mangobot.plugin.example");
         applicationContext.refresh();
 
+        this.messageProcessor = applicationContext.getBean(MessageProcessor.class);
+        this.messageService = applicationContext.getBean(MessageService.class);
+
         String[] beanNames = applicationContext.getBeanDefinitionNames();
+        log.info("ExamplePlugin Spring 容器初始化完成，共加载 {} 个 Bean", beanNames.length);
         for (String beanName : beanNames) {
-            System.out.println("Loaded Bean: " + beanName);
+            log.debug("Loaded Bean: {}", beanName);
         }
 
-        logger.info("ExamplePlugin 已启用，Spring容器初始化完成");
+        log.info("ExamplePlugin 已启用，当前配置：autoReplyEnabled={}, replyPrefix={}, maxReplyLength={}, apiTimeout={}",
+            autoReplyEnabled, replyPrefix, maxReplyLength, apiTimeout);
     }
 
     @Override
@@ -52,27 +116,187 @@ public class ExamplePlugin implements Plugin {
         if (applicationContext != null) {
             applicationContext.close();
         }
-        logger.info("ExamplePlugin 已禁用");
+        log.info("ExamplePlugin 已禁用");
     }
 
     @MangoBotEventListener
     @PluginPriority(5)
-    public boolean onGroupMessage(GroupMessageEvent event){
-        System.out.println("插件成功收到消息: " + event.getRawMessage());
+    public boolean onGroupMessage(GroupMessageEvent event) {
+        String message = event.getRawMessage();
+        long userId = event.getUserId();
+        long groupId = event.getGroupId();
+
+        log.info("收到群消息 [群:{}] [用户:{}]: {}", groupId, userId, message);
+
+        messageProcessor.processMessage(userId, message);
+
+        if (!Boolean.TRUE.equals(autoReplyEnabled)) {
+            return false;
+        }
+
+        String trimmedMessage = message.trim();
+
+        if ("#example help".equalsIgnoreCase(trimmedMessage)) {
+            sendGroupReply(event.getSelfId(), groupId,
+                "示例插件帮助：\n" +
+                "#example help - 显示帮助\n" +
+                "#example ping - 测试回复\n" +
+                "#example info - 显示插件信息\n" +
+                "#example stats - 显示消息统计");
+            return true;
+        }
+
+        if ("#example ping".equalsIgnoreCase(trimmedMessage)) {
+            sendGroupReply(event.getSelfId(), groupId, "pong! 插件运行正常");
+            return true;
+        }
+
+        if ("#example info".equalsIgnoreCase(trimmedMessage)) {
+            sendGroupReply(event.getSelfId(), groupId,
+                String.format("插件信息：\n名称: ExamplePlugin\n版本: 1.0.0\n作者: mangomaner\n自动回复: %s\n最大回复长度: %d",
+                    autoReplyEnabled, maxReplyLength));
+            return true;
+        }
+
+        if ("#example stats".equalsIgnoreCase(trimmedMessage)) {
+            String stats = messageProcessor.getUserStats(userId);
+            sendGroupReply(event.getSelfId(), groupId, stats);
+            return true;
+        }
+
         return false;
     }
 
     @MangoBotEventListener
-    public boolean onConfigChange(ConfigChangeEvent event) {
-        System.out.println("插件收到配置变更通知: key=" + event.getKey() + ", value=" + event.getValue());
-        // 示例：获取最新配置
-        String config = GlobalConfigCache.getConfig(event.getKey());
-        System.out.println("从缓存获取最新配置: " + config);
+    @PluginPriority(5)
+    public boolean onPrivateMessage(PrivateMessageEvent event) {
+        String message = event.getRawMessage();
+        long userId = event.getUserId();
+
+        log.info("收到私聊消息 [用户:{}]: {}", userId, message);
+
+        messageProcessor.processMessage(userId, message);
+
+        if (message.contains("你好") || message.contains("hello")) {
+            sendPrivateReply(event.getSelfId(), userId,
+                replyPrefix + " 你好！我是 ExamplePlugin，很高兴为你服务！");
+            return true;
+        }
+
+        return false;
+    }
+
+    @MangoBotEventListener
+    public boolean onPluginConfigChanged(PluginConfigChangedEvent event) {
+        log.info("插件配置变更: configKey={}, newValue={}", event.getConfigKey(), event.getNewValue());
+
+        if (event.getConfigKey().endsWith("enabled")) {
+            this.autoReplyEnabled = Boolean.parseBoolean(event.getNewValue());
+        } else if (event.getConfigKey().endsWith("replyPrefix")) {
+            this.replyPrefix = event.getNewValue();
+        } else if (event.getConfigKey().endsWith("maxReplyLength")) {
+            this.maxReplyLength = Integer.parseInt(event.getNewValue());
+        } else if (event.getConfigKey().endsWith("apiTimeout")) {
+            this.apiTimeout = Integer.parseInt(event.getNewValue());
+        }
+
         return true;
     }
 
-    @MangoBotRequestMapping(value = "/ok", method = MangoRequestMethod.GET)
+    private void sendGroupReply(long botId, long groupId, String text) {
+        try {
+            SendMessage message = new SendMessage();
+            TextSegment textSegment = new TextSegment();
+            TextSegment.TextData textData = new TextSegment.TextData();
+            textData.setText(text);
+            textSegment.setData(textData);
+            message.setMessage(List.of(textSegment));
+            MangoOneBotApi.sendGroupMsg(botId, groupId, message);
+        } catch (Exception e) {
+            log.error("发送群消息失败", e);
+        }
+    }
+
+    private void sendPrivateReply(long botId, long userId, String text) {
+        try {
+            SendMessage message = new SendMessage();
+            TextSegment textSegment = new TextSegment();
+            TextSegment.TextData textData = new TextSegment.TextData();
+            textData.setText(text);
+            textSegment.setData(textData);
+            message.setMessage(List.of(textSegment));
+            MangoOneBotApi.sendPrivateMsg(botId, userId, message);
+        } catch (Exception e) {
+            log.error("发送私聊消息失败", e);
+        }
+    }
+
+    @MangoBotRequestMapping(value = "/hello", method = MangoRequestMethod.GET)
     public String hello() {
-        return "Hello World!";
+        return "Hello from ExamplePlugin!";
+    }
+
+    @MangoBotRequestMapping(value = "/greet/{name}", method = MangoRequestMethod.GET)
+    public String greet(@MangoBotPathVariable("name") String name) {
+        return String.format("你好, %s! 欢迎使用 ExamplePlugin", name);
+    }
+
+    @MangoBotRequestMapping(value = "/echo", method = MangoRequestMethod.GET)
+    public String echo(@MangoBotRequestParam(value = "message", defaultValue = "Hello") String message) {
+        return String.format("Echo: %s", message);
+    }
+
+    @MangoBotRequestMapping(value = "/data", method = MangoRequestMethod.POST)
+    public String saveData(@MangoBotRequestBody PluginData data) {
+        log.info("收到数据: id={}, name={}, value={}", data.getId(), data.getName(), data.getValue());
+        return String.format("数据已接收: id=%d, name=%s", data.getId(), data.getName());
+    }
+
+    @MangoBotRequestMapping(value = "/config", method = MangoRequestMethod.GET)
+    public PluginConfigInfo getConfig() {
+        return new PluginConfigInfo(autoReplyEnabled, replyPrefix, maxReplyLength, apiTimeout);
+    }
+
+    @MangoBotRequestMapping(value = "/statistics", method = MangoRequestMethod.GET)
+    public MessageStatistics getStatistics() {
+        return messageService.getStatistics();
+    }
+
+    @MangoBotRequestMapping(value = "/statistics/reset", method = MangoRequestMethod.POST)
+    public String resetStatistics() {
+        messageService.reset();
+        return "消息统计已重置";
+    }
+
+    public static class PluginData {
+        private Integer id;
+        private String name;
+        private String value;
+
+        public Integer getId() { return id; }
+        public void setId(Integer id) { this.id = id; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getValue() { return value; }
+        public void setValue(String value) { this.value = value; }
+    }
+
+    public static class PluginConfigInfo {
+        private final Boolean autoReplyEnabled;
+        private final String replyPrefix;
+        private final Integer maxReplyLength;
+        private final Integer apiTimeout;
+
+        public PluginConfigInfo(Boolean autoReplyEnabled, String replyPrefix, Integer maxReplyLength, Integer apiTimeout) {
+            this.autoReplyEnabled = autoReplyEnabled;
+            this.replyPrefix = replyPrefix;
+            this.maxReplyLength = maxReplyLength;
+            this.apiTimeout = apiTimeout;
+        }
+
+        public Boolean getAutoReplyEnabled() { return autoReplyEnabled; }
+        public String getReplyPrefix() { return replyPrefix; }
+        public Integer getMaxReplyLength() { return maxReplyLength; }
+        public Integer getApiTimeout() { return apiTimeout; }
     }
 }
