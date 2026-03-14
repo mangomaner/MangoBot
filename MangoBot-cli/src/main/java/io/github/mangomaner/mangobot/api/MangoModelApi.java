@@ -1,9 +1,9 @@
 package io.github.mangomaner.mangobot.api;
 
 import io.agentscope.core.model.OpenAIChatModel;
+import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelConfigVO;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelRoleVO;
-import io.github.mangomaner.mangobot.configuration.service.ModelProvider;
 
 import java.util.List;
 
@@ -13,13 +13,10 @@ import java.util.List;
  */
 public class MangoModelApi {
 
+    // 由io.github.mangomaner.mangobot.manager.MangoApiManager反射注入
     private static ModelProvider provider;
 
     private MangoModelApi() {}
-
-    static void setProvider(ModelProvider provider) {
-        MangoModelApi.provider = provider;
-    }
 
     private static void checkProvider() {
         if (provider == null) {
@@ -84,15 +81,6 @@ public class MangoModelApi {
     }
 
     /**
-     * 刷新指定角色的模型（重新加载）
-     * @param roleKey 角色标识
-     */
-    public static void refreshModel(String roleKey) {
-        checkProvider();
-        provider.refreshModel(roleKey);
-    }
-
-    /**
      * 获取所有角色配置
      * @return 角色配置列表
      */
@@ -111,13 +99,4 @@ public class MangoModelApi {
         return provider.getRole(roleKey);
     }
 
-    /**
-     * 更新角色对应的模型
-     * @param roleKey 角色标识
-     * @param modelConfigId 模型配置ID
-     */
-    public static void updateRoleModel(String roleKey, Long modelConfigId) {
-        checkProvider();
-        provider.updateRoleModel(roleKey, modelConfigId);
-    }
 }

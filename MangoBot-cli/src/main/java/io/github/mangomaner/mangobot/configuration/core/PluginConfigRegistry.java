@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.configuration.service;
+package io.github.mangomaner.mangobot.configuration.core;
 
 import io.github.mangomaner.mangobot.annotation.PluginConfigGroup;
 import io.github.mangomaner.mangobot.annotation.PluginConfigItem;
@@ -6,6 +6,7 @@ import io.github.mangomaner.mangobot.configuration.annotation.ConfigMeta;
 import io.github.mangomaner.mangobot.configuration.annotation.InjectConfig;
 import io.github.mangomaner.mangobot.configuration.model.config.ConfigMetadata;
 import io.github.mangomaner.mangobot.configuration.model.config.PluginConfigDefinition;
+import io.github.mangomaner.mangobot.configuration.service.PluginConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

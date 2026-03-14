@@ -1,17 +1,23 @@
 package io.github.mangomaner.mangobot.configuration.service.impl;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import io.github.mangomaner.mangobot.common.ErrorCode;
 import io.github.mangomaner.mangobot.configuration.model.domain.ModelConfig;
 import io.github.mangomaner.mangobot.configuration.model.domain.ModelProvider;
+import io.github.mangomaner.mangobot.configuration.model.domain.ModelRole;
 import io.github.mangomaner.mangobot.configuration.model.dto.model.CreateModelConfigRequest;
 import io.github.mangomaner.mangobot.configuration.model.dto.model.TestModelRequest;
 import io.github.mangomaner.mangobot.configuration.model.dto.model.UpdateModelConfigRequest;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelConfigVO;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelTestResultVO;
 import io.github.mangomaner.mangobot.configuration.service.ModelConfigService;
+import io.github.mangomaner.mangobot.exception.BusinessException;
 import io.github.mangomaner.mangobot.mapper.configuration.ModelConfigMapper;
 import io.github.mangomaner.mangobot.mapper.configuration.ModelProviderMapper;
+import io.github.mangomaner.mangobot.mapper.configuration.ModelRoleMapper;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -26,8 +32,14 @@ import java.util.stream.Collectors;
 public class ModelConfigServiceImpl extends ServiceImpl<ModelConfigMapper, ModelConfig>
         implements ModelConfigService {
 
-    @jakarta.annotation.Resource
+    @Resource
     private ModelProviderMapper modelProviderMapper;
+
+    @Resource
+    private ModelRoleMapper modelRoleMapper;
+
+    @Resource
+    private io.github.mangomaner.mangobot.configuration.core.ModelProvider modelPrivider;
 
     @Override
     public List<ModelConfigVO> getAllConfigs() {
@@ -88,9 +100,28 @@ public class ModelConfigServiceImpl extends ServiceImpl<ModelConfigMapper, Model
         }
         if (request.getIsEnabled() != null) {
             config.setIsEnabled(request.getIsEnabled() ? 1 : 0);
+            if (config.getIsEnabled() == (request.getIsEnabled()? 1 : 0)) {
+                List<ModelRole> roles = modelRoleMapper.selectList(new QueryWrapper<ModelRole>().eq("model_config_id", request.getId()));
+                if (roles.size() > 0) {
+                    StringBuilder sb = new StringBuilder();
+                    for (ModelRole role : roles) {
+                        sb.append(role.getRoleName()).append(",");
+                    }
+                    throw new BusinessException(ErrorCode.PARAMS_ERROR, "请解除关联：" + sb);
+                }
+            }
         }
         config.setUpdatedAt(System.currentTimeMillis());
+
         this.updateById(config);
+
+        // 检查该模型是否被其他角色关联，若关联则向ModelProvider提示更新对应角色的模型
+        List<ModelRole> roles = modelRoleMapper.selectList(new QueryWrapper<ModelRole>().eq("model_config_id", request.getId()));
+        if (roles.size() > 0) {
+            for (ModelRole role : roles) {
+                modelPrivider.updateRoleModel(role.getRoleKey(), config.getId());
+            }
+        }
 
         log.info("更新模型配置成功: {}", config.getModelName());
         return convertToVO(config);
@@ -101,6 +132,15 @@ public class ModelConfigServiceImpl extends ServiceImpl<ModelConfigMapper, Model
         ModelConfig config = this.getById(id);
         if (config == null) {
             return false;
+        }
+        // 搜索model_roles表，查看是否有角色关联
+        List<ModelRole> roles = modelRoleMapper.selectList(new QueryWrapper<ModelRole>().eq("model_config_id", id));
+        if (roles.size() > 0) {
+            StringBuilder sb = new StringBuilder();
+            for (ModelRole role : roles) {
+                sb.append(role.getRoleName()).append(",");
+            }
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请解除关联：" + sb);
         }
         boolean result = this.removeById(id);
         if (result) {

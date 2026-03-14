@@ -118,15 +118,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_configs_unique ON plugin_configs (p
 
 -- 模型供应商初始数据
 INSERT INTO model_providers (name, base_url, api_key, description) VALUES
-    ('openai', 'https://api.openai.com/v1', 'sk-xxx', 'OpenAI 官方接口'),
-    ('custom', 'https://api.example.com/v1', 'sk-xxx', '自定义接口');
+    ('openai', 'https://api.openai.com/v1', '', 'OpenAI 官方接口'),
+    ('siliconflow', 'https://api.siliconflow.cn/v1', '', '硅基流动(siliconflow)'),
+    ('custom', 'https://api.example.com/v1', '', '自定义接口');
 
 -- 模型配置初始数据
 INSERT INTO model_configs (model_name, provider_id, temperature, description) VALUES
-    ('gpt-4o', 1, 0.7, 'GPT-4o 模型'),
-    ('gpt-3.5-turbo', 1, 0.7, 'GPT-3.5 Turbo 模型'),
-    ('gpt-4-vision-preview', 1, 0.7, 'GPT-4 Vision 模型'),
-    ('text-embedding-3-small', 1, 0.7, '文本嵌入模型');
+    ('不选择', 0, 0.7, 'empty');
 
 -- 模型角色初始数据
 INSERT INTO model_roles (role_key, role_name, model_config_id, description) VALUES
@@ -227,34 +225,3 @@ CREATE TABLE IF NOT EXISTS plugins
     create_time         INTEGER default (strftime('%s', 'now') * 1000)
 );
 
-
--- Agent 会话表：存储 AgentScope AutoContextMemory 的持久化状态
-CREATE TABLE IF NOT EXISTS agent_sessions
-(
-    id              INTEGER not null
-        constraint agent_sessions_pk
-            primary key autoincrement,
-    session_id      TEXT    not null,
-    bot_id          INTEGER not null,
-    session_type    TEXT    not null,
-    group_id        INTEGER,
-    user_id         INTEGER,
-    agent_name      TEXT    not null,
-    sys_prompt      TEXT,
-    memory_state    TEXT,
-    message_history TEXT,
-    last_active_at  INTEGER default (strftime('%s', 'now') * 1000),
-    created_at      INTEGER default (strftime('%s', 'now') * 1000),
-    updated_at      INTEGER default (strftime('%s', 'now') * 1000),
-    is_active       INTEGER default 1,
-    constraint session_id_unique unique (session_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_agent_sessions_session_id
-    ON agent_sessions (session_id);
-
-CREATE INDEX IF NOT EXISTS idx_agent_sessions_bot_active
-    ON agent_sessions (bot_id, is_active);
-
-CREATE INDEX IF NOT EXISTS idx_agent_sessions_last_active
-    ON agent_sessions (last_active_at);

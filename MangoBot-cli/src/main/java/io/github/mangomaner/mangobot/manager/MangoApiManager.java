@@ -1,11 +1,7 @@
 package io.github.mangomaner.mangobot.manager;
 
-import io.github.mangomaner.mangobot.api.MangoFileApi;
-import io.github.mangomaner.mangobot.api.MangoGroupMessageApi;
-import io.github.mangomaner.mangobot.api.MangoModelApi;
-import io.github.mangomaner.mangobot.api.MangoOneBotApi;
-import io.github.mangomaner.mangobot.api.MangoPrivateMessageApi;
-import io.github.mangomaner.mangobot.configuration.service.ModelProvider;
+import io.github.mangomaner.mangobot.api.*;
+import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.service.BotFilesService;
 import io.github.mangomaner.mangobot.service.GroupMessagesService;
 import io.github.mangomaner.mangobot.service.OneBotApiService;

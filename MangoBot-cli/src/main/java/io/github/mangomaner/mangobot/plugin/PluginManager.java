@@ -3,7 +3,7 @@ package io.github.mangomaner.mangobot.plugin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.github.mangomaner.mangobot.annotation.PluginDescribe;
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
-import io.github.mangomaner.mangobot.configuration.service.PluginConfigRegistry;
+import io.github.mangomaner.mangobot.configuration.core.PluginConfigRegistry;
 import io.github.mangomaner.mangobot.configuration.service.PluginConfigService;
 import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
 import io.github.mangomaner.mangobot.model.domain.Plugins;

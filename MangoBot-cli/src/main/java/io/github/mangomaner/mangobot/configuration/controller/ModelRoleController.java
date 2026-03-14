@@ -2,9 +2,9 @@ package io.github.mangomaner.mangobot.configuration.controller;
 
 import io.github.mangomaner.mangobot.common.BaseResponse;
 import io.github.mangomaner.mangobot.common.ResultUtils;
+import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.configuration.model.dto.model.UpdateModelRoleRequest;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelRoleVO;
-import io.github.mangomaner.mangobot.configuration.service.ModelProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;

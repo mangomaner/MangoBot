@@ -1,6 +1,6 @@
 package io.github.mangomaner.mangobot;
 
-import io.github.mangomaner.mangobot.configuration.service.impl.ModelProviderImpl;
+import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.manager.MangoApiManager;
 import io.github.mangomaner.mangobot.plugin.PluginManager;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,7 @@ public class MangoBotApplication {
         log.info("========== MangoBot 初始化开始 ==========");
 
         MangoApiManager apiManager = context.getBean(MangoApiManager.class);
-        ModelProviderImpl modelProvider = context.getBean(ModelProviderImpl.class);
+        ModelProvider modelProvider = context.getBean(ModelProvider.class);
         PluginManager pluginManager = context.getBean(PluginManager.class);
 
         apiManager.init();

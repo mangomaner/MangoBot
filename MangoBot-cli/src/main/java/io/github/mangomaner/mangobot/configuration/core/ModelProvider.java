@@ -1,12 +1,13 @@
-package io.github.mangomaner.mangobot.configuration.service.impl;
+package io.github.mangomaner.mangobot.configuration.core;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.agentscope.core.model.OpenAIChatModel;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
+import io.github.mangomaner.mangobot.common.ErrorCode;
 import io.github.mangomaner.mangobot.configuration.event.ModelRoleChangedEvent;
+import io.github.mangomaner.mangobot.exception.BusinessException;
 import io.github.mangomaner.mangobot.mapper.configuration.ModelRoleMapper;
 import io.github.mangomaner.mangobot.configuration.model.domain.ModelConfig;
-import io.github.mangomaner.mangobot.configuration.model.domain.ModelProvider;
 import io.github.mangomaner.mangobot.configuration.model.domain.ModelRole;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelConfigVO;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelRoleVO;
@@ -27,12 +28,15 @@ import java.util.stream.Collectors;
  * 模型提供者实现
  * 统一管理模型实例，支持角色与模型的动态映射
  * 实现 ModelProvider 接口，对外提供模型实例
+ *
+ * 1. 当模型角色与模型配置的映射关系发生变更时，会发布 ModelRoleChangedEvent 事件
+ * 2. 当某个角色对应的模型发生变化时，会发布 ModelRoleChangedEvent 事件
+ * 3. 当某个角色在使用某模型时，该模型不能被删除
  */
 @Service
 @Slf4j
 @MangoBotEventListener
-public class ModelProviderImpl implements io.github.mangomaner.mangobot.configuration.service.ModelProvider {
-
+public class ModelProvider {
     private final Map<String, OpenAIChatModel> modelCache = new ConcurrentHashMap<>();
 
     @Resource
@@ -81,7 +85,12 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
         return true;
     }
 
-    @Override
+
+    /**
+     * 获取指定角色的模型实例
+     * @param roleKey 角色标识（main, assistant, image, embedding）
+     * @return 模型实例，如果未配置则返回 null
+     */
     public OpenAIChatModel getModel(String roleKey) {
         OpenAIChatModel model = modelCache.get(roleKey);
         if (model == null) {
@@ -94,7 +103,11 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
         return model;
     }
 
-    @Override
+    /**
+     * 获取指定角色的模型配置详情
+     * @param roleKey 角色标识
+     * @return 模型配置详情
+     */
     public ModelConfigVO getModelConfig(String roleKey) {
         Long configId = getModelConfigIdByKey(roleKey);
         if (configId == null) {
@@ -119,7 +132,7 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
         vo.setCreatedAt(config.getCreatedAt());
         vo.setUpdatedAt(config.getUpdatedAt());
 
-        ModelProvider provider = modelProviderMapper.selectById(config.getProviderId());
+        io.github.mangomaner.mangobot.configuration.model.domain.ModelProvider provider = modelProviderMapper.selectById(config.getProviderId());
         if (provider != null) {
             vo.setProviderName(provider.getName());
         }
@@ -127,17 +140,10 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
         return vo;
     }
 
-    @Override
-    public void refreshModel(String roleKey) {
-        Long configId = getModelConfigIdByKey(roleKey);
-        if (configId != null) {
-            loadModel(roleKey, configId);
-        } else {
-            modelCache.remove(roleKey);
-        }
-    }
-
-    @Override
+    /**
+     * 获取所有角色配置
+     * @return 角色配置列表
+     */
     public List<ModelRoleVO> getAllRoles() {
         List<ModelRole> roles = modelRoleMapper.selectList(null);
         return roles.stream()
@@ -145,7 +151,11 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
                 .collect(Collectors.toList());
     }
 
-    @Override
+    /**
+     * 获取指定角色的配置
+     * @param roleKey 角色标识
+     * @return 角色配置
+     */
     public ModelRoleVO getRole(String roleKey) {
         LambdaQueryWrapper<ModelRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ModelRole::getRoleKey, roleKey);
@@ -153,7 +163,11 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
         return role != null ? convertToRoleVO(role) : null;
     }
 
-    @Override
+    /**
+     * 更新角色对应的模型
+     * @param roleKey 角色标识
+     * @param modelConfigId 模型配置ID
+     */
     public void updateRoleModel(String roleKey, Long modelConfigId) {
         LambdaQueryWrapper<ModelRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ModelRole::getRoleKey, roleKey);
@@ -181,22 +195,27 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
 
     private void loadModel(String roleKey, Long configId) {
         ModelConfig config = modelConfigMapper.selectById(configId);
-        if (config == null || config.getIsEnabled() != 1) {
-            log.warn("模型配置 {} 不存在或已禁用", configId);
+
+        // 若是空模型则清除缓存并返回
+        if (config.getProviderId() == 0) {
             modelCache.remove(roleKey);
             return;
         }
 
-        ModelProvider provider = modelProviderMapper.selectById(config.getProviderId());
-        if (provider == null || provider.getIsEnabled() != 1) {
-            log.warn("供应商 {} 不存在或已禁用", config.getProviderId());
+        if (config == null || config.getIsEnabled() != 1) {
             modelCache.remove(roleKey);
-            return;
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "模型配置不存在");
+        }
+        io.github.mangomaner.mangobot.configuration.model.domain.ModelProvider provider = modelProviderMapper.selectById(config.getProviderId());
+        if (provider == null || provider.getIsEnabled() != 1) {
+            modelCache.remove(roleKey);
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "模型供应商不存在");
         }
 
         OpenAIChatModel model = OpenAIChatModel.builder()
                 .baseUrl(provider.getBaseUrl())
                 .apiKey(provider.getApiKey())
+                .stream(true)
                 .modelName(config.getModelName())
                 .build();
 
@@ -225,7 +244,7 @@ public class ModelProviderImpl implements io.github.mangomaner.mangobot.configur
             ModelConfig config = modelConfigMapper.selectById(role.getModelConfigId());
             if (config != null) {
                 vo.setModelName(config.getModelName());
-                ModelProvider provider = modelProviderMapper.selectById(config.getProviderId());
+                io.github.mangomaner.mangobot.configuration.model.domain.ModelProvider provider = modelProviderMapper.selectById(config.getProviderId());
                 if (provider != null) {
                     vo.setProviderName(provider.getName());
                 }
