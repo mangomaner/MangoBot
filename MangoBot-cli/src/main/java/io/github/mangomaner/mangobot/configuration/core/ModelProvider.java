@@ -197,7 +197,7 @@ public class ModelProvider {
         ModelConfig config = modelConfigMapper.selectById(configId);
 
         // 若是空模型则清除缓存并返回
-        if (config.getProviderId() == 0) {
+        if (config == null || config.getProviderId() == 0) {
             modelCache.remove(roleKey);
             return;
         }

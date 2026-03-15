@@ -18,6 +18,10 @@ public class MangoModelApi {
 
     private MangoModelApi() {}
 
+    static void setProvider(ModelProvider provider) {
+        MangoModelApi.provider = provider;
+    }
+
     private static void checkProvider() {
         if (provider == null) {
             throw new IllegalStateException("MangoModelApi has not been initialized yet.");

@@ -225,3 +225,27 @@ CREATE TABLE IF NOT EXISTS plugins
     create_time         INTEGER default (strftime('%s', 'now') * 1000)
 );
 
+
+-- 对话会话表：记录每个工作区的对话会话
+CREATE TABLE IF NOT EXISTS chat_session (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title VARCHAR(256), -- 会话标题（默认为该会话第一个问题，因此，前端点击新对话时，先不创建会话，等到输入问题并发送后再新建对话）
+    memory_state TEXT, -- AutoContextMemory 持久化状态（JSON格式）
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 对话消息表：记录对话历史
+CREATE TABLE IF NOT EXISTS chat_message_web (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL, -- 关联的会话ID
+    role VARCHAR(32) NOT NULL, -- 角色：user, assistant, system
+    content TEXT NOT NULL, -- 消息内容
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES chat_session(id)
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_chat_message_web_session ON chat_message_web(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_message_web_time ON chat_message_web(create_time);
+

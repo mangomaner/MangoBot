@@ -73,9 +73,17 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
+
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope</artifactId>
+            <version>1.0.9</version>
+        </dependency>
+
+        <!-- AgentScope AutoContextMemory Extension -->
+        <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope-extensions-autocontext-memory</artifactId>
             <version>1.0.9</version>
         </dependency>
     </dependencies>
