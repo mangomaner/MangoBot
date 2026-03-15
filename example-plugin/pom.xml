@@ -35,6 +35,12 @@
             <artifactId>spring-boot-starter</artifactId>
             <version>3.3.12</version>
         </dependency>
+        <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope</artifactId>
+            <version>1.0.9</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>

@@ -91,6 +91,7 @@ public class JavaToolLoader {
      * 
      * <p>根据配置的 loadType 选择加载方式：
      * <ol>
+     *   <li>优先检查实例缓存（解决插件 ClassLoader 隔离问题）</li>
      *   <li>FACTORY 模式：从工厂缓存获取，每次返回新实例</li>
      *   <li>INSTANCE 模式：从实例缓存获取，返回共享实例</li>
      *   <li>NO_ARGS/WITH_ARGS 模式：通过反射实例化</li>
@@ -102,6 +103,13 @@ public class JavaToolLoader {
     public Optional<Object> loadTool(AgentJavaToolConfig config) {
         String className = config.getClassName();
         String loadType = config.getLoadType() != null ? config.getLoadType() : LOAD_TYPE_NO_ARGS;
+
+        // 优先级0：实例缓存（解决插件 ClassLoader 隔离问题）
+        if (instanceCache.containsKey(className)) {
+            Object tool = instanceCache.get(className);
+            log.debug("Tool loaded from instance cache: {}", className);
+            return Optional.of(tool);
+        }
 
         // 优先级1：工厂模式
         if (LOAD_TYPE_FACTORY.equals(loadType) && factoryCache.containsKey(className)) {
@@ -115,14 +123,7 @@ public class JavaToolLoader {
             }
         }
 
-        // 优先级2：实例模式
-        if (LOAD_TYPE_INSTANCE.equals(loadType) && instanceCache.containsKey(className)) {
-            Object tool = instanceCache.get(className);
-            log.debug("Tool loaded from instance cache: {}", className);
-            return Optional.of(tool);
-        }
-
-        // 优先级3：反射实例化
+        // 优先级2：反射实例化（仅适用于主程序内置工具）
         return loadByReflection(config);
     }
 
@@ -143,7 +144,8 @@ public class JavaToolLoader {
             }
             
             Constructor<?> constructor = findMatchingConstructor(toolClass, args);
-            Object tool = constructor.newInstance(args);
+            Object[] convertedArgs = convertArgs(args, constructor.getParameterTypes());
+            Object tool = constructor.newInstance(convertedArgs);
             log.debug("Tool loaded by reflection (with args): {}", className);
             return Optional.of(tool);
             
@@ -200,5 +202,56 @@ public class JavaToolLoader {
             }
         }
         throw new NoSuchMethodException("No matching constructor found for " + clazz.getName());
+    }
+    
+    /**
+     * 转换参数类型以匹配构造函数期望的类型
+     */
+    private Object[] convertArgs(Object[] args, Class<?>[] paramTypes) {
+        Object[] result = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            result[i] = convertArg(args[i], paramTypes[i]);
+        }
+        return result;
+    }
+    
+    private Object convertArg(Object arg, Class<?> targetType) {
+        if (arg == null) return null;
+        
+        Class<?> argType = arg.getClass();
+        
+        if (targetType.isAssignableFrom(argType)) {
+            return arg;
+        }
+        
+        if (arg instanceof Number num) {
+            if (targetType == int.class || targetType == Integer.class) {
+                return num.intValue();
+            } else if (targetType == long.class || targetType == Long.class) {
+                return num.longValue();
+            } else if (targetType == double.class || targetType == Double.class) {
+                return num.doubleValue();
+            } else if (targetType == float.class || targetType == Float.class) {
+                return num.floatValue();
+            } else if (targetType == short.class || targetType == Short.class) {
+                return num.shortValue();
+            } else if (targetType == byte.class || targetType == Byte.class) {
+                return num.byteValue();
+            }
+        }
+        
+        if (arg instanceof Boolean bool) {
+            if (targetType == boolean.class || targetType == Boolean.class) {
+                return bool;
+            }
+        }
+        
+        if (arg instanceof String str) {
+            if (targetType == String.class) {
+                return str;
+            }
+        }
+        
+        throw new IllegalArgumentException("Cannot convert " + argType + " to " + targetType);
     }
 }

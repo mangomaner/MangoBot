@@ -93,18 +93,28 @@ public class ToolRegistrationService {
      * @throws IllegalArgumentException 如果参数无法序列化
      */
     public Integer registerTool(Class<?> toolClass, Object... args) {
-        return registerTool(toolClass, args, null);
+        return registerToolInternal(toolClass, args, null);
     }
 
     /**
      * 注册工具类（来自插件）
      * 
+     * <p>对于插件工具，会在注册时立即创建实例并存入缓存，
+     * 解决插件 ClassLoader 隔离导致的类加载问题。
+     * 
      * @param toolClass 工具类
-     * @param args 构造参数（可变参数，自动序列化）
+     * @param args 构造参数数组（可为 null）
      * @param pluginId 插件 ID
      * @return 工具配置 ID
      */
-    public Integer registerTool(Class<?> toolClass, Object[] args, Integer pluginId) {
+    public Integer registerToolWithPluginId(Class<?> toolClass, Object[] args, Integer pluginId) {
+        return registerToolInternal(toolClass, args, pluginId);
+    }
+    
+    /**
+     * 内部注册方法
+     */
+    private Integer registerToolInternal(Class<?> toolClass, Object[] args, Integer pluginId) {
         String className = toolClass.getName();
         ToolMetadata metadata = extractMetadata(toolClass);
         
@@ -114,6 +124,14 @@ public class ToolRegistrationService {
             : JavaToolLoader.LOAD_TYPE_NO_ARGS;
         
         String argsJson = hasArgs ? serializeArgs(args) : null;
+        
+        try {
+            Object instance = createInstance(toolClass, args);
+            javaToolLoader.registerInstance(className, instance);
+            log.debug("Tool instance created and cached: {}", className);
+        } catch (Exception e) {
+            log.warn("Failed to create tool instance, will try lazy loading: {}", className, e);
+        }
         
         AgentJavaToolConfig existing = toolConfigService.getByClassName(className);
         
@@ -143,6 +161,96 @@ public class ToolRegistrationService {
             log.info("Tool registered: {} (disabled by default)", className);
             return config.getId();
         }
+    }
+    
+    /**
+     * 创建工具实例
+     * 
+     * <p>支持包装类型到原始类型的自动转换（如 Integer -> int）
+     * 
+     * @param toolClass 工具类
+     * @param args 构造参数
+     * @return 工具实例
+     * @throws Exception 创建失败
+     */
+    private Object createInstance(Class<?> toolClass, Object[] args) throws Exception {
+        if (args == null || args.length == 0) {
+            return toolClass.getDeclaredConstructor().newInstance();
+        }
+        
+        Exception lastException = null;
+        for (var constructor : toolClass.getConstructors()) {
+            if (constructor.getParameterCount() == args.length) {
+                try {
+                    Object[] convertedArgs = convertArgs(args, constructor.getParameterTypes());
+                    return constructor.newInstance(convertedArgs);
+                } catch (Exception e) {
+                    lastException = e;
+                    log.debug("Constructor {} failed: {}", constructor, e.getMessage());
+                }
+            }
+        }
+        
+        throw new NoSuchMethodException("No matching constructor found for " + toolClass.getName() + 
+            ". Args: " + java.util.Arrays.toString(args) + 
+            ". Last error: " + (lastException != null ? lastException.getMessage() : "none"));
+    }
+    
+    /**
+     * 转换参数类型以匹配构造函数期望的类型
+     * 
+     * <p>支持：
+     * <ul>
+     *   <li>包装类型 -> 原始类型（Integer -> int, Boolean -> boolean）</li>
+     *   <li>Number 子类之间的转换（Integer -> Long, Double -> Float）</li>
+     * </ul>
+     */
+    private Object[] convertArgs(Object[] args, Class<?>[] paramTypes) {
+        Object[] result = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            result[i] = convertArg(args[i], paramTypes[i]);
+        }
+        return result;
+    }
+    
+    private Object convertArg(Object arg, Class<?> targetType) {
+        if (arg == null) return null;
+        
+        Class<?> argType = arg.getClass();
+        
+        if (targetType.isAssignableFrom(argType)) {
+            return arg;
+        }
+        
+        if (arg instanceof Number num) {
+            if (targetType == int.class || targetType == Integer.class) {
+                return num.intValue();
+            } else if (targetType == long.class || targetType == Long.class) {
+                return num.longValue();
+            } else if (targetType == double.class || targetType == Double.class) {
+                return num.doubleValue();
+            } else if (targetType == float.class || targetType == Float.class) {
+                return num.floatValue();
+            } else if (targetType == short.class || targetType == Short.class) {
+                return num.shortValue();
+            } else if (targetType == byte.class || targetType == Byte.class) {
+                return num.byteValue();
+            }
+        }
+        
+        if (arg instanceof Boolean bool) {
+            if (targetType == boolean.class || targetType == Boolean.class) {
+                return bool;
+            }
+        }
+        
+        if (arg instanceof String str) {
+            if (targetType == String.class) {
+                return str;
+            }
+        }
+        
+        throw new IllegalArgumentException("Cannot convert " + argType + " to " + targetType);
     }
 
     /**

@@ -3,6 +3,7 @@ package io.github.mangomaner.mangobot.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.agent.capability.tool.ToolRegistrationService;
+import io.github.mangomaner.mangobot.plugin.PluginClassLoader;
 
 import java.util.function.Supplier;
 
@@ -11,13 +12,21 @@ import java.util.function.Supplier;
  * 
  * <p>提供工具注册和注销能力，供插件和主程序使用。
  * 
+ * <h3>插件自动识别</h3>
+ * <p>当插件调用此 API 时，会自动检测调用者所属的插件 ID，
+ * 无需手动传入。检测机制：
+ * <ol>
+ *   <li>优先检查当前线程的 ContextClassLoader</li>
+ *   <li>其次分析调用栈中所有类的 ClassLoader</li>
+ * </ol>
+ * 
  * <h3>注册方式</h3>
  * <ul>
-*   <li>{@link #registerTool(Class)} - 注册工具类（无参数）</li>
-*   <li>{@link #registerTool(Class, Object...)} - 注册工具类（带构造参数，自动序列化）</li>
-*   <li>{@link #registerToolInstance(Object)} - 注册工具实例（全局共享)</li>
-*   <li>{@link #registerToolFactory(Class, Supplier)} - 注册工具工厂（每次新建）</li>
-* </ul>
+ *   <li>{@link #registerTool(Class)} - 注册工具类（无参数）</li>
+ *   <li>{@link #registerTool(Class, Object...)} - 注册工具类（带构造参数，自动序列化）</li>
+ *   <li>{@link #registerToolInstance(Object)} - 注册工具实例（全局共享)</li>
+ *   <li>{@link #registerToolFactory(Class, Supplier)} - 注册工具工厂（每次新建）</li>
+ * </ul>
  * 
  * @see ToolRegistrationService
  */
@@ -39,14 +48,56 @@ public class MangoToolApi {
     }
 
     /**
+     * 自动检测当前调用者的插件 ID
+     * 
+     * @return 插件数据库 ID，如果非插件调用则返回 null
+     */
+    private static Integer detectPluginId() {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        if (loader instanceof PluginClassLoader pcl) {
+            Long id = pcl.getPluginDbId();
+            return id != null ? id.intValue() : null;
+        }
+        
+        return detectPluginIdFromStackTrace();
+    }
+
+    /**
+     * 从调用栈中检测插件 ID
+     */
+    private static Integer detectPluginIdFromStackTrace() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        
+        for (StackTraceElement element : stackTrace) {
+            try {
+                Class<?> clazz = Class.forName(element.getClassName());
+                ClassLoader loader = clazz.getClassLoader();
+                
+                if (loader instanceof PluginClassLoader pcl) {
+                    Long id = pcl.getPluginDbId();
+                    if (id != null) {
+                        return id.intValue();
+                    }
+                }
+            } catch (ClassNotFoundException ignored) {
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * 注册工具类（无参数）
+     * 
+     * <p>自动检测调用者是否为插件，如果是则关联插件 ID。
      * 
      * @param toolClass 工具类（应带有 @MangoTool 注解）
      * @return 工具配置 ID
      */
     public static Integer registerTool(Class<?> toolClass) {
         checkService();
-        return toolRegistrationService.registerTool(toolClass, null, null);
+        Integer pluginId = detectPluginId();
+        return toolRegistrationService.registerToolWithPluginId(toolClass, null, pluginId);
     }
 
     /**
@@ -55,6 +106,8 @@ public class MangoToolApi {
      * <p>参数会自动序列化为 JSON 存储到数据库。
      * 支持基本类型：String、集合、Map 等可 JSON 序列化的类型。
      * 
+     * <p>自动检测调用者是否为插件，如果是则关联插件 ID。
+     * 
      * @param toolClass 工具类
      * @param args 构造参数（可变参数，自动序列化）
      * @return 工具配置 ID
@@ -62,49 +115,28 @@ public class MangoToolApi {
      */
     public static Integer registerTool(Class<?> toolClass, Object... args) {
         checkService();
-        String argsJson = serializeArgs(args);
-        return toolRegistrationService.registerTool(toolClass, argsJson, null);
-    }
-
-    /**
-     * 注册工具类（来自插件，带构造参数）
-     * 
-     * @param toolClass 工具类
-     * @param args 构造参数
-     * @param pluginId 插件 ID
-     * @return 工具配置 ID
-     */
-    public static Integer registerTool(Class<?> toolClass, Object[] args, Integer pluginId) {
-        checkService();
-        String argsJson = serializeArgs(args);
-        return toolRegistrationService.registerTool(toolClass, argsJson, pluginId);
+        Integer pluginId = detectPluginId();
+        return toolRegistrationService.registerToolWithPluginId(toolClass, args, pluginId);
     }
 
     /**
      * 注册工具实例（直接传入实例，全局共享）
+     * 
+     * <p>自动检测调用者是否为插件，如果是则关联插件 ID。
      * 
      * @param toolInstance 工具实例
      * @return 工具配置 ID
      */
     public static Integer registerToolInstance(Object toolInstance) {
         checkService();
-        return toolRegistrationService.registerToolInstance(toolInstance, null);
-    }
-
-    /**
-     * 注册工具实例（来自插件）
-     * 
-     * @param toolInstance 工具实例
-     * @param pluginId 插件 ID
-     * @return 工具配置 ID
-     */
-    public static Integer registerToolInstance(Object toolInstance, Integer pluginId) {
-        checkService();
+        Integer pluginId = detectPluginId();
         return toolRegistrationService.registerToolInstance(toolInstance, pluginId);
     }
 
     /**
      * 注册工具工厂（每次创建 Agent 时新建实例）
+     * 
+     * <p>自动检测调用者是否为插件，如果是则关联插件 ID。
      * 
      * @param toolClass 工具类
      * @param factory 工厂方法
@@ -112,19 +144,7 @@ public class MangoToolApi {
      */
     public static Integer registerToolFactory(Class<?> toolClass, Supplier<Object> factory) {
         checkService();
-        return toolRegistrationService.registerToolFactory(toolClass, factory, null);
-    }
-
-    /**
-     * 注册工具工厂（来自插件）
-     * 
-     * @param toolClass 工具类
-     * @param factory 工厂方法
-     * @param pluginId 插件 ID
-     * @return 工具配置 ID
-     */
-    public static Integer registerToolFactory(Class<?> toolClass, Supplier<Object> factory, Integer pluginId) {
-        checkService();
+        Integer pluginId = detectPluginId();
         return toolRegistrationService.registerToolFactory(toolClass, factory, pluginId);
     }
 
@@ -152,7 +172,7 @@ public class MangoToolApi {
      * 序列化构造参数
      */
     private static String serializeArgs(Object[] args) {
-        if (args == null || args.length == 00) {
+        if (args == null || args.length == 0) {
             return null;
         }
         try {

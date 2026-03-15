@@ -12,6 +12,7 @@ import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestParam;
 import io.github.mangomaner.mangobot.annotation.web.MangoRequestMethod;
 import io.github.mangomaner.mangobot.api.MangoOneBotApi;
+import io.github.mangomaner.mangobot.api.MangoToolApi;
 import io.github.mangomaner.mangobot.configuration.annotation.ConfigMeta;
 import io.github.mangomaner.mangobot.configuration.annotation.InjectConfig;
 import io.github.mangomaner.mangobot.configuration.enums.ConfigType;
@@ -21,10 +22,8 @@ import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEven
 import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
 import io.github.mangomaner.mangobot.model.onebot.segment.TextSegment;
 import io.github.mangomaner.mangobot.plugin.Plugin;
-import io.github.mangomaner.mangobot.plugin.example.MessageService.MessageStatistics;
 import io.github.mangomaner.mangobot.service.OneBotApiService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.List;
 
@@ -34,13 +33,11 @@ import java.util.List;
     name = "ExamplePlugin",
     author = "mangomaner",
     version = "1.0.0",
-    description = "MangoBot 示例插件，演示插件系统的完整功能",
+    description = "MangoBot 示例插件，演示插件系统的完整功能，包括自定义工具注册",
     enableWeb = true
 )
 @PluginConfigGroup(name = "基础设置", category = "basic", order = 1)
 public class ExamplePlugin implements Plugin {
-
-    private AnnotationConfigApplicationContext applicationContext;
 
     @MangoBotApiService
     private OneBotApiService oneBotApiService;
@@ -89,34 +86,23 @@ public class ExamplePlugin implements Plugin {
     )
     private Integer apiTimeout;
 
-    private MessageProcessor messageProcessor;
-    private MessageService messageService;
-
     @Override
     public void onEnable() {
-        applicationContext = new AnnotationConfigApplicationContext();
-        applicationContext.scan("io.github.mangomaner.mangobot.plugin.example");
-        applicationContext.refresh();
-
-        this.messageProcessor = applicationContext.getBean(MessageProcessor.class);
-        this.messageService = applicationContext.getBean(MessageService.class);
-
-        String[] beanNames = applicationContext.getBeanDefinitionNames();
-        log.info("ExamplePlugin Spring 容器初始化完成，共加载 {} 个 Bean", beanNames.length);
-        for (String beanName : beanNames) {
-            log.debug("Loaded Bean: {}", beanName);
-        }
-
         log.info("ExamplePlugin 已启用，当前配置：autoReplyEnabled={}, replyPrefix={}, maxReplyLength={}, apiTimeout={}",
             autoReplyEnabled, replyPrefix, maxReplyLength, apiTimeout);
+        
+        Integer weatherToolId = MangoToolApi.registerTool(WeatherTool.class);
+        log.info("WeatherTool 注册成功，工具ID: {}", weatherToolId);
+        
+        Integer calcToolId = MangoToolApi.registerTool(CalculatorTool.class, 2, true);
+        log.info("CalculatorTool 注册成功（精度=2，启用历史），工具ID: {}", calcToolId);
     }
 
     @Override
     public void onDisable() {
-        if (applicationContext != null) {
-            applicationContext.close();
-        }
-        log.info("ExamplePlugin 已禁用");
+        MangoToolApi.unregisterTool(WeatherTool.class);
+        MangoToolApi.unregisterTool(CalculatorTool.class);
+        log.info("ExamplePlugin 已禁用，所有工具已注销");
     }
 
     @MangoBotEventListener
@@ -127,8 +113,6 @@ public class ExamplePlugin implements Plugin {
         long groupId = event.getGroupId();
 
         log.info("收到群消息 [群:{}] [用户:{}]: {}", groupId, userId, message);
-
-        messageProcessor.processMessage(userId, message);
 
         if (!Boolean.TRUE.equals(autoReplyEnabled)) {
             return false;
@@ -142,7 +126,7 @@ public class ExamplePlugin implements Plugin {
                 "#example help - 显示帮助\n" +
                 "#example ping - 测试回复\n" +
                 "#example info - 显示插件信息\n" +
-                "#example stats - 显示消息统计");
+                "#example weather <城市> - 获取天气预报（演示工具）");
             return true;
         }
 
@@ -158,10 +142,14 @@ public class ExamplePlugin implements Plugin {
             return true;
         }
 
-        if ("#example stats".equalsIgnoreCase(trimmedMessage)) {
-            String stats = messageProcessor.getUserStats(userId);
-            sendGroupReply(event.getSelfId(), groupId, stats);
-            return true;
+        if (trimmedMessage.toLowerCase().startsWith("#example weather ")) {
+            String city = trimmedMessage.substring("#example weather ".length()).trim();
+            if (!city.isEmpty()) {
+                WeatherTool weatherTool = new WeatherTool();
+                String weather = weatherTool.getWeather(city);
+                sendGroupReply(event.getSelfId(), groupId, weather);
+                return true;
+            }
         }
 
         return false;
@@ -174,8 +162,6 @@ public class ExamplePlugin implements Plugin {
         long userId = event.getUserId();
 
         log.info("收到私聊消息 [用户:{}]: {}", userId, message);
-
-        messageProcessor.processMessage(userId, message);
 
         if (message.contains("你好") || message.contains("hello")) {
             sendPrivateReply(event.getSelfId(), userId,
@@ -255,17 +241,6 @@ public class ExamplePlugin implements Plugin {
     @MangoBotRequestMapping(value = "/config", method = MangoRequestMethod.GET)
     public PluginConfigInfo getConfig() {
         return new PluginConfigInfo(autoReplyEnabled, replyPrefix, maxReplyLength, apiTimeout);
-    }
-
-    @MangoBotRequestMapping(value = "/statistics", method = MangoRequestMethod.GET)
-    public MessageStatistics getStatistics() {
-        return messageService.getStatistics();
-    }
-
-    @MangoBotRequestMapping(value = "/statistics/reset", method = MangoRequestMethod.POST)
-    public String resetStatistics() {
-        messageService.reset();
-        return "消息统计已重置";
     }
 
     public static class PluginData {

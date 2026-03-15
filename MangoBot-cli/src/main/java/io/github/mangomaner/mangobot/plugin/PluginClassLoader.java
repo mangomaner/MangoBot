@@ -14,14 +14,20 @@ import java.util.jar.JarFile;
 public class PluginClassLoader extends URLClassLoader {
 
     private final JarFile jarFile;
+    private final Long pluginDbId;
 
-    public PluginClassLoader(JarFile jarFile, File jarFileSource, ClassLoader parent) throws Exception {
+    public PluginClassLoader(JarFile jarFile, File jarFileSource, ClassLoader parent, Long pluginDbId) throws Exception {
         super(new URL[]{jarFileSource.toURI().toURL()}, parent);
         this.jarFile = jarFile;
+        this.pluginDbId = pluginDbId;
     }
 
-    public static PluginClassLoader create(File jarFile, ClassLoader parent) throws Exception {
-        return new PluginClassLoader(new JarFile(jarFile), jarFile, parent);
+    public static PluginClassLoader create(File jarFile, ClassLoader parent, Long pluginDbId) throws Exception {
+        return new PluginClassLoader(new JarFile(jarFile), jarFile, parent, pluginDbId);
+    }
+
+    public Long getPluginDbId() {
+        return pluginDbId;
     }
 
     @Override

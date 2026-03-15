@@ -138,7 +138,7 @@ public class PluginManager {
         String jarName = jarFile.getName();
         PluginClassLoader loader = null;
         try {
-            loader = PluginClassLoader.create(jarFile, getClass().getClassLoader());
+            loader = PluginClassLoader.create(jarFile, getClass().getClassLoader(), null);
             try (JarFile jar = new JarFile(jarFile)) {
                 Enumeration<JarEntry> entries = jar.entries();
                 while (entries.hasMoreElements()) {
@@ -209,15 +209,15 @@ public class PluginManager {
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
 
         try {
-            loader = PluginClassLoader.create(jarFile, getClass().getClassLoader());
-            Thread.currentThread().setContextClassLoader(loader);
-            PluginRuntimeWrapper wrapper = new PluginRuntimeWrapper(pluginId, loader);
-
             Plugins p = pluginsService.getOne(new LambdaQueryWrapper<Plugins>().eq(Plugins::getJarName, pluginId));
             if (p == null) {
                 log.error("插件未注册，无法加载: {}", pluginId);
                 return;
             }
+
+            loader = PluginClassLoader.create(jarFile, getClass().getClassLoader(), p.getId());
+            Thread.currentThread().setContextClassLoader(loader);
+            PluginRuntimeWrapper wrapper = new PluginRuntimeWrapper(pluginId, loader);
 
             Class<?> clazz = loader.loadClass(p.getPackageName());
 
