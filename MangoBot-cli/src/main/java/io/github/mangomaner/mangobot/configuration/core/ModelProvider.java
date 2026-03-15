@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @MangoBotEventListener
 public class ModelProvider {
+
+    // 注意，OpenAIChatModel一个实例可以同时有多份连接，因此对于每种角色，只需创建一个实例即可
     private final Map<String, OpenAIChatModel> modelCache = new ConcurrentHashMap<>();
 
     @Resource

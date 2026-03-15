@@ -249,3 +249,92 @@ CREATE TABLE IF NOT EXISTS chat_message_web (
 CREATE INDEX IF NOT EXISTS idx_chat_message_web_session ON chat_message_web(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_message_web_time ON chat_message_web(create_time);
 
+-- ========================================
+-- 1. Java 工具配置表
+-- ========================================
+CREATE TABLE agent_java_tool_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- 类信息
+    class_name VARCHAR(500) NOT NULL UNIQUE,    -- 类全限定名（唯一约束）
+    constructor_args TEXT,                       -- 构造参数 JSON
+    load_type VARCHAR(20) DEFAULT 'NO_ARGS',    -- 加载方式：NO_ARGS, WITH_ARGS, INSTANCE, FACTORY
+
+    -- 元数据（从 @MangoTool 注解读取，用于前端展示）
+    tool_name VARCHAR(100),
+    description TEXT,
+    category VARCHAR(50),
+
+    -- 来源（关联插件表，为空则表示系统内置）
+    plugin_id INTEGER,
+
+    -- 状态
+    enabled BOOLEAN DEFAULT FALSE,
+
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE SET NULL
+);
+
+-- ========================================
+-- 2. MCP 连接配置表
+-- ========================================
+CREATE TABLE agent_mcp_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    mcp_name VARCHAR(100) NOT NULL,
+    transport_type VARCHAR(20) NOT NULL,        -- STDIO, SSE, HTTP
+    connection_config TEXT NOT NULL,            -- 连接参数 JSON
+
+    connection_status INTEGER DEFAULT 0,        -- 状态（0: 断开, 1: 已连接, 2: 错误）
+    enabled BOOLEAN DEFAULT FALSE,
+
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 3. MCP 工具配置表
+-- ========================================
+CREATE TABLE agent_mcp_tool_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    mcp_config_id INTEGER NOT NULL,             -- 关联 MCP 连接表 id
+    tool_name VARCHAR(100) NOT NULL,            -- MCP 工具名称
+
+    -- 元数据（从 MCP 服务器获取）
+    description TEXT,
+    input_schema TEXT,
+
+    -- 状态
+    enabled BOOLEAN DEFAULT TRUE,
+
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(mcp_config_id, tool_name),
+    FOREIGN KEY (mcp_config_id) REFERENCES agent_mcp_config(id) ON DELETE CASCADE
+);
+
+-- ========================================
+-- 4. Skill 配置表
+-- ========================================
+CREATE TABLE agent_skill_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    skill_name VARCHAR(100) NOT NULL,
+    description TEXT,
+
+    -- 文件路径（相对于 skills 目录）
+    skill_path VARCHAR(500) NOT NULL UNIQUE,    -- 如: "weather_analysis"
+
+    -- 绑定的工具 id 列表
+    bound_tool_ids TEXT,                        -- JSON 数组: [1, 2, 3]
+
+    -- 状态
+    enabled BOOLEAN DEFAULT FALSE,
+
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);

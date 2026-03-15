@@ -1,5 +1,6 @@
 package io.github.mangomaner.mangobot.manager;
 
+import io.github.mangomaner.mangobot.agent.capability.tool.ToolRegistrationService;
 import io.github.mangomaner.mangobot.api.*;
 import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.service.BotFilesService;
@@ -30,6 +31,9 @@ public class MangoApiManager {
     @Resource
     private ModelProvider modelProvider;
 
+    @Resource
+    private ToolRegistrationService toolRegistrationService;
+
     /**
      * 初始化静态 API 类
      */
@@ -40,6 +44,7 @@ public class MangoApiManager {
             initApi(MangoFileApi.class, "setService", BotFilesService.class, botFilesService);
             initApi(MangoOneBotApi.class, "setService", OneBotApiService.class, oneBotApiService);
             initApi(MangoModelApi.class, "setProvider", ModelProvider.class, modelProvider);
+            initApi(MangoToolApi.class, "setService", ToolRegistrationService.class, toolRegistrationService);
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize Mango APIs", e);
         }

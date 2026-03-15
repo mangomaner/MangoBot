@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.mangomaner.mangobot.mapper.agent.AgentJavaToolConfigMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.agent.model.domain.AgentJavaToolConfig">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="className" column="class_name" jdbcType="VARCHAR"/>
+            <result property="constructorArgs" column="constructor_args" jdbcType="VARCHAR"/>
+            <result property="toolName" column="tool_name" jdbcType="VARCHAR"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="category" column="category" jdbcType="VARCHAR"/>
+            <result property="pluginId" column="plugin_id" jdbcType="INTEGER"/>
+            <result property="enabled" column="enabled" jdbcType="BOOLEAN"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,class_name,constructor_args,
+        tool_name,description,category,
+        plugin_id,enabled,create_time,
+        update_time
+    </sql>
+</mapper>
