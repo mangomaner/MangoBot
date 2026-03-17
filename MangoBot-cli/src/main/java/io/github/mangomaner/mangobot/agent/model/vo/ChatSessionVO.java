@@ -1,5 +1,6 @@
 package io.github.mangomaner.mangobot.agent.model.vo;
 
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -26,4 +27,7 @@ public class ChatSessionVO {
 
     @Schema(description = "消息数量")
     private Long messageCount;
+
+    @Schema(description = "会话来源")
+    private SessionSource source;
 }

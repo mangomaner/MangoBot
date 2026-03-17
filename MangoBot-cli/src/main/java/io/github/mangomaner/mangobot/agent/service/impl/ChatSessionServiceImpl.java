@@ -7,6 +7,7 @@ import io.github.mangomaner.mangobot.agent.model.domain.ChatMessageWeb;
 import io.github.mangomaner.mangobot.agent.model.domain.ChatSession;
 import io.github.mangomaner.mangobot.agent.model.dto.CreateChatSessionRequest;
 import io.github.mangomaner.mangobot.agent.model.dto.UpdateChatSessionRequest;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.model.vo.ChatSessionVO;
 import io.github.mangomaner.mangobot.agent.service.ChatMessageWebService;
 import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
@@ -53,6 +54,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         // 创建会话实体
         ChatSession session = new ChatSession();
         session.setTitle(request.getTitle().trim());
+        session.setSource(request.getSource() != null ? request.getSource() : SessionSource.WEB);
         session.setCreateTime(new Date());
         session.setUpdateTime(new Date());
 

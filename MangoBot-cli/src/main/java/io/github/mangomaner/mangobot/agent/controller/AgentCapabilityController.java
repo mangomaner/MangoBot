@@ -133,18 +133,24 @@ public class AgentCapabilityController {
         
         if (newEnabled) {
             try {
-                McpClientWrapper client = mcpSynchronizer.connectAndSync(config).block();
+                McpClientWrapper client = mcpSynchronizer.connectAndSync(config);
                 if (client != null) {
+                    mcpConnectionManager.registerClient(config.getId(), client);
                     config.setEnabled(true);
+                    config.setConnectionStatus(1);
                     mcpConfigService.updateById(config);
                 }
             } catch (Exception e) {
                 log.error("Failed to connect MCP: {}", config.getMcpName(), e);
+                config.setConnectionStatus(0);
+                mcpConfigService.updateById(config);
                 return new BaseResponse<>(ErrorCode.OPERATION_ERROR.getCode(), null, "连接失败: " + e.getMessage());
             }
         } else {
             mcpSynchronizer.disconnectAndCleanup(id);
+            mcpConnectionManager.unregisterClient(id);
             config.setEnabled(false);
+            config.setConnectionStatus(0);
             mcpConfigService.updateById(config);
         }
         

@@ -1,7 +1,13 @@
 package io.github.mangomaner.mangobot.agent.controller;
 
+import io.github.mangomaner.mangobot.agent.model.dto.CreateChatSessionRequest;
 import io.github.mangomaner.mangobot.agent.model.dto.StreamChatRequest;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
+import io.github.mangomaner.mangobot.agent.model.vo.ChatSessionVO;
 import io.github.mangomaner.mangobot.agent.service.ChatService;
+import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
+import io.github.mangomaner.mangobot.common.BaseResponse;
+import io.github.mangomaner.mangobot.common.ResultUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +31,16 @@ import reactor.core.publisher.Flux;
 public class ChatController {
 
     private final ChatService chatService;
+    private final ChatSessionService chatSessionService;
+
+    @PostMapping("/session")
+    @Operation(summary = "创建Web会话", description = "创建一个新的Web端对话会话")
+    public BaseResponse<ChatSessionVO> createWebSession(@RequestBody CreateChatSessionRequest request) {
+        request.setSource(SessionSource.WEB);
+        log.info("创建Web会话，title: {}", request.getTitle());
+        ChatSessionVO session = chatSessionService.createSession(request);
+        return ResultUtils.success(session);
+    }
 
     /**
      * 流式对话

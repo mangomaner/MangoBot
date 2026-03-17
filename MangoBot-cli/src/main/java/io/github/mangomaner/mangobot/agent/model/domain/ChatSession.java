@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import java.io.Serializable;
 import java.util.Date;
 import lombok.Data;
@@ -44,6 +45,9 @@ public class ChatSession implements Serializable {
      */
     @TableField(value = "update_time")
     private Date updateTime;
+
+    @TableField(value = "source")
+    private SessionSource source;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;

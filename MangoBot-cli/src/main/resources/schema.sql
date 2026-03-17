@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS chat_session (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title VARCHAR(256), -- 会话标题（默认为该会话第一个问题，因此，前端点击新对话时，先不创建会话，等到输入问题并发送后再新建对话）
     memory_state TEXT, -- AutoContextMemory 持久化状态（JSON格式）
+    source VARCHAR(32),
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );

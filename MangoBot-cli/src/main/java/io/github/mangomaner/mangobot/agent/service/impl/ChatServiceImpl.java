@@ -35,21 +35,26 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Flux<String> streamChat(Integer sessionId, String message) {
         if (sessionId == null) {
-            return Flux.error(new BusinessException(ErrorCode.PARAMS_ERROR, "会话ID不能为空"));
+            return Flux.just("<Error>会话ID不能为空</Error>\n[DONE]");
         }
         if (!StringUtils.hasText(message)) {
-            return Flux.error(new BusinessException(ErrorCode.PARAMS_ERROR, "消息内容不能为空"));
+            return Flux.just("<Error>消息内容不能为空</Error>\n");
         }
 
         try {
             chatSessionService.getSessionById(sessionId);
         } catch (Exception e) {
-            return Flux.error(new BusinessException(ErrorCode.PARAMS_ERROR, "会话不存在"));
+            return Flux.just("<Error>会话不存在</Error>\n");
         }
 
         Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
 
         ReActAgent agent = agentFactory.createAgent(sessionId);
+
+        if(agent.getModel() == null) {
+            return Flux.just("<Error>主模型未配置</Error>\n");
+        }
+
         String agentName = agent.getName();
 
         streamingToolHook.registerSession(agentName, sink, sessionId);
@@ -64,6 +69,8 @@ public class ChatServiceImpl implements ChatService {
                 .subscribeOn(Schedulers.boundedElastic())
                 .doOnComplete(() -> {
                     sink.tryEmitNext("[DONE]");
+                    // 只有成功才加入上下文
+                    memoryManager.persistAndRemoveMemory(sessionId);
                     log.info("Stream completed for session: {}", sessionId);
                 })
                 .doOnError(error -> {
@@ -72,7 +79,6 @@ public class ChatServiceImpl implements ChatService {
                 })
                 .doFinally(signalType -> {
                     streamingToolHook.unregisterSession(agentName);
-                    memoryManager.persistAndRemoveMemory(sessionId);
                     sink.tryEmitComplete();
                 })
                 .subscribe();

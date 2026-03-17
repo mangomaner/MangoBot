@@ -1,5 +1,6 @@
 package io.github.mangomaner.mangobot.agent.model.dto;
 
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,4 +16,7 @@ public class CreateChatSessionRequest {
     @NotBlank(message = "会话标题不能为空")
     @Schema(description = "会话标题", requiredMode = Schema.RequiredMode.REQUIRED)
     private String title;
+
+    @Schema(description = "会话来源")
+    private SessionSource source;
 }

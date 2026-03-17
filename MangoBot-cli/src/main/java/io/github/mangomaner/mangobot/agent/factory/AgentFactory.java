@@ -2,6 +2,7 @@ package io.github.mangomaner.mangobot.agent.factory;
 
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.memory.autocontext.AutoContextMemory;
+import io.agentscope.core.model.OpenAIChatModel;
 import io.agentscope.core.skill.AgentSkill;
 import io.agentscope.core.skill.SkillBox;
 import io.agentscope.core.tool.Toolkit;
@@ -14,12 +15,12 @@ import io.github.mangomaner.mangobot.agent.manager.MemoryManager;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentJavaToolConfig;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentMcpConfig;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentSkillConfig;
-import io.github.mangomaner.mangobot.agent.service.AgentJavaToolConfigService;
-import io.github.mangomaner.mangobot.agent.service.AgentMcpConfigService;
-import io.github.mangomaner.mangobot.agent.service.AgentMcpToolConfigService;
-import io.github.mangomaner.mangobot.agent.service.AgentSkillConfigService;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
+import io.github.mangomaner.mangobot.agent.service.*;
 import io.github.mangomaner.mangobot.api.MangoModelApi;
 import io.github.mangomaner.mangobot.api.ModelRole;
+import io.github.mangomaner.mangobot.common.ErrorCode;
+import io.github.mangomaner.mangobot.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -54,6 +55,7 @@ public class AgentFactory {
     private final AgentMcpConfigService mcpConfigService;
     private final AgentMcpToolConfigService mcpToolConfigService;
     private final AgentSkillConfigService skillConfigService;
+    private final ChatSessionService chatSessionService;
     
     private final JavaToolLoader javaToolLoader;
     private final McpConnectionManager mcpConnectionManager;
@@ -69,6 +71,18 @@ public class AgentFactory {
         String agentName = "MangoBot-" + sessionId;
         log.info("Creating ReActAgent for session: {}, name: {}", sessionId, agentName);
 
+        SessionSource sessionSource = chatSessionService.getSessionById(sessionId).getSource();
+        switch (sessionSource) {
+            case WEB:
+                break;
+            case GROUP:
+                break;
+            case PRIVATE:
+                break;
+            default:
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "未知的会话来源");
+        }
+
         AutoContextMemory memory = memoryManager.getOrCreateMemory(sessionId);
         Toolkit toolkit = new Toolkit();
         SkillBox skillBox = new SkillBox(toolkit);
@@ -77,10 +91,12 @@ public class AgentFactory {
         loadMcpTools(toolkit);
         buildSkillBox(skillBox, toolkit);
 
+        OpenAIChatModel model = MangoModelApi.getModel(ModelRole.MAIN);
+
         return ReActAgent.builder()
                 .name(agentName)
                 .sysPrompt("")
-                .model(MangoModelApi.getModel(ModelRole.MAIN))
+                .model(model)
                 .memory(memory)
                 .toolkit(toolkit)
                 .skillBox(skillBox)
@@ -113,21 +129,30 @@ public class AgentFactory {
         for (AgentMcpConfig mcpConfig : enabledMcps) {
             McpClientWrapper client = mcpClients.get(mcpConfig.getId());
             
-            if (client != null) {
-                try {
-                    List<String> enabledToolNames = mcpToolConfigService
-                        .listEnabledToolNamesByMcpConfigId(mcpConfig.getId());
-                    
-                    toolkit.registration()
-                        .mcpClient(client)
-                        .enableTools(enabledToolNames)
-                        .apply();
-                    
-                    log.debug("MCP tools loaded: {} with {} tools", 
-                        mcpConfig.getMcpName(), enabledToolNames.size());
-                } catch (Exception e) {
-                    log.error("Failed to register MCP tools: {}", mcpConfig.getMcpName(), e);
+            if (client == null) {
+                log.warn("MCP client not initialized for config: {} (ID: {}). Skipping tool registration.", 
+                    mcpConfig.getMcpName(), mcpConfig.getId());
+                continue;
+            }
+            
+            try {
+                List<String> enabledToolNames = mcpToolConfigService
+                    .listEnabledToolNamesByMcpConfigId(mcpConfig.getId());
+                
+                if (enabledToolNames.isEmpty()) {
+                    log.debug("No enabled tools for MCP: {}", mcpConfig.getMcpName());
+                    continue;
                 }
+                
+                toolkit.registration()
+                    .mcpClient(client)
+                    .enableTools(enabledToolNames)
+                    .apply();
+                
+                log.info("MCP tools loaded: {} with {} tools", 
+                    mcpConfig.getMcpName(), enabledToolNames.size());
+            } catch (Exception e) {
+                log.error("Failed to register MCP tools: {}", mcpConfig.getMcpName(), e);
             }
         }
     }

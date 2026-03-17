@@ -10,7 +10,6 @@ import io.github.mangomaner.mangobot.agent.service.AgentMcpToolConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.HashSet;
@@ -18,58 +17,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * MCP 工具同步器
- * 
- * <p>负责 MCP 连接的建立、工具同步和断开清理：
- * <ul>
- *   <li>{@link #connectAndSync(AgentMcpConfig)} - 连接 MCP 并同步工具列表</li>
- *   <li>{@link #disconnectAndCleanup(Integer)} - 断开连接并清理工具配置</li>
- * </ul>
- * 
- * <p>工具同步逻辑：
- * <ol>
- *   <li>连接成功后调用 MCP 服务器的 listTools</li>
- *   <li>将新工具写入数据库（默认启用）</li>
- *   <li>删除服务器不再提供的工具</li>
- * </ol>
- * 
- * @see McpConnectionManager
- * @see AgentMcpToolConfig
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class McpToolSynchronizer {
 
-    /** 连接状态：断开 */
     private static final int STATUS_DISCONNECTED = 0;
-    
-    /** 连接状态：已连接 */
     private static final int STATUS_CONNECTED = 1;
-    
-    /** 连接状态：错误 */
     private static final int STATUS_ERROR = 2;
+
+    private static final Duration DEFAULT_INITIALIZATION_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(120);
 
     private final AgentMcpConfigService mcpConfigService;
     private final AgentMcpToolConfigService mcpToolConfigService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * 连接 MCP 并同步工具
-     * 
-     * <p>根据配置的传输类型建立连接：
-     * <ul>
-     *   <li>STDIO - 解析 command 和 args</li>
-     *   <li>SSE - 解析 url 和 headers</li>
-     *   <li>HTTP - 解析 url 和 headers</li>
-     * </ul>
-     * 
-     * @param config MCP 配置
-     * @return MCP 客户端（异步）
-     */
-    public Mono<McpClientWrapper> connectAndSync(AgentMcpConfig config) {
+    public McpClientWrapper connectAndSync(AgentMcpConfig config) {
         McpClientBuilder builder = McpClientBuilder.create(String.valueOf(config.getId()));
+        Duration initTimeout = DEFAULT_INITIALIZATION_TIMEOUT;
+        Duration reqTimeout = DEFAULT_REQUEST_TIMEOUT;
         
         try {
             Map<String, Object> connConfig = objectMapper.readValue(config.getConnectionConfig(), Map.class);
@@ -94,29 +61,47 @@ public class McpToolSynchronizer {
                 }
             }
             
-            if (connConfig.containsKey("timeout")) {
-                builder.timeout(Duration.ofSeconds(((Number) connConfig.get("timeout")).longValue()));
+            if (connConfig.containsKey("initializationTimeout")) {
+                initTimeout = Duration.ofSeconds(((Number) connConfig.get("initializationTimeout")).longValue());
             }
+            if (connConfig.containsKey("timeout")) {
+                reqTimeout = Duration.ofSeconds(((Number) connConfig.get("timeout")).longValue());
+            }
+            
+            builder.initializationTimeout(initTimeout);
+            builder.timeout(reqTimeout);
+            
+            log.info("MCP client '{}' connecting with initTimeout={}s, requestTimeout={}s", 
+                config.getId(), initTimeout.getSeconds(), reqTimeout.getSeconds());
             
         } catch (Exception e) {
             log.error("Failed to parse MCP connection config: {}", config.getMcpName(), e);
-            return Mono.error(e);
+            mcpConfigService.updateConnectionStatus(config.getId(), STATUS_ERROR);
+            throw new RuntimeException("Failed to parse MCP connection config", e);
         }
         
-        return builder.buildAsync()
-            .doOnSuccess(client -> {
-                mcpConfigService.updateConnectionStatus(config.getId(), STATUS_CONNECTED);
-                syncToolsFromMcp(config.getId(), client);
-            })
-            .doOnError(e -> {
-                mcpConfigService.updateConnectionStatus(config.getId(), STATUS_ERROR);
-                log.error("Failed to connect MCP: {}", config.getMcpName(), e);
-            });
+        try {
+            log.info("Building MCP client for config: {}", config.getId());
+            McpClientWrapper client = builder.buildSync();
+            
+            log.info("Initializing MCP client for config: {}", config.getId());
+            client.initialize().block(initTimeout);
+            
+            if (!client.isInitialized()) {
+                throw new IllegalStateException("MCP client failed to initialize for config: " + config.getId());
+            }
+            
+            log.info("MCP client initialized successfully for config: {}", config.getId());
+            mcpConfigService.updateConnectionStatus(config.getId(), STATUS_CONNECTED);
+            syncToolsFromMcp(config.getId(), client);
+            return client;
+        } catch (Exception e) {
+            mcpConfigService.updateConnectionStatus(config.getId(), STATUS_ERROR);
+            log.error("Failed to connect MCP: {}", config.getMcpName(), e);
+            throw new RuntimeException("Failed to connect MCP: " + config.getMcpName(), e);
+        }
     }
 
-    /**
-     * 应用 HTTP 头
-     */
     @SuppressWarnings("unchecked")
     private void applyHeaders(McpClientBuilder builder, Map<String, Object> connConfig) {
         Object headersObj = connConfig.get("headers");
@@ -126,25 +111,18 @@ public class McpToolSynchronizer {
         }
     }
 
-    /**
-     * 从 MCP 服务器同步工具列表
-     * 
-     * <p>同步策略：
-     * <ul>
-     *   <li>新工具：写入数据库，默认启用</li>
-     *   <li>已删除的工具：从数据库删除</li>
-     *   <li>已存在的工具：保留配置（不覆盖启用状态）</li>
-     * </ul>
-     */
     private void syncToolsFromMcp(Integer mcpConfigId, McpClientWrapper client) {
         try {
-            var toolsResult = client.listTools().block();
+            log.info("Syncing tools from MCP server for config: {}", mcpConfigId);
+            var toolsResult = client.listTools().block(Duration.ofSeconds(30));
             if (toolsResult == null) {
+                log.warn("MCP server returned null tools list for config: {}", mcpConfigId);
                 return;
             }
             
             List<?> tools = toolsResult;
             if (tools == null || tools.isEmpty()) {
+                log.info("No tools found for MCP config: {}", mcpConfigId);
                 return;
             }
             
@@ -192,16 +170,13 @@ public class McpToolSynchronizer {
                 }
             }
             
+            log.info("Synced {} tools for MCP config: {}", serverTools.size(), mcpConfigId);
+            
         } catch (Exception e) {
             log.error("Failed to sync MCP tools for config: {}", mcpConfigId, e);
         }
     }
 
-    /**
-     * 断开连接并清理工具配置
-     * 
-     * @param mcpConfigId MCP 配置 ID
-     */
     public void disconnectAndCleanup(Integer mcpConfigId) {
         mcpToolConfigService.deleteByMcpConfigId(mcpConfigId);
         mcpConfigService.updateConnectionStatus(mcpConfigId, STATUS_DISCONNECTED);
