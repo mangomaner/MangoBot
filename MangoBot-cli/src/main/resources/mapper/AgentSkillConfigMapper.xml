@@ -11,13 +11,15 @@
             <result property="skillPath" column="skill_path" jdbcType="VARCHAR"/>
             <result property="boundToolIds" column="bound_tool_ids" jdbcType="VARCHAR"/>
             <result property="enabled" column="enabled" jdbcType="BOOLEAN"/>
+            <result property="enabledList" column="enabled_list" jdbcType="VARCHAR"/>
+            <result property="availableList" column="available_list" jdbcType="VARCHAR"/>
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
             <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id,skill_name,description,
-        skill_path,bound_tool_ids,enabled,
+        skill_path,bound_tool_ids,enabled,enabled_list,available_list,
         create_time,update_time
     </sql>
 </mapper>

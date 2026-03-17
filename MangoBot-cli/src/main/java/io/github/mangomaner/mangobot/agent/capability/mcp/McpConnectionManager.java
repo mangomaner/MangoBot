@@ -31,6 +31,7 @@ public class McpConnectionManager {
                 log.info("Connecting to MCP: {} (ID: {})", config.getMcpName(), config.getId());
                 McpClientWrapper client = mcpSynchronizer.connectAndSync(config);
                 mcpClients.put(config.getId(), client);
+                registerClient(config.getId(), client);
                 log.info("MCP connected successfully: {}", config.getMcpName());
             } catch (Exception e) {
                 log.error("Failed to connect MCP on startup: {}", config.getMcpName(), e);

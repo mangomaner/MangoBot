@@ -1,8 +1,10 @@
 package io.github.mangomaner.mangobot.agent.capability.skill;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.skill.AgentSkill;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentSkillConfig;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.service.AgentSkillConfigService;
 import io.github.mangomaner.mangobot.utils.FileUtils;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Skill 管理器
@@ -118,8 +121,12 @@ public class SkillManager {
                 config = new AgentSkillConfig();
                 config.setSkillPath(skillPathName);
                 config.setEnabled(false);
+                // 默认支持所有来源
+                String allSourcesJson = buildAllSourcesJson();
+                config.setEnabledList(allSourcesJson);
+                config.setAvailableList(allSourcesJson);
             }
-            
+
             config.setSkillName(metadata.name);
             config.setDescription(metadata.description);
             if (metadata.boundToolIds != null && !metadata.boundToolIds.isEmpty()) {
@@ -210,11 +217,25 @@ public class SkillManager {
                 String frontmatter = content.substring(3, endIndex);
                 Yaml yaml = new Yaml();
                 Map<String, Object> data = yaml.load(frontmatter);
-                metadata.name = (String) data.get("name");
-                metadata.description = (String) data.get("description");
+                Object nameObj = data.get("name");
+                if (nameObj != null) {
+                    metadata.name = String.valueOf(nameObj);
+                }
+                Object descObj = data.get("description");
+                if (descObj != null) {
+                    metadata.description = String.valueOf(descObj);
+                }
                 Object boundToolsObj = data.get("bound_tool_ids");
                 if (boundToolsObj instanceof List) {
-                    metadata.boundToolIds = (List<Integer>) boundToolsObj;
+                    List<?> list = (List<?>) boundToolsObj;
+                    metadata.boundToolIds = list.stream()
+                            .map(obj -> {
+                                if (obj instanceof Number) {
+                                    return ((Number) obj).intValue();
+                                }
+                                return Integer.parseInt(String.valueOf(obj));
+                            })
+                            .collect(Collectors.toList());
                 }
             }
         }
@@ -288,5 +309,22 @@ public class SkillManager {
         String name;
         String description;
         List<Integer> boundToolIds;
+    }
+
+    /**
+     * 构建包含所有来源的 JSON 字符串
+     *
+     * @return 所有 SessionSource 的 JSON 数组字符串
+     */
+    private String buildAllSourcesJson() {
+        List<String> allSourceKeys = Arrays.stream(SessionSource.values())
+                .map(SessionSource::getSourceKey)
+                .collect(Collectors.toList());
+        try {
+            return objectMapper.writeValueAsString(allSourceKeys);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize all sources, using hardcoded default", e);
+            return "[\"web\",\"group\",\"private\"]";
+        }
     }
 }

@@ -13,6 +13,8 @@
             <result property="category" column="category" jdbcType="VARCHAR"/>
             <result property="pluginId" column="plugin_id" jdbcType="INTEGER"/>
             <result property="enabled" column="enabled" jdbcType="BOOLEAN"/>
+            <result property="enabledList" column="enabled_list" jdbcType="VARCHAR"/>
+            <result property="availableList" column="available_list" jdbcType="VARCHAR"/>
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
             <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
     </resultMap>
@@ -20,7 +22,7 @@
     <sql id="Base_Column_List">
         id,class_name,constructor_args,
         tool_name,description,category,
-        plugin_id,enabled,create_time,
-        update_time
+        plugin_id,enabled,enabled_list,available_list,
+        create_time,update_time
     </sql>
 </mapper>

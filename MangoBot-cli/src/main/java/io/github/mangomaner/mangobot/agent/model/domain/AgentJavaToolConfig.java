@@ -36,6 +36,12 @@ public class AgentJavaToolConfig implements Serializable {
     @TableField(value = "enabled")
     private Boolean enabled;
 
+    @TableField(value = "enabled_list")
+    private String enabledList;
+
+    @TableField(value = "available_list")
+    private String availableList;
+
     @TableField(value = "load_type")
     private String loadType;
 

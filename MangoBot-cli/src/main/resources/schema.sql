@@ -272,6 +272,12 @@ CREATE TABLE agent_java_tool_config (
     -- 状态
     enabled BOOLEAN DEFAULT FALSE,
 
+    -- 启用列表（当前启用的来源）
+    enabled_list TEXT DEFAULT '["web","group","private"]',  -- JSON 数组: ["web", "group", "private"]
+
+    -- 可启用列表（可以被启用的来源）
+    available_list TEXT DEFAULT '["web","group","private"]',  -- JSON 数组: ["web", "group", "private"]
+
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
 
@@ -311,6 +317,12 @@ CREATE TABLE agent_mcp_tool_config (
     -- 状态
     enabled BOOLEAN DEFAULT TRUE,
 
+    -- 启用列表（当前启用的来源）
+    enabled_list TEXT DEFAULT '["web","group","private"]',  -- JSON 数组: ["web", "group", "private"]
+
+    -- 可启用列表（可以被启用的来源）
+    available_list TEXT DEFAULT '["web","group","private"]',  -- JSON 数组: ["web", "group", "private"]
+
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
 
@@ -335,6 +347,12 @@ CREATE TABLE agent_skill_config (
 
     -- 状态
     enabled BOOLEAN DEFAULT FALSE,
+
+    -- 启用列表（当前启用的来源）
+    enabled_list TEXT DEFAULT '["web","group","private"]',  -- JSON 数组: ["web", "group", "private"]
+
+    -- 可启用列表（可以被启用的来源）
+    available_list TEXT DEFAULT '["web","group","private"]',  -- JSON 数组: ["web", "group", "private"]
 
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP

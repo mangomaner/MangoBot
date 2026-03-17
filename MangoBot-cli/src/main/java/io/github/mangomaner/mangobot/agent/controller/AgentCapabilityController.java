@@ -12,6 +12,9 @@ import io.github.mangomaner.mangobot.agent.model.domain.AgentMcpToolConfig;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentSkillConfig;
 import io.github.mangomaner.mangobot.agent.model.dto.CreateMcpConfigRequest;
 import io.github.mangomaner.mangobot.agent.model.dto.CreateSkillRequest;
+import io.github.mangomaner.mangobot.agent.model.dto.UpdateEnabledListRequest;
+import io.github.mangomaner.mangobot.agent.model.dto.UpdateMcpConfigRequest;
+import io.github.mangomaner.mangobot.agent.model.dto.UpdateMcpToolsEnabledListRequest;
 import io.github.mangomaner.mangobot.agent.model.dto.UpdateSkillRequest;
 import io.github.mangomaner.mangobot.agent.model.vo.JavaToolVO;
 import io.github.mangomaner.mangobot.agent.model.vo.McpConfigVO;
@@ -23,6 +26,7 @@ import io.github.mangomaner.mangobot.agent.service.AgentMcpToolConfigService;
 import io.github.mangomaner.mangobot.agent.service.AgentSkillConfigService;
 import io.github.mangomaner.mangobot.common.BaseResponse;
 import io.github.mangomaner.mangobot.common.ErrorCode;
+import io.github.mangomaner.mangobot.exception.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -97,6 +101,22 @@ public class AgentCapabilityController {
         return new BaseResponse<>(0, true, "");
     }
 
+    @PutMapping("/java-tools/{id}/enabled-list")
+    @Operation(summary = "更新 Java 工具启用来源列表")
+    public BaseResponse<Boolean> updateJavaToolEnabledList(
+            @PathVariable Integer id,
+            @RequestBody UpdateEnabledListRequest request) {
+        try {
+            javaToolConfigService.updateEnabledList(id, request.getEnabledList());
+            return new BaseResponse<>(0, true, "");
+        } catch (IllegalArgumentException e) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR.getCode(), false, e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to update enabled list for Java tool: {}", id, e);
+            return new BaseResponse<>(ErrorCode.OPERATION_ERROR.getCode(), false, e.getMessage());
+        }
+    }
+
     // ==================== MCP 连接 ====================
 
     @GetMapping("/mcp")
@@ -165,6 +185,49 @@ public class AgentCapabilityController {
         return new BaseResponse<>(0, true, "");
     }
 
+    @PutMapping("/mcp/{id}")
+    @Operation(summary = "更新 MCP 连接配置")
+    public BaseResponse<Boolean> updateMcpConnection(
+            @PathVariable Integer id,
+            @RequestBody UpdateMcpConfigRequest request) {
+        AgentMcpConfig config = mcpConfigService.getById(id);
+        if (config == null) {
+            return new BaseResponse<>(ErrorCode.NOT_FOUND_ERROR);
+        }
+        
+        if (Boolean.TRUE.equals(config.getEnabled())) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "无法修改已启用的 MCP 连接，请先禁用");
+        }
+        
+        if (request.getMcpName() != null) {
+            config.setMcpName(request.getMcpName());
+        }
+        if (request.getTransportType() != null) {
+            config.setTransportType(request.getTransportType());
+        }
+        if (request.getConnectionConfig() != null) {
+            config.setConnectionConfig(request.getConnectionConfig());
+        }
+        mcpConfigService.updateById(config);
+        return new BaseResponse<>(0, true, "");
+    }
+
+    @PutMapping("/mcp/{mcpConfigId}/tools/enabled-list")
+    @Operation(summary = "批量更新 MCP 连接下所有工具的启用来源列表")
+    public BaseResponse<Boolean> updateMcpToolsEnabledList(
+            @PathVariable Integer mcpConfigId,
+            @RequestBody UpdateMcpToolsEnabledListRequest request) {
+        try {
+            mcpToolConfigService.updateEnabledListByMcpConfigId(mcpConfigId, request.getEnabledList());
+            return new BaseResponse<>(0, true, "");
+        } catch (IllegalArgumentException e) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR.getCode(), false, e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to update enabled list for MCP tools: {}", mcpConfigId, e);
+            return new BaseResponse<>(ErrorCode.OPERATION_ERROR.getCode(), false, e.getMessage());
+        }
+    }
+
     @GetMapping("/mcp/{mcpConfigId}/tools")
     @Operation(summary = "获取 MCP 下的工具列表")
     public BaseResponse<List<McpToolVO>> listMcpTools(@PathVariable Integer mcpConfigId) {
@@ -185,6 +248,22 @@ public class AgentCapabilityController {
         config.setEnabled(newEnabled);
         mcpToolConfigService.updateById(config);
         return new BaseResponse<>(0, newEnabled, "");
+    }
+
+    @PutMapping("/mcp-tools/{id}/enabled-list")
+    @Operation(summary = "更新 MCP 工具启用来源列表")
+    public BaseResponse<Boolean> updateMcpToolEnabledList(
+            @PathVariable Integer id,
+            @RequestBody UpdateEnabledListRequest request) {
+        try {
+            mcpToolConfigService.updateEnabledList(id, request.getEnabledList());
+            return new BaseResponse<>(0, true, "");
+        } catch (IllegalArgumentException e) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR.getCode(), false, e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to update enabled list for MCP tool: {}", id, e);
+            return new BaseResponse<>(ErrorCode.OPERATION_ERROR.getCode(), false, e.getMessage());
+        }
     }
 
     // ==================== Skill ====================
@@ -252,6 +331,22 @@ public class AgentCapabilityController {
         config.setEnabled(newEnabled);
         skillConfigService.updateById(config);
         return new BaseResponse<>(0, newEnabled, "");
+    }
+
+    @PutMapping("/skills/{id}/enabled-list")
+    @Operation(summary = "更新 Skill 启用来源列表")
+    public BaseResponse<Boolean> updateSkillEnabledList(
+            @PathVariable Integer id,
+            @RequestBody UpdateEnabledListRequest request) {
+        try {
+            skillConfigService.updateEnabledList(id, request.getEnabledList());
+            return new BaseResponse<>(0, true, "");
+        } catch (IllegalArgumentException e) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR.getCode(), false, e.getMessage());
+        } catch (Exception e) {
+            log.error("Failed to update enabled list for skill: {}", id, e);
+            return new BaseResponse<>(ErrorCode.OPERATION_ERROR.getCode(), false, e.getMessage());
+        }
     }
 
     @DeleteMapping("/skills/{id}")

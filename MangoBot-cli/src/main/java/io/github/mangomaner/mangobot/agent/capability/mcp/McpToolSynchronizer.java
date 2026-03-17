@@ -1,10 +1,12 @@
 package io.github.mangomaner.mangobot.agent.capability.mcp;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.tool.mcp.McpClientBuilder;
 import io.agentscope.core.tool.mcp.McpClientWrapper;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentMcpConfig;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentMcpToolConfig;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.service.AgentMcpConfigService;
 import io.github.mangomaner.mangobot.agent.service.AgentMcpToolConfigService;
 import lombok.RequiredArgsConstructor;
@@ -12,10 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -155,6 +159,10 @@ public class McpToolSynchronizer {
                             toolConfig.setInputSchema("{}");
                         }
                         toolConfig.setEnabled(true);
+                        // 默认支持所有来源
+                        String allSourcesJson = buildAllSourcesJson();
+                        toolConfig.setEnabledList(allSourcesJson);
+                        toolConfig.setAvailableList(allSourcesJson);
                         mcpToolConfigService.save(toolConfig);
                         log.info("New MCP tool registered: {}::{}", mcpConfigId, toolName);
                     }
@@ -181,5 +189,22 @@ public class McpToolSynchronizer {
         mcpToolConfigService.deleteByMcpConfigId(mcpConfigId);
         mcpConfigService.updateConnectionStatus(mcpConfigId, STATUS_DISCONNECTED);
         log.info("MCP disconnected and tools removed: {}", mcpConfigId);
+    }
+
+    /**
+     * 构建包含所有来源的 JSON 字符串
+     *
+     * @return 所有 SessionSource 的 JSON 数组字符串
+     */
+    private String buildAllSourcesJson() {
+        List<String> allSourceKeys = Arrays.stream(SessionSource.values())
+                .map(SessionSource::getSourceKey)
+                .collect(Collectors.toList());
+        try {
+            return objectMapper.writeValueAsString(allSourceKeys);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize all sources, using hardcoded default", e);
+            return "[\"web\",\"group\",\"private\"]";
+        }
     }
 }

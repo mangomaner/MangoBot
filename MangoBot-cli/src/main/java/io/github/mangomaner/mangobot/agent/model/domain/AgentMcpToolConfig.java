@@ -52,6 +52,18 @@ public class AgentMcpToolConfig implements Serializable {
     private Boolean enabled;
 
     /**
+     * 启用列表（当前启用的来源）
+     */
+    @TableField(value = "enabled_list")
+    private String enabledList;
+
+    /**
+     * 可启用列表（可以被启用的来源）
+     */
+    @TableField(value = "available_list")
+    private String availableList;
+
+    /**
      * 
      */
     @TableField(value = "create_time")

@@ -11,13 +11,15 @@
             <result property="description" column="description" jdbcType="VARCHAR"/>
             <result property="inputSchema" column="input_schema" jdbcType="VARCHAR"/>
             <result property="enabled" column="enabled" jdbcType="BOOLEAN"/>
+            <result property="enabledList" column="enabled_list" jdbcType="VARCHAR"/>
+            <result property="availableList" column="available_list" jdbcType="VARCHAR"/>
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
             <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id,mcp_config_id,tool_name,
-        description,input_schema,enabled,
+        description,input_schema,enabled,enabled_list,available_list,
         create_time,update_time
     </sql>
 </mapper>

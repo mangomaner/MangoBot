@@ -1,11 +1,11 @@
 package io.github.mangomaner.mangobot.agent.capability.tool;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.tool.coding.ShellCommandTool;
 import io.agentscope.core.tool.file.ReadFileTool;
 import io.agentscope.core.tool.file.WriteFileTool;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.tools.CalculatorTool;
 import io.github.mangomaner.mangobot.agent.tools.DateTimeTool;
 import io.github.mangomaner.mangobot.agent.tools.TextTool;
@@ -17,28 +17,41 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * 工具注册服务
- * 
- * <p>负责管理 Java 工具的注册、更新和注销，提供四种注册方式：
+ * <p>
+ * 负责管理 Java 工具的注册、更新和注销，支持细粒度的来源控制。
+ *
+ * <h3>注册方式</h3>
  * <ul>
-*   <li>{@link #registerTool(Class, Object...)} - 注册工具类（无参或带参）</li>
-*   <li>{@link #registerToolInstance(Object, Integer)} - 注册工具实例（全局共享）</li>
-*   <li>{@link #registerToolFactory(Class, Supplier, Integer)} - 注册工具工厂（每次新建）</li>
-* </ul>
- * 
- * <p>内置工具通过 {@link #initBuiltInTools()} 在启动时自动注册。
- * 
- * @see JavaToolLoader
+ *   <li>工具类注册 - 通过反射创建实例</li>
+ *   <li>工具实例注册 - 直接使用传入的实例</li>
+ *   <li>工具工厂注册 - 每次新建实例</li>
+ * </ul>
+ *
+ * <h3>来源控制</h3>
+ * <p>通过 {@link SessionSource} 指定工具可在哪些场景使用：
+ * <ul>
+ *   <li>WEB - Web端对话</li>
+ *   <li>GROUP - 群聊场景</li>
+ *   <li>PRIVATE - 私聊场景</li>
+ * </ul>
+ *
  * @see MangoToolApi
+ * @see SessionSource
  */
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class ToolRegistrationService {
+
+    // ==================== 常量 ====================
 
     /** Shell 命令白名单 */
     private static final Set<String> ALLOWED_SHELL_COMMANDS = Set.of(
@@ -46,85 +59,205 @@ public class ToolRegistrationService {
         "echo", "mkdir", "rm", "cp", "mv", "touch", "chmod"
     );
 
+    // ==================== 依赖 ====================
+
     private final AgentJavaToolConfigService toolConfigService;
     private final JavaToolLoader javaToolLoader;
     private final ObjectMapper objectMapper;
 
+    // ==================== 公共 API ====================
+
     /**
      * 初始化内置工具
-     * 
-     * <p>在应用启动时调用，通过 {@link MangoToolApi} 注册所有内置工具：
-     * <ul>
-     *   <li>DateTimeTool - 日期时间工具</li>
-     *   <li>CalculatorTool - 计算器工具</li>
-     *   <li>TextTool - 文本处理工具</li>
-     *   <li>ReadFileTool - 文件读取工具（AgentScope 内置）</li>
-     *   <li>WriteFileTool - 文件写入工具（AgentScope 内置）</li>
-     *   <li>ShellCommandTool - Shell 命令工具（AgentScope 内置，工厂模式）</li>
-     * </ul>
+     * <p>
+     * 在应用启动时自动调用，注册所有系统内置工具。
      */
     public void initBuiltInTools() {
-        MangoToolApi.registerTool(DateTimeTool.class);
-        MangoToolApi.registerTool(CalculatorTool.class);
-        MangoToolApi.registerTool(TextTool.class);
-        MangoToolApi.registerTool(ReadFileTool.class);
-        MangoToolApi.registerTool(WriteFileTool.class);
-        MangoToolApi.registerToolFactory(ShellCommandTool.class, 
-            () -> new ShellCommandTool(ALLOWED_SHELL_COMMANDS, cmd -> true));
-        
+        registerBuiltInTool(DateTimeTool.class, "日期时间工具");
+        registerBuiltInTool(CalculatorTool.class, "计算器工具");
+        registerBuiltInTool(TextTool.class, "文本处理工具");
+        registerBuiltInTool(ReadFileTool.class, "文件读取工具");
+        registerBuiltInTool(WriteFileTool.class, "文件写入工具");
+        registerBuiltInToolFactory(ShellCommandTool.class, "Shell 命令工具");
+
         log.info("Built-in tools registered via MangoToolApi");
     }
 
     /**
-     * 注册工具类
-     * 
-     * <p>支持无参数和带参数两种加载方式：
-     * <ul>
-     *   <li>无参数：args 为空数组，使用 {@link JavaToolLoader#LOAD_TYPE_NO_ARGS}</li>
-     *   <li>带参数:args 不为空，使用 {@link JavaToolLoader#LOAD_TYPE_WITH_ARGS}，li>
-     * </ul>
-     * 
-     * <p>参数会自动序列化为 JSON 存储到数据库。
-     * 支持基本类型: String、集合、Map 等可 JSON 序列化的类型。
-     * 
+     * 注册工具类（支持所有来源）
+     *
      * @param toolClass 工具类
-     * @param args 构造参数（可变参数，自动序列化）
+     * @param args      构造参数（可选）
      * @return 工具配置 ID
-     * @throws IllegalArgumentException 如果参数无法序列化
      */
     public Integer registerTool(Class<?> toolClass, Object... args) {
-        return registerToolInternal(toolClass, args, null);
+        return registerToolWithSource(toolClass, args, null, null);
     }
 
     /**
-     * 注册工具类（来自插件）
-     * 
-     * <p>对于插件工具，会在注册时立即创建实例并存入缓存，
-     * 解决插件 ClassLoader 隔离导致的类加载问题。
-     * 
+     * 注册工具类（指定插件，支持所有来源）
+     *
      * @param toolClass 工具类
-     * @param args 构造参数数组（可为 null）
-     * @param pluginId 插件 ID
+     * @param args      构造参数（可选）
+     * @param pluginId  插件 ID
      * @return 工具配置 ID
      */
     public Integer registerToolWithPluginId(Class<?> toolClass, Object[] args, Integer pluginId) {
-        return registerToolInternal(toolClass, args, pluginId);
+        return registerToolWithSource(toolClass, args, pluginId, null);
     }
-    
+
     /**
-     * 内部注册方法
+     * 注册工具类（指定插件和来源）
+     *
+     * @param toolClass        工具类
+     * @param args             构造参数（可选）
+     * @param pluginId         插件 ID
+     * @param availableSources 支持的来源列表（null 表示支持所有来源）
+     * @return 工具配置 ID
      */
-    private Integer registerToolInternal(Class<?> toolClass, Object[] args, Integer pluginId) {
+    public Integer registerToolWithPluginId(
+            Class<?> toolClass,
+            Object[] args,
+            Integer pluginId,
+            List<SessionSource> availableSources) {
+        return registerToolWithSource(toolClass, args, pluginId, availableSources);
+    }
+
+    /**
+     * 注册工具实例（支持所有来源）
+     *
+     * @param toolInstance 工具实例
+     * @param pluginId     插件 ID（可选）
+     * @return 工具配置 ID
+     */
+    public Integer registerToolInstance(Object toolInstance, Integer pluginId) {
+        return registerToolInstanceWithSource(toolInstance, pluginId, null);
+    }
+
+    /**
+     * 注册工具实例（指定来源）
+     *
+     * @param toolInstance     工具实例
+     * @param pluginId         插件 ID（可选）
+     * @param availableSources 支持的来源列表（null 表示支持所有来源）
+     * @return 工具配置 ID
+     */
+    public Integer registerToolInstanceWithSource(
+            Object toolInstance,
+            Integer pluginId,
+            List<SessionSource> availableSources) {
+
+        String className = toolInstance.getClass().getName();
+        ToolMetadata metadata = extractMetadata(toolInstance.getClass());
+
+        javaToolLoader.registerInstance(className, toolInstance);
+
+        return persistToolConfig(
+                className,
+                metadata,
+                null,
+                JavaToolLoader.LOAD_TYPE_INSTANCE,
+                pluginId,
+                availableSources,
+                "Tool instance"
+        );
+    }
+
+    /**
+     * 注册工具工厂（支持所有来源）
+     *
+     * @param toolClass 工具类
+     * @param factory   工厂方法
+     * @param pluginId  插件 ID（可选）
+     * @return 工具配置 ID
+     */
+    public Integer registerToolFactory(Class<?> toolClass, Supplier<Object> factory, Integer pluginId) {
+        return registerToolFactoryWithSource(toolClass, factory, pluginId, null);
+    }
+
+    /**
+     * 注册工具工厂（指定来源）
+     *
+     * @param toolClass        工具类
+     * @param factory          工厂方法
+     * @param pluginId         插件 ID（可选）
+     * @param availableSources 支持的来源列表（null 表示支持所有来源）
+     * @return 工具配置 ID
+     */
+    public Integer registerToolFactoryWithSource(
+            Class<?> toolClass,
+            Supplier<Object> factory,
+            Integer pluginId,
+            List<SessionSource> availableSources) {
+
         String className = toolClass.getName();
         ToolMetadata metadata = extractMetadata(toolClass);
-        
+
+        javaToolLoader.registerFactory(className, factory);
+
+        return persistToolConfig(
+                className,
+                metadata,
+                null,
+                JavaToolLoader.LOAD_TYPE_FACTORY,
+                pluginId,
+                availableSources,
+                "Tool factory"
+        );
+    }
+
+    /**
+     * 注销工具
+     *
+     * @param className 类全限定名
+     */
+    public void unregisterTool(String className) {
+        javaToolLoader.registerInstance(className, null);
+        javaToolLoader.registerFactory(className, null);
+        toolConfigService.deleteByClassName(className);
+        log.info("Tool unregistered: {}", className);
+    }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 注册工具类的核心实现
+     */
+    private Integer registerToolWithSource(
+            Class<?> toolClass,
+            Object[] args,
+            Integer pluginId,
+            List<SessionSource> availableSources) {
+
+        String className = toolClass.getName();
+        ToolMetadata metadata = extractMetadata(toolClass);
+
+        // 确定加载类型和序列化参数
         boolean hasArgs = args != null && args.length > 0;
-        String loadType = hasArgs 
-            ? JavaToolLoader.LOAD_TYPE_WITH_ARGS 
-            : JavaToolLoader.LOAD_TYPE_NO_ARGS;
-        
+        String loadType = hasArgs
+                ? JavaToolLoader.LOAD_TYPE_WITH_ARGS
+                : JavaToolLoader.LOAD_TYPE_NO_ARGS;
         String argsJson = hasArgs ? serializeArgs(args) : null;
-        
+
+        // 尝试创建并缓存实例
+        tryCreateAndCacheInstance(toolClass, args, className);
+
+        // 持久化配置
+        return persistToolConfig(
+                className,
+                metadata,
+                argsJson,
+                loadType,
+                pluginId,
+                availableSources,
+                "Tool"
+        );
+    }
+
+    /**
+     * 尝试创建并缓存工具实例
+     */
+    private void tryCreateAndCacheInstance(Class<?> toolClass, Object[] args, String className) {
         try {
             Object instance = createInstance(toolClass, args);
             javaToolLoader.registerInstance(className, instance);
@@ -132,52 +265,183 @@ public class ToolRegistrationService {
         } catch (Exception e) {
             log.warn("Failed to create tool instance, will try lazy loading: {}", className, e);
         }
-        
-        AgentJavaToolConfig existing = toolConfigService.getByClassName(className);
-        
-        if (existing != null) {
-            existing.setToolName(metadata.name);
-            existing.setDescription(metadata.description);
-            existing.setCategory(metadata.category);
-            if (hasArgs) {
-                existing.setConstructorArgs(argsJson);
-            }
-            existing.setLoadType(loadType);
-            existing.setPluginId(pluginId);
-            toolConfigService.updateById(existing);
-            log.info("Tool updated: {} (enabled={})", className, existing.getEnabled());
-            return existing.getId();
+    }
+
+    /**
+     * 持久化工具配置（新建或更新）
+     */
+    private Integer persistToolConfig(
+            String className,
+            ToolMetadata metadata,
+            String constructorArgs,
+            String loadType,
+            Integer pluginId,
+            List<SessionSource> availableSources,
+            String logPrefix) {
+
+        String availableListJson = buildAvailableListJson(availableSources);
+        AgentJavaToolConfig existingConfig = toolConfigService.getByClassName(className);
+
+        if (existingConfig != null) {
+            return updateExistingConfig(existingConfig, metadata, constructorArgs, loadType, pluginId, availableListJson, logPrefix);
         } else {
-            AgentJavaToolConfig config = new AgentJavaToolConfig();
-            config.setClassName(className);
-            config.setConstructorArgs(argsJson);
-            config.setToolName(metadata.name);
-            config.setDescription(metadata.description);
-            config.setCategory(metadata.category);
-            config.setLoadType(loadType);
-            config.setPluginId(pluginId);
-            config.setEnabled(false);
-            toolConfigService.save(config);
-            log.info("Tool registered: {} (disabled by default)", className);
-            return config.getId();
+            return createNewConfig(className, metadata, constructorArgs, loadType, pluginId, availableListJson, logPrefix);
         }
     }
-    
+
     /**
-     * 创建工具实例
-     * 
-     * <p>支持包装类型到原始类型的自动转换（如 Integer -> int）
-     * 
-     * @param toolClass 工具类
-     * @param args 构造参数
-     * @return 工具实例
-     * @throws Exception 创建失败
+     * 更新现有配置
+     */
+    private Integer updateExistingConfig(
+            AgentJavaToolConfig config,
+            ToolMetadata metadata,
+            String constructorArgs,
+            String loadType,
+            Integer pluginId,
+            String availableListJson,
+            String logPrefix) {
+
+        config.setToolName(metadata.name());
+        config.setDescription(metadata.description());
+        config.setCategory(metadata.category());
+        if (constructorArgs != null) {
+            config.setConstructorArgs(constructorArgs);
+        }
+        config.setLoadType(loadType);
+        config.setPluginId(pluginId);
+        config.setAvailableList(availableListJson);
+
+        toolConfigService.updateById(config);
+        log.info("{} updated: {} (enabled={}, sources={})",
+                logPrefix, config.getClassName(), config.getEnabled(), availableListJson);
+
+        return config.getId();
+    }
+
+    /**
+     * 创建新配置
+     */
+    private Integer createNewConfig(
+            String className,
+            ToolMetadata metadata,
+            String constructorArgs,
+            String loadType,
+            Integer pluginId,
+            String availableListJson,
+            String logPrefix) {
+
+        AgentJavaToolConfig config = new AgentJavaToolConfig();
+        config.setClassName(className);
+        config.setConstructorArgs(constructorArgs);
+        config.setToolName(metadata.name());
+        config.setDescription(metadata.description());
+        config.setCategory(metadata.category());
+        config.setLoadType(loadType);
+        config.setPluginId(pluginId);
+        config.setEnabled(false);
+        config.setAvailableList(availableListJson);
+        config.setEnabledList(availableListJson);
+
+        toolConfigService.save(config);
+        log.info("{} registered: {} (disabled by default, sources={})",
+                logPrefix, className, availableListJson);
+
+        return config.getId();
+    }
+
+    /**
+     * 构建可用来源列表的 JSON 字符串
+     */
+    private String buildAvailableListJson(List<SessionSource> availableSources) {
+        if (availableSources == null || availableSources.isEmpty()) {
+            return getAllSourcesJson();
+        }
+
+        List<String> sourceKeys = availableSources.stream()
+                .map(SessionSource::getSourceKey)
+                .collect(Collectors.toList());
+
+        try {
+            return objectMapper.writeValueAsString(sourceKeys);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize available sources, using default", e);
+            return getAllSourcesJson();
+        }
+    }
+
+    /**
+     * 获取所有来源的 JSON 字符串
+     */
+    private String getAllSourcesJson() {
+        List<String> allSourceKeys = Arrays.stream(SessionSource.values())
+                .map(SessionSource::getSourceKey)
+                .collect(Collectors.toList());
+
+        try {
+            return objectMapper.writeValueAsString(allSourceKeys);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize all sources, using hardcoded default", e);
+            return "[\"web\",\"group\",\"private\"]";
+        }
+    }
+
+    /**
+     * 从类中提取工具元数据
+     */
+    private ToolMetadata extractMetadata(Class<?> toolClass) {
+        MangoTool annotation = toolClass.getAnnotation(MangoTool.class);
+
+        if (annotation != null) {
+            return new ToolMetadata(
+                    annotation.name(),
+                    annotation.description(),
+                    annotation.category()
+            );
+        }
+
+        // 无注解时使用默认命名
+        String simpleName = toolClass.getSimpleName();
+        String name = simpleName.replace("Tool", "");
+        return new ToolMetadata(name, "AgentScope built-in tool", "SYSTEM");
+    }
+
+    /**
+     * 序列化构造参数
+     */
+    private String serializeArgs(Object[] args) {
+        if (args == null || args.length == 0) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(args);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("参数无法序列化: " + e.getMessage(), e);
+        }
+    }
+
+    // ==================== 内置工具注册辅助方法 ====================
+
+    private void registerBuiltInTool(Class<?> toolClass, String description) {
+        MangoToolApi.registerTool(toolClass);
+        log.debug("Registered built-in tool: {} - {}", toolClass.getSimpleName(), description);
+    }
+
+    private void registerBuiltInToolFactory(Class<?> toolClass, String description) {
+        MangoToolApi.registerToolFactory(toolClass,
+                () -> new ShellCommandTool(ALLOWED_SHELL_COMMANDS, cmd -> true));
+        log.debug("Registered built-in tool factory: {} - {}", toolClass.getSimpleName(), description);
+    }
+
+    // ==================== 实例创建辅助方法 ====================
+
+    /**
+     * 创建工具实例（支持参数类型转换）
      */
     private Object createInstance(Class<?> toolClass, Object[] args) throws Exception {
         if (args == null || args.length == 0) {
             return toolClass.getDeclaredConstructor().newInstance();
         }
-        
+
         Exception lastException = null;
         for (var constructor : toolClass.getConstructors()) {
             if (constructor.getParameterCount() == args.length) {
@@ -190,20 +454,16 @@ public class ToolRegistrationService {
                 }
             }
         }
-        
-        throw new NoSuchMethodException("No matching constructor found for " + toolClass.getName() + 
-            ". Args: " + java.util.Arrays.toString(args) + 
-            ". Last error: " + (lastException != null ? lastException.getMessage() : "none"));
+
+        throw new NoSuchMethodException(
+                "No matching constructor found for " + toolClass.getName() +
+                        ". Args: " + Arrays.toString(args) +
+                        ". Last error: " + (lastException != null ? lastException.getMessage() : "none")
+        );
     }
-    
+
     /**
-     * 转换参数类型以匹配构造函数期望的类型
-     * 
-     * <p>支持：
-     * <ul>
-     *   <li>包装类型 -> 原始类型（Integer -> int, Boolean -> boolean）</li>
-     *   <li>Number 子类之间的转换（Integer -> Long, Double -> Float）</li>
-     * </ul>
+     * 转换参数类型以匹配构造函数
      */
     private Object[] convertArgs(Object[] args, Class<?>[] paramTypes) {
         Object[] result = new Object[args.length];
@@ -212,191 +472,63 @@ public class ToolRegistrationService {
         }
         return result;
     }
-    
+
+    /**
+     * 单个参数类型转换
+     */
     private Object convertArg(Object arg, Class<?> targetType) {
         if (arg == null) return null;
-        
+
         Class<?> argType = arg.getClass();
-        
+
+        // 类型已兼容
         if (targetType.isAssignableFrom(argType)) {
             return arg;
         }
-        
+
+        // Number 类型转换
         if (arg instanceof Number num) {
-            if (targetType == int.class || targetType == Integer.class) {
-                return num.intValue();
-            } else if (targetType == long.class || targetType == Long.class) {
-                return num.longValue();
-            } else if (targetType == double.class || targetType == Double.class) {
-                return num.doubleValue();
-            } else if (targetType == float.class || targetType == Float.class) {
-                return num.floatValue();
-            } else if (targetType == short.class || targetType == Short.class) {
-                return num.shortValue();
-            } else if (targetType == byte.class || targetType == Byte.class) {
-                return num.byteValue();
-            }
+            return convertNumber(num, targetType);
         }
-        
-        if (arg instanceof Boolean bool) {
-            if (targetType == boolean.class || targetType == Boolean.class) {
-                return bool;
-            }
+
+        // Boolean 类型转换
+        if (arg instanceof Boolean bool && (targetType == boolean.class || targetType == Boolean.class)) {
+            return bool;
         }
-        
-        if (arg instanceof String str) {
-            if (targetType == String.class) {
-                return str;
-            }
+
+        // String 类型
+        if (arg instanceof String str && targetType == String.class) {
+            return str;
         }
-        
+
         throw new IllegalArgumentException("Cannot convert " + argType + " to " + targetType);
     }
 
     /**
-     * 注册工具实例
-     * 
-     * <p>直接传入工具实例，全局共享。适用于：
-     * <ul>
-     *   <li>需要复杂初始化的工具</li>
-     *   <li>有状态但希望全局共享的工具</li>
-     * </ul>
-     * 
-     * @param toolInstance 工具实例
-     * @param pluginId 插件 ID（可选）
-     * @return 工具配置 ID
+     * Number 类型之间的转换
      */
-    public Integer registerToolInstance(Object toolInstance, Integer pluginId) {
-        String className = toolInstance.getClass().getName();
-        ToolMetadata metadata = extractMetadata(toolInstance.getClass());
-        
-        javaToolLoader.registerInstance(className, toolInstance);
-        
-        AgentJavaToolConfig existing = toolConfigService.getByClassName(className);
-        
-        if (existing != null) {
-            existing.setToolName(metadata.name);
-            existing.setDescription(metadata.description);
-            existing.setCategory(metadata.category);
-            existing.setLoadType(JavaToolLoader.LOAD_TYPE_INSTANCE);
-            existing.setPluginId(pluginId);
-            toolConfigService.updateById(existing);
-            log.info("Tool instance updated: {} (enabled={})", className, existing.getEnabled());
-            return existing.getId();
-        } else {
-            AgentJavaToolConfig config = new AgentJavaToolConfig();
-            config.setClassName(className);
-            config.setToolName(metadata.name);
-            config.setDescription(metadata.description);
-            config.setCategory(metadata.category);
-            config.setLoadType(JavaToolLoader.LOAD_TYPE_INSTANCE);
-            config.setPluginId(pluginId);
-            config.setEnabled(false);
-            toolConfigService.save(config);
-            log.info("Tool instance registered: {} (disabled by default)", className);
-            return config.getId();
+    private Object convertNumber(Number num, Class<?> targetType) {
+        if (targetType == int.class || targetType == Integer.class) {
+            return num.intValue();
+        } else if (targetType == long.class || targetType == Long.class) {
+            return num.longValue();
+        } else if (targetType == double.class || targetType == Double.class) {
+            return num.doubleValue();
+        } else if (targetType == float.class || targetType == Float.class) {
+            return num.floatValue();
+        } else if (targetType == short.class || targetType == Short.class) {
+            return num.shortValue();
+        } else if (targetType == byte.class || targetType == Byte.class) {
+            return num.byteValue();
         }
+        return num;
     }
 
-    /**
-     * 注册工具工厂
-     * 
-     * <p>每次创建 Agent 时调用工厂创建新实例。适用于：
-     * <ul>
-     *   <li>需要每次创建新实例的工具（如带状态的工具）</li>
-     *   <li>需要动态参数的工具（如依赖运行时配置）</li>
-     * </ul>
-     * 
-     * @param toolClass 工具类
-     * @param factory 工厂方法
-     * @param pluginId 插件 ID（可选）
-     * @return 工具配置 ID
-     */
-    public Integer registerToolFactory(Class<?> toolClass, Supplier<Object> factory, Integer pluginId) {
-        String className = toolClass.getName();
-        ToolMetadata metadata = extractMetadata(toolClass);
-        
-        javaToolLoader.registerFactory(className, factory);
-        
-        AgentJavaToolConfig existing = toolConfigService.getByClassName(className);
-        
-        if (existing != null) {
-            existing.setToolName(metadata.name);
-            existing.setDescription(metadata.description);
-            existing.setCategory(metadata.category);
-            existing.setLoadType(JavaToolLoader.LOAD_TYPE_FACTORY);
-            existing.setPluginId(pluginId);
-            toolConfigService.updateById(existing);
-            log.info("Tool factory updated: {} (enabled={})", className, existing.getEnabled());
-            return existing.getId();
-        } else {
-            AgentJavaToolConfig config = new AgentJavaToolConfig();
-            config.setClassName(className);
-            config.setToolName(metadata.name);
-            config.setDescription(metadata.description);
-            config.setCategory(metadata.category);
-            config.setLoadType(JavaToolLoader.LOAD_TYPE_FACTORY);
-            config.setPluginId(pluginId);
-            config.setEnabled(false);
-            toolConfigService.save(config);
-            log.info("Tool factory registered: {} (disabled by default)", className);
-            return config.getId();
-        }
-    }
+    // ==================== 内部记录类 ====================
 
     /**
-     * 注销工具
-     * 
-     * <p>从缓存和数据库中移除工具配置
-     * 
-     * @param className 类全限定名
+     * 工具元数据记录
      */
-    public void unregisterTool(String className) {
-        javaToolLoader.registerInstance(className, null);
-        javaToolLoader.registerFactory(className, null);
-        toolConfigService.deleteByClassName(className);
-        log.info("Tool unregistered: {}", className);
-    }
-
-    /**
-     * 从类中提取工具元数据
-     * 
-     * <p>优先从 @MangoTool 注解获取，无注解则使用默认值
-     */
-    private ToolMetadata extractMetadata(Class<?> toolClass) {
-        MangoTool annotation = toolClass.getAnnotation(MangoTool.class);
-        
-        if (annotation != null) {
-            return new ToolMetadata(
-                annotation.name(),
-                annotation.description(),
-                annotation.category()
-            );
-        } else {
-            String simpleName = toolClass.getSimpleName();
-            String name = simpleName.replace("Tool", "");
-            return new ToolMetadata(name, "AgentScope built-in tool", "SYSTEM");
-        }
-    }
-
-    /** 工具元数据 */
-    private record ToolMetadata(String name, String description, String category) {}
-
-    /**
-     * 序列化构造参数
-     * 
-     * @param args 构造参数数组
-     * @return JSON 字符串
-     * @throws IllegalArgumentException 如果参数无法序列化
-     */
-    private String serializeArgs(Object[] args) {
-        if (args == null || args.length == 0) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(args);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("参数无法序列化: " + e.getMessage());
-        }
+    private record ToolMetadata(String name, String description, String category) {
     }
 }

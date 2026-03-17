@@ -1,5 +1,7 @@
 package io.github.mangomaner.mangobot.agent.factory;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.memory.autocontext.AutoContextMemory;
 import io.agentscope.core.model.OpenAIChatModel;
@@ -14,6 +16,7 @@ import io.github.mangomaner.mangobot.agent.hook.StreamingToolHook;
 import io.github.mangomaner.mangobot.agent.manager.MemoryManager;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentJavaToolConfig;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentMcpConfig;
+import io.github.mangomaner.mangobot.agent.model.domain.AgentMcpToolConfig;
 import io.github.mangomaner.mangobot.agent.model.domain.AgentSkillConfig;
 import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.service.*;
@@ -38,6 +41,8 @@ import java.util.Optional;
  *   <li>加载已启用的 MCP 工具</li>
  *   <li>加载已启用的 Skill</li>
  * </ul>
+ * <p>
+ * 工具和 Skill 会根据当前会话来源进行筛选，只加载 enabledList 包含该来源的项。
  * 
  * @see JavaToolLoader
  * @see McpConnectionManager
@@ -61,6 +66,8 @@ public class AgentFactory {
     private final McpConnectionManager mcpConnectionManager;
     private final SkillManager skillManager;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     /**
      * 创建 Agent
      * 
@@ -72,24 +79,17 @@ public class AgentFactory {
         log.info("Creating ReActAgent for session: {}, name: {}", sessionId, agentName);
 
         SessionSource sessionSource = chatSessionService.getSessionById(sessionId).getSource();
-        switch (sessionSource) {
-            case WEB:
-                break;
-            case GROUP:
-                break;
-            case PRIVATE:
-                break;
-            default:
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "未知的会话来源");
+        if (sessionSource == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "会话来源不能为空");
         }
 
         AutoContextMemory memory = memoryManager.getOrCreateMemory(sessionId);
         Toolkit toolkit = new Toolkit();
         SkillBox skillBox = new SkillBox(toolkit);
 
-        loadJavaTools(toolkit);
-        loadMcpTools(toolkit);
-        buildSkillBox(skillBox, toolkit);
+        loadJavaTools(toolkit, sessionSource);
+        loadMcpTools(toolkit, sessionSource);
+        buildSkillBox(skillBox, toolkit, sessionSource);
 
         OpenAIChatModel model = MangoModelApi.getModel(ModelRole.MAIN);
 
@@ -107,22 +107,34 @@ public class AgentFactory {
 
     /**
      * 加载 Java 工具
+     * 
+     * @param toolkit 工具箱
+     * @param sessionSource 会话来源
      */
-    private void loadJavaTools(Toolkit toolkit) {
+    private void loadJavaTools(Toolkit toolkit, SessionSource sessionSource) {
         List<AgentJavaToolConfig> enabledTools = javaToolConfigService.listEnabled();
         
         for (AgentJavaToolConfig config : enabledTools) {
+            // 检查 enabledList 是否包含当前会话来源
+            if (!isSourceEnabled(config.getEnabledList(), sessionSource)) {
+                log.debug("Java tool {} not enabled for source: {}", config.getClassName(), sessionSource);
+                continue;
+            }
+            
             javaToolLoader.loadTool(config).ifPresent(tool -> {
                 toolkit.registerTool(tool);
-                log.debug("Java tool loaded: {}", config.getClassName());
+                log.debug("Java tool loaded: {} for source: {}", config.getClassName(), sessionSource);
             });
         }
     }
 
     /**
      * 加载 MCP 工具
+     * 
+     * @param toolkit 工具箱
+     * @param sessionSource 会话来源
      */
-    private void loadMcpTools(Toolkit toolkit) {
+    private void loadMcpTools(Toolkit toolkit, SessionSource sessionSource) {
         List<AgentMcpConfig> enabledMcps = mcpConfigService.listEnabled();
         Map<Integer, McpClientWrapper> mcpClients = mcpConnectionManager.getAllClients();
         
@@ -136,11 +148,18 @@ public class AgentFactory {
             }
             
             try {
-                List<String> enabledToolNames = mcpToolConfigService
-                    .listEnabledToolNamesByMcpConfigId(mcpConfig.getId());
+                // 获取该 MCP 下所有启用的工具配置
+                List<AgentMcpToolConfig> toolConfigs = mcpToolConfigService.listByMcpConfigId(mcpConfig.getId());
+                
+                // 筛选出启用且 enabledList 包含当前会话来源的工具名称
+                List<String> enabledToolNames = toolConfigs.stream()
+                    .filter(AgentMcpToolConfig::getEnabled)
+                    .filter(config -> isSourceEnabled(config.getEnabledList(), sessionSource))
+                    .map(AgentMcpToolConfig::getToolName)
+                    .toList();
                 
                 if (enabledToolNames.isEmpty()) {
-                    log.debug("No enabled tools for MCP: {}", mcpConfig.getMcpName());
+                    log.debug("No enabled tools for MCP: {} with source: {}", mcpConfig.getMcpName(), sessionSource);
                     continue;
                 }
                 
@@ -149,8 +168,8 @@ public class AgentFactory {
                     .enableTools(enabledToolNames)
                     .apply();
                 
-                log.info("MCP tools loaded: {} with {} tools", 
-                    mcpConfig.getMcpName(), enabledToolNames.size());
+                log.info("MCP tools loaded: {} with {} tools for source: {}", 
+                    mcpConfig.getMcpName(), enabledToolNames.size(), sessionSource);
             } catch (Exception e) {
                 log.error("Failed to register MCP tools: {}", mcpConfig.getMcpName(), e);
             }
@@ -159,16 +178,48 @@ public class AgentFactory {
 
     /**
      * 构建 SkillBox
+     * 
+     * @param skillBox 技能箱
+     * @param toolkit 工具箱
+     * @param sessionSource 会话来源
      */
-    private void buildSkillBox(SkillBox skillBox, Toolkit toolkit) {
+    private void buildSkillBox(SkillBox skillBox, Toolkit toolkit, SessionSource sessionSource) {
         List<AgentSkillConfig> enabledSkills = skillConfigService.listEnabled();
         
         for (AgentSkillConfig config : enabledSkills) {
+            // 检查 enabledList 是否包含当前会话来源
+            if (!isSourceEnabled(config.getEnabledList(), sessionSource)) {
+                log.debug("Skill {} not enabled for source: {}", config.getSkillPath(), sessionSource);
+                continue;
+            }
+            
             Optional<AgentSkill> skillOpt = skillManager.loadSkill(config);
             skillOpt.ifPresent(skill -> {
                 skillBox.registerSkill(skill);
-                log.debug("Skill loaded: {}", config.getSkillPath());
+                log.debug("Skill loaded: {} for source: {}", config.getSkillPath(), sessionSource);
             });
+        }
+    }
+
+    /**
+     * 检查 enabledList 是否包含指定的会话来源
+     * 
+     * @param enabledListJson enabledList 的 JSON 字符串
+     * @param sessionSource 会话来源
+     * @return 是否包含
+     */
+    private boolean isSourceEnabled(String enabledListJson, SessionSource sessionSource) {
+        if (enabledListJson == null || enabledListJson.isEmpty()) {
+            // 如果没有设置 enabledList，默认不启用
+            return false;
+        }
+        
+        try {
+            List<String> enabledSources = objectMapper.readValue(enabledListJson, new TypeReference<List<String>>() {});
+            return enabledSources.contains(sessionSource.getSourceKey());
+        } catch (Exception e) {
+            log.warn("Failed to parse enabledList: {}", enabledListJson, e);
+            return false;
         }
     }
 }
