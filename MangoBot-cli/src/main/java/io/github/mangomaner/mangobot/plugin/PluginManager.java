@@ -326,17 +326,15 @@ public class PluginManager {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void uninstallPlugin(String pluginId) {
-        unloadPlugin(pluginId);
+    public void uninstallPlugin(String jarName, Long pluginId) {
+        unloadPlugin(jarName);
 
-        File file = new File(getPluginDirectory(), pluginId);
+        File file = new File(getPluginDirectory(), jarName);
         if (file.exists()) {
             file.delete();
         }
 
-        LambdaQueryWrapper<Plugins> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Plugins::getJarName, pluginId);
-        Plugins p = pluginsService.getOne(wrapper);
+        Plugins p = pluginsService.getById(pluginId);
         if (p != null) {
             uninstallPluginData(p);
         }
@@ -385,7 +383,8 @@ public class PluginManager {
             String jarNameWithoutExt = p.getJarName().replace(".jar", "");
 
             result.add(PluginInfo.builder()
-                    .id(p.getJarName())
+                    .id(p.getId())
+                    .jarName(p.getJarName())
                     .loaded(loaded)
                     .name(p.getPluginName())
                     .author(p.getAuthor())

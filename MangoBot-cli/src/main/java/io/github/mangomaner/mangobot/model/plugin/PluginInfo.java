@@ -8,7 +8,8 @@ import java.io.Serializable;
 @Data
 @Builder
 public class PluginInfo implements Serializable {
-    private String id;
+    private Long id;
+    private String jarName;
     private boolean loaded;
     private String name;
     private String author;

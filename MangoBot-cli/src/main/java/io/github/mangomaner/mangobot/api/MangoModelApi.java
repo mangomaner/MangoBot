@@ -13,7 +13,6 @@ import java.util.List;
  */
 public class MangoModelApi {
 
-    // 由io.github.mangomaner.mangobot.manager.MangoApiManager反射注入
     private static ModelProvider provider;
 
     private MangoModelApi() {}
@@ -29,39 +28,13 @@ public class MangoModelApi {
     }
 
     /**
-     * 获取主模型
-     * @return 主模型实例
+     * 获取指定角色的模型实例
+     * @param role 模型角色枚举
+     * @return 模型实例，如果未配置则返回 null
      */
-    public static OpenAIChatModel getMainModel() {
+    public static OpenAIChatModel getModel(ModelRole role) {
         checkProvider();
-        return provider.getModel("main");
-    }
-
-    /**
-     * 获取助手模型
-     * @return 助手模型实例
-     */
-    public static OpenAIChatModel getAssistantModel() {
-        checkProvider();
-        return provider.getModel("assistant");
-    }
-
-    /**
-     * 获取图片模型
-     * @return 图片模型实例
-     */
-    public static OpenAIChatModel getImageModel() {
-        checkProvider();
-        return provider.getModel("image");
-    }
-
-    /**
-     * 获取向量模型
-     * @return 向量模型实例
-     */
-    public static OpenAIChatModel getEmbeddingModel() {
-        checkProvider();
-        return provider.getModel("embedding");
+        return provider.getModel(role.getRoleKey());
     }
 
     /**
@@ -72,6 +45,16 @@ public class MangoModelApi {
     public static OpenAIChatModel getModel(String roleKey) {
         checkProvider();
         return provider.getModel(roleKey);
+    }
+
+    /**
+     * 获取指定角色的模型配置详情
+     * @param role 模型角色枚举
+     * @return 模型配置详情
+     */
+    public static ModelConfigVO getModelConfig(ModelRole role) {
+        checkProvider();
+        return provider.getModelConfig(role.getRoleKey());
     }
 
     /**
@@ -91,6 +74,16 @@ public class MangoModelApi {
     public static List<ModelRoleVO> getAllRoles() {
         checkProvider();
         return provider.getAllRoles();
+    }
+
+    /**
+     * 获取指定角色的配置
+     * @param role 模型角色枚举
+     * @return 角色配置
+     */
+    public static ModelRoleVO getRole(ModelRole role) {
+        checkProvider();
+        return provider.getRole(role.getRoleKey());
     }
 
     /**

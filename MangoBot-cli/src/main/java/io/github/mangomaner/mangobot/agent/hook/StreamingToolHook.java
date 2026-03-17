@@ -50,7 +50,9 @@ public class StreamingToolHook implements Hook {
         }
         Sinks.Many<String> sink = sessionSinks.get(agentName);
         if (sink != null) {
-            sink.tryEmitNext(message);
+            // 将换行符替换为特殊字符 \u0000，避免 SSE 解析问题
+            String escapedMessage = message.replace("\n", "\u0000");
+            sink.tryEmitNext(escapedMessage);
         }
     }
 
@@ -84,6 +86,9 @@ public class StreamingToolHook implements Hook {
         if (event instanceof PreCallEvent) {
             log.debug("[Agent] 开始调用: {}", agentName);
         }
+        else if (event instanceof PreReasoningEvent) {
+            log.debug("[Reasoning] 开始推理: {}", agentName);
+        }
         else if (event instanceof ReasoningChunkEvent e) {
             Msg chunk = e.getIncrementalChunk();
             if (chunk != null) {
@@ -96,12 +101,11 @@ public class StreamingToolHook implements Hook {
         }
         else if (event instanceof PostReasoningEvent) {
             log.debug("[Reasoning] 推理完成: {}", agentName);
-            emit(agentName, "<ReasoningFinish/>");
         }
         else if (event instanceof PreActingEvent e) {
             ToolUseBlock toolUse = e.getToolUse();
             log.info("[Tool] 调用: {} 参数: {}", toolUse.getName(), toolUse.getInput());
-            emit(agentName, "<FunctionCall>" + toolUse.getName() + "</FunctionCall>");
+            emit(agentName, "<FunctionCall>" + toolUse.getName() + "</FunctionCall>\n");
         }
         else if (event instanceof PostActingEvent e) {
             String result = e.getToolResult().getOutput().stream()

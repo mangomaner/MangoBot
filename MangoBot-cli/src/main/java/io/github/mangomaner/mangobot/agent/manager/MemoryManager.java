@@ -9,6 +9,7 @@ import io.agentscope.core.state.SessionKey;
 import io.agentscope.core.state.State;
 import io.github.mangomaner.mangobot.agent.model.domain.ChatSession;
 import io.github.mangomaner.mangobot.api.MangoModelApi;
+import io.github.mangomaner.mangobot.api.ModelRole;
 import io.github.mangomaner.mangobot.mapper.agent.ChatSessionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +33,7 @@ public class MemoryManager {
     }
 
     private AutoContextMemory loadOrCreateMemory(Integer sessionId) {
-        OpenAIChatModel model = MangoModelApi.getMainModel();
+        OpenAIChatModel model = MangoModelApi.getModel(ModelRole.MAIN);
 
         AutoContextConfig config = AutoContextConfig.builder()
                 .msgThreshold(30)

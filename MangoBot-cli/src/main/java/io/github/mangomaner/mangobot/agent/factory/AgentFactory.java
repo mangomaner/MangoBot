@@ -19,6 +19,7 @@ import io.github.mangomaner.mangobot.agent.service.AgentMcpConfigService;
 import io.github.mangomaner.mangobot.agent.service.AgentMcpToolConfigService;
 import io.github.mangomaner.mangobot.agent.service.AgentSkillConfigService;
 import io.github.mangomaner.mangobot.api.MangoModelApi;
+import io.github.mangomaner.mangobot.api.ModelRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -79,7 +80,7 @@ public class AgentFactory {
         return ReActAgent.builder()
                 .name(agentName)
                 .sysPrompt("")
-                .model(MangoModelApi.getMainModel())
+                .model(MangoModelApi.getModel(ModelRole.MAIN))
                 .memory(memory)
                 .toolkit(toolkit)
                 .skillBox(skillBox)

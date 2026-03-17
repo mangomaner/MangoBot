@@ -36,40 +36,49 @@ public class PluginController {
 
     /**
      * 停用插件 (Unload / Disable)
-     * @param pluginId 插件文件名，例如 example.jar
+     * @param pluginId 插件数据库ID
      */
     @PostMapping("/unload")
-    public BaseResponse<Void> unloadPlugin(@RequestParam String pluginId) {
+    public BaseResponse<Void> unloadPlugin(@RequestParam Long pluginId) {
         log.info("收到停用插件请求: {}", pluginId);
+        Plugins p = pluginsService.getById(pluginId);
+        if (p == null) {
+            return ResultUtils.error(404, "插件不存在");
+        }
+        
         // 更新数据库状态
         LambdaUpdateWrapper<Plugins> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(Plugins::getJarName, pluginId).set(Plugins::getEnabled, 0);
+        updateWrapper.eq(Plugins::getId, pluginId).set(Plugins::getEnabled, 0);
         pluginsService.update(updateWrapper);
 
-        pluginManager.unloadPlugin(pluginId);
+        pluginManager.unloadPlugin(p.getJarName());
         return ResultUtils.success(null);
     }
 
     /**
      * 启用/加载插件 (Load / Enable)
-     * @param pluginId 插件文件名，例如 example.jar
+     * @param pluginId 插件数据库ID
      */
     @PostMapping("/load")
-    public BaseResponse<Void> loadPlugin(@RequestParam String pluginId) {
+    public BaseResponse<Void> loadPlugin(@RequestParam Long pluginId) {
         log.info("收到启用插件请求: {}", pluginId);
-        File pluginFile = new File(pluginManager.getPluginDirectory(), pluginId);
+        Plugins p = pluginsService.getById(pluginId);
+        if (p == null) {
+            return ResultUtils.error(404, "插件不存在");
+        }
         
+        File pluginFile = new File(pluginManager.getPluginDirectory(), p.getJarName());
         if (!pluginFile.exists()) {
             return ResultUtils.error(404, "插件文件不存在");
         }
 
         // 更新数据库状态
         LambdaUpdateWrapper<Plugins> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(Plugins::getJarName, pluginId).set(Plugins::getEnabled, 1);
+        updateWrapper.eq(Plugins::getId, pluginId).set(Plugins::getEnabled, 1);
         pluginsService.update(updateWrapper);
 
         // 先尝试卸载（如果是重载）
-        pluginManager.unloadPlugin(pluginId);
+        pluginManager.unloadPlugin(p.getJarName());
         pluginManager.loadPlugin(pluginFile);
         
         return ResultUtils.success(null);
@@ -77,12 +86,17 @@ public class PluginController {
 
     /**
      * 彻底卸载插件 (Delete / Uninstall)
-     * @param pluginId 插件文件名
+     * @param pluginId 插件数据库ID
      */
     @PostMapping("/uninstall")
-    public BaseResponse<Void> uninstallPlugin(@RequestParam String pluginId) {
+    public BaseResponse<Void> uninstallPlugin(@RequestParam Long pluginId) {
         log.info("收到卸载插件请求: {}", pluginId);
-        pluginManager.uninstallPlugin(pluginId);
+        Plugins p = pluginsService.getById(pluginId);
+        if (p == null) {
+            return ResultUtils.error(404, "插件不存在");
+        }
+        
+        pluginManager.uninstallPlugin(p.getJarName(), p.getId());
         return ResultUtils.success(null);
     }
 }
