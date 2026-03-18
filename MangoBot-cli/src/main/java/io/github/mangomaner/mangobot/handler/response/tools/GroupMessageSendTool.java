@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.agent.tools;
+package io.github.mangomaner.mangobot.handler.response.tools;
 
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;

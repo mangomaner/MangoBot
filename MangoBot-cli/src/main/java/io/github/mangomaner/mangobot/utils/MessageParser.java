@@ -2,8 +2,10 @@ package io.github.mangomaner.mangobot.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.mangomaner.mangobot.model.domain.BotFiles;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
 import io.github.mangomaner.mangobot.model.onebot.segment.*;
+import io.github.mangomaner.mangobot.service.BotFilesService;
 import io.github.mangomaner.mangobot.service.OneBotApiService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,8 @@ public class MessageParser {
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Resource
     private OneBotApiService oneBotApiService;
+    @Resource
+    private BotFilesService botFilesService;
 
     public String parseMessage(List<MessageSegment> segments, Long botId) {
         if (segments == null || segments.isEmpty()) {
@@ -127,20 +131,25 @@ public class MessageParser {
         int subType = data.getSubType();
         String url = data.getUrl();
 
+        BotFiles fileByFileId = botFilesService.getFileByFileId(data.getFile());
+        if (fileByFileId != null && fileByFileId.getDescription() != null) {
+            return fileByFileId.getDescription();
+        }
+
         return switch (subType) {
-            case 0 -> {         // 发送的手机图片，0为普通图片
+            case 0 -> {
                 if (url != null && !url.isEmpty()) {
-                    yield "图片：" + url;
+                    yield "发送图片：" + url;
                 }
-                yield "图片";
+                yield "发送图片";
             }
-            case 1, 11 -> {             // 1为QQ收藏的表情包，11为发送的gif图片
+            case 1, 11 -> {
                 if (url != null && !url.isEmpty()) {
-                    yield "表情：" + url;
+                    yield "发送表情：" + url;
                 }
-                yield "表情";
+                yield "发送表情";
             }
-            default -> "图片";
+            default -> "发送图片";
         };
     }
 

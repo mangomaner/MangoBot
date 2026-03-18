@@ -93,6 +93,8 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
     @Override
     public GroupMessages addGroupMessage(GroupMessageEvent event) {
         try {
+            filesService.saveFileBySegments(event.getMessage());
+
             GroupMessages groupMessages = new GroupMessages();
             groupMessages.setBotId(event.getSelfId());
             groupMessages.setGroupId(event.getGroupId());
@@ -100,9 +102,7 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
             groupMessages.setSenderId(event.getUserId());
             groupMessages.setMessageSegments(objectMapper.writeValueAsString(event.getMessage()));
             groupMessages.setMessageTime(event.getTime() * 1000L);
-            groupMessages.setParseMessage(event.getParsedMessage());
-
-            filesService.saveFileBySegments(event.getMessage());
+            groupMessages.setParseMessage(messageParser.parseMessage(event.getMessage(), event.getSelfId()));
 
             this.save(groupMessages);
             return groupMessages;
@@ -114,6 +114,8 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
     @Override
     public GroupMessages addGroupMessage(List<MessageSegment> segments, Long botId, Long groupId, Integer messageId) {
         try {
+            filesService.saveFileBySegments(segments);
+
             GroupMessages groupMessages = new GroupMessages();
             groupMessages.setBotId(botId);
             groupMessages.setGroupId(groupId);
@@ -122,8 +124,6 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
             groupMessages.setMessageSegments(objectMapper.writeValueAsString(segments));
             groupMessages.setMessageTime(System.currentTimeMillis());
             groupMessages.setParseMessage(messageParser.parseMessage(segments, botId));
-
-            filesService.saveFileBySegments(segments);
 
             this.save(groupMessages);
             return groupMessages;

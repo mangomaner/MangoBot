@@ -118,8 +118,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_configs_unique ON plugin_configs (p
 
 -- 模型供应商初始数据
 INSERT INTO model_providers (name, base_url, api_key, description) VALUES
-    ('openai', 'https://api.openai.com/v1', '', 'OpenAI 官方接口'),
+    ('openai', 'https://api.openai.com/v1', '', 'OpenAI'),
     ('siliconflow', 'https://api.siliconflow.cn/v1', '', '硅基流动(siliconflow)'),
+    ('dashscope', 'https://dashscope.aliyuncs.com/compatible-mode/v1', '', '阿里云-百炼');
     ('custom', 'https://api.example.com/v1', '', '自定义接口');
 
 -- 模型配置初始数据
@@ -135,13 +136,13 @@ INSERT INTO model_roles (role_key, role_name, model_config_id, description) VALU
 
 -- 系统配置初始数据（bot_id 为 null 表示默认配置，用于无 Bot 连接时显示）
 INSERT INTO system_configs (bot_id, config_key, config_value, config_type, metadata, description, explain, category) VALUES
-    (NULL, 'group.whitelist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组白名单', '群号列表，示例：[111111, 222222]', 'BW_list'),
-    (NULL, 'group.blacklist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组黑名单', '群号列表，示例：[111111, 222222]', 'BW_list'),
+    (NULL, 'group.whitelist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组白名单', '群号列表', 'BW_list'),
+    (NULL, 'group.blacklist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组黑名单', '群号列表', 'BW_list'),
     (NULL, 'group.enable_list', 'true', 'BOOLEAN', NULL, '启用群组黑白名单', '', 'BW_list'),
-    (NULL, 'private.whitelist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊白名单', '用户QQ列表，示例：[111111, 222222]', 'BW_list'),
-    (NULL, 'private.blacklist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊黑名单', '用户QQ列表，示例：[111111, 222222]', 'BW_list'),
+    (NULL, 'private.whitelist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊白名单', '用户QQ列表', 'BW_list'),
+    (NULL, 'private.blacklist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊黑名单', '用户QQ列表', 'BW_list'),
     (NULL, 'private.enable_list', 'true', 'BOOLEAN', NULL, '启用私聊黑白名单', '', 'BW_list');
-
+-- 上述列表示例：["123456789","1011121314"]，true为白名单，false为黑名单
 -- ============================================
 -- 消息存储表
 -- ============================================

@@ -31,6 +31,12 @@ public abstract class MessageEvent extends BaseEvent {
     @JsonProperty("message_seq")
     private int messageSeq;
 
+    @JsonProperty("real_id")    
+    private int realId;     // NapCat
+
+    @JsonProperty("real_seq")
+    private String realSeq; // NapCat
+
     @JsonProperty("raw_message")
     private String rawMessage;
 

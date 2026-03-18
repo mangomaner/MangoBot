@@ -1,8 +1,13 @@
 package io.github.mangomaner.mangobot.manager.event;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
+import io.github.mangomaner.mangobot.api.MangoConfigApi;
 import io.github.mangomaner.mangobot.model.onebot.event.Event;
+import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
+import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +25,11 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class MangoEventPublisher {
 
-    // 注入事件过滤器（目前只有一个，如果有多个可以注入 List<EventFilter> 并遍历）
-
     @Resource
     private ApplicationContext applicationContext;
+
+    @Resource
+    private ObjectMapper objectMapper;
 
     private final Map<Class<?>, List<ListenerMethod>> listenerCache = new ConcurrentHashMap<>();
     private final ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 10, 1000, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new ThreadPoolExecutor.CallerRunsPolicy());
@@ -58,8 +64,11 @@ public class MangoEventPublisher {
      * @param event
      */
     public void publish(Event event) {
+        if (shouldBlockEvent(event)) {
+            log.debug("事件被黑白名单拦截: {}", event.getClass().getSimpleName());
+            return;
+        }
 
-        // 3. 分发事件
         executor.execute(() -> {
             List<ListenerMethod> listeners = getListenersForEvent(event.getClass());
             for (ListenerMethod listener : listeners) {
@@ -74,6 +83,77 @@ public class MangoEventPublisher {
                 }
             }
         });
+    }
+
+    /**
+     * 判断事件是否应该被拦截
+     * @param event 事件对象
+     * @return true 表示拦截，false 表示放行
+     */
+    private boolean shouldBlockEvent(Event event) {
+        Long botId = event.getSelfId();
+
+        if (event instanceof GroupMessageEvent groupEvent) {
+            return shouldBlockGroupMessage(botId, groupEvent.getGroupId());
+        } else if (event instanceof PrivateMessageEvent) {
+            return shouldBlockPrivateMessage(botId, ((PrivateMessageEvent) event).getUserId());
+        }
+
+        return false;
+    }
+
+    /**
+     * 判断群消息是否应该被拦截（黑白名单逻辑）
+     */
+    private boolean shouldBlockGroupMessage(Long botId, long groupId) {
+        String enableListValue = MangoConfigApi.getSystemConfigValue("group.enable_list", botId, "true");
+        boolean isWhitelistMode = Boolean.parseBoolean(enableListValue);
+
+        String listValue = MangoConfigApi.getSystemConfigValue(
+                isWhitelistMode ? "group.whitelist" : "group.blacklist", botId, "[]");
+
+        List<String> groupIdList = parseJsonArray(listValue);
+        String groupIdStr = String.valueOf(groupId);
+        boolean inList = groupIdList.contains(groupIdStr);
+
+        if (isWhitelistMode) {
+            return !inList;
+        } else {
+            return inList;
+        }
+    }
+
+    /**
+     * 判断私聊消息是否应该被拦截（黑白名单逻辑）
+     */
+    private boolean shouldBlockPrivateMessage(Long botId, long userId) {
+        String enableListValue = MangoConfigApi.getSystemConfigValue("private.enable_list", botId, "true");
+        boolean isWhitelistMode = Boolean.parseBoolean(enableListValue);
+
+        String listValue = MangoConfigApi.getSystemConfigValue(
+                isWhitelistMode ? "private.whitelist" : "private.blacklist", botId, "[]");
+
+        List<String> userIdList = parseJsonArray(listValue);
+        String userIdStr = String.valueOf(userId);
+        boolean inList = userIdList.contains(userIdStr);
+
+        if (isWhitelistMode) {
+            return !inList;
+        } else {
+            return inList;
+        }
+    }
+
+    /**
+     * 解析 JSON 数组字符串为 List
+     */
+    private List<String> parseJsonArray(String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.warn("解析黑白名单 JSON 失败: {}", json, e);
+            return Collections.emptyList();
+        }
     }
 
     /**
