@@ -14,9 +14,11 @@ import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
 import io.github.mangomaner.mangobot.common.ErrorCode;
 import io.github.mangomaner.mangobot.exception.BusinessException;
 import io.github.mangomaner.mangobot.mapper.agent.ChatSessionMapper;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -27,12 +29,17 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatSession>
         implements ChatSessionService {
 
-    private final ChatMessageWebService chatMessageService;
+    @Resource
+    private ChatMessageWebService chatMessageService;
 
+    // 【新增】注入自身代理对象，用于解决 @Transactional 自调用失效问题
+    // 注意：这里必须注入接口类型 ChatSessionService，而不是实现类
+    @Lazy
+    @Resource
+    private ChatSessionService self;
     /**
      * 状态常量：活跃
      */
@@ -54,6 +61,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         // 创建会话实体
         ChatSession session = new ChatSession();
         session.setTitle(request.getTitle().trim());
+        session.setBotId(request.getBotId());
+        session.setChatId(request.getChatId());
         session.setSource(request.getSource() != null ? request.getSource() : SessionSource.WEB);
         session.setCreateTime(new Date());
         session.setUpdateTime(new Date());
@@ -157,6 +166,32 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         }
 
         log.info("删除会话成功，sessionId: {}", id);
+    }
+
+    @Override
+    public ChatSessionVO getSessionByBotIdAndChatId(Long botId, Long chatId, SessionSource source) {
+        if (botId == null || chatId == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "botId 和 chatId 不能为空");
+        }
+
+        LambdaQueryWrapper<ChatSession> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ChatSession::getBotId, botId)
+               .eq(ChatSession::getChatId, chatId)
+               .eq(ChatSession::getSource, source);
+
+        ChatSession session = this.getOne(wrapper);
+
+        if (session == null) {
+            CreateChatSessionRequest request = CreateChatSessionRequest.builder()
+                    .title("群聊" + chatId)
+                    .botId(botId)
+                    .chatId(chatId)
+                    .source(SessionSource.GROUP)
+                    .build();
+            return self.createSession(request);
+        }
+
+        return convertToVO(session);
     }
 
     /**

@@ -393,48 +393,113 @@ public class PluginConfigServiceImpl extends ServiceImpl<PluginConfigMapper, Plu
             return result;
         }
         
-        LambdaQueryWrapper<PluginConfigEntity> defaultWrapper = new LambdaQueryWrapper<>();
-        defaultWrapper.eq(PluginConfigEntity::getPluginId, pluginId)
-                      .eq(PluginConfigEntity::getConfigKey, configKey)
-                      .isNull(PluginConfigEntity::getBotId);
-        PluginConfigEntity defaultConfig = this.getOne(defaultWrapper);
+        LambdaQueryWrapper<PluginConfigEntity> checkBotWrapper = new LambdaQueryWrapper<>();
+        checkBotWrapper.eq(PluginConfigEntity::getPluginId, pluginId)
+                       .eq(PluginConfigEntity::getBotId, botId);
+        long botConfigCount = this.count(checkBotWrapper);
         
-        if (defaultConfig == null) {
+        if (botConfigCount == 0) {
+            LambdaQueryWrapper<PluginConfigEntity> defaultListWrapper = new LambdaQueryWrapper<>();
+            defaultListWrapper.eq(PluginConfigEntity::getPluginId, pluginId)
+                              .isNull(PluginConfigEntity::getBotId);
+            List<PluginConfigEntity> defaultConfigs = this.list(defaultListWrapper);
+            
+            for (PluginConfigEntity defaultConfig : defaultConfigs) {
+                PluginConfigEntity newConfig = new PluginConfigEntity();
+                newConfig.setPluginId(pluginId);
+                newConfig.setBotId(botId);
+                newConfig.setConfigKey(defaultConfig.getConfigKey());
+                newConfig.setConfigValue(defaultConfig.getConfigValue());
+                newConfig.setConfigType(defaultConfig.getConfigType());
+                newConfig.setMetadata(defaultConfig.getMetadata());
+                newConfig.setDescription(defaultConfig.getDescription());
+                newConfig.setExplain(defaultConfig.getExplain());
+                newConfig.setEditable(defaultConfig.getEditable());
+                this.save(newConfig);
+            }
+            
+            log.info("懒加载复制所有默认配置到Bot专属配置: pluginId={}, botId={}, count={}", pluginId, botId, defaultConfigs.size());
+            
+            LambdaQueryWrapper<PluginConfigEntity> newBotWrapper = new LambdaQueryWrapper<>();
+            newBotWrapper.eq(PluginConfigEntity::getPluginId, pluginId)
+                        .eq(PluginConfigEntity::getConfigKey, configKey)
+                        .eq(PluginConfigEntity::getBotId, botId);
+            botConfig = this.getOne(newBotWrapper);
+        } else {
+            LambdaQueryWrapper<PluginConfigEntity> defaultWrapper = new LambdaQueryWrapper<>();
+            defaultWrapper.eq(PluginConfigEntity::getPluginId, pluginId)
+                          .eq(PluginConfigEntity::getConfigKey, configKey)
+                          .isNull(PluginConfigEntity::getBotId);
+            PluginConfigEntity defaultConfig = this.getOne(defaultWrapper);
+            
+            if (defaultConfig == null) {
+                return false;
+            }
+            
+            ConfigType configType = ConfigType.fromCode(defaultConfig.getConfigType());
+            if (!configTypeHandler.validate(configType, configValue)) {
+                log.warn("配置值验证失败: type={}, value={}", configType, configValue);
+            }
+            
+            PluginConfigEntity newConfig = new PluginConfigEntity();
+            newConfig.setPluginId(pluginId);
+            newConfig.setBotId(botId);
+            newConfig.setConfigKey(configKey);
+            newConfig.setConfigValue(configValue);
+            newConfig.setConfigType(defaultConfig.getConfigType());
+            newConfig.setMetadata(defaultConfig.getMetadata());
+            newConfig.setDescription(defaultConfig.getDescription());
+            newConfig.setExplain(defaultConfig.getExplain());
+            newConfig.setEditable(defaultConfig.getEditable());
+            this.save(newConfig);
+            
+            Plugins plugin = pluginsService.getById(pluginId);
+            String pluginName = plugin != null ? plugin.getPluginName() : "unknown";
+
+            mangoEventPublisher.publish(new PluginConfigChangedEvent(
+                    newConfig.getId(),
+                    pluginId,
+                    pluginName,
+                    configKey,
+                    newConfig.getConfigType(),
+                    defaultConfig.getConfigValue(),
+                    configValue
+            ));
+            
+            log.info("懒加载创建单个Bot专属插件配置: pluginId={}, botId={}, key={}", pluginId, botId, configKey);
+            return true;
+        }
+        
+        if (botConfig == null) {
             return false;
         }
         
-        ConfigType configType = ConfigType.fromCode(defaultConfig.getConfigType());
+        ConfigType configType = ConfigType.fromCode(botConfig.getConfigType());
         if (!configTypeHandler.validate(configType, configValue)) {
             log.warn("配置值验证失败: type={}, value={}", configType, configValue);
         }
         
-        PluginConfigEntity newConfig = new PluginConfigEntity();
-        newConfig.setPluginId(pluginId);
-        newConfig.setBotId(botId);
-        newConfig.setConfigKey(configKey);
-        newConfig.setConfigValue(configValue);
-        newConfig.setConfigType(defaultConfig.getConfigType());
-        newConfig.setMetadata(defaultConfig.getMetadata());
-        newConfig.setDescription(defaultConfig.getDescription());
-        newConfig.setExplain(defaultConfig.getExplain());
-        newConfig.setEditable(defaultConfig.getEditable());
-        this.save(newConfig);
-        
-        Plugins plugin = pluginsService.getById(pluginId);
-        String pluginName = plugin != null ? plugin.getPluginName() : "unknown";
+        String oldValue = botConfig.getConfigValue();
+        botConfig.setConfigValue(configValue);
+        botConfig.setUpdatedAt(System.currentTimeMillis());
+        boolean result = this.updateById(botConfig);
 
-        mangoEventPublisher.publish(new PluginConfigChangedEvent(
-                newConfig.getId(),
-                pluginId,
-                pluginName,
-                configKey,
-                newConfig.getConfigType(),
-                defaultConfig.getConfigValue(),
-                configValue
-        ));
-        
-        log.info("懒加载创建Bot专属插件配置: pluginId={}, botId={}, key={}", pluginId, botId, configKey);
-        return true;
+        if (result) {
+            Plugins plugin = pluginsService.getById(pluginId);
+            String pluginName = plugin != null ? plugin.getPluginName() : "unknown";
+
+            mangoEventPublisher.publish(new PluginConfigChangedEvent(
+                    botConfig.getId(),
+                    pluginId,
+                    pluginName,
+                    configKey,
+                    botConfig.getConfigType(),
+                    oldValue,
+                    configValue
+            ));
+            log.info("更新插件配置值成功: pluginId={}, botId={}, key={}", pluginId, botId, configKey);
+        }
+        return result;
     }
 
     @Override

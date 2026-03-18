@@ -253,43 +253,101 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
             return result;
         }
         
-        LambdaQueryWrapper<SystemConfig> defaultWrapper = new LambdaQueryWrapper<>();
-        defaultWrapper.eq(SystemConfig::getConfigKey, configKey)
-                      .isNull(SystemConfig::getBotId);
-        SystemConfig defaultConfig = this.getOne(defaultWrapper);
+        LambdaQueryWrapper<SystemConfig> checkBotWrapper = new LambdaQueryWrapper<>();
+        checkBotWrapper.eq(SystemConfig::getBotId, botId);
+        long botConfigCount = this.count(checkBotWrapper);
         
-        if (defaultConfig == null) {
+        if (botConfigCount == 0) {
+            LambdaQueryWrapper<SystemConfig> defaultListWrapper = new LambdaQueryWrapper<>();
+            defaultListWrapper.isNull(SystemConfig::getBotId);
+            List<SystemConfig> defaultConfigs = this.list(defaultListWrapper);
+            
+            for (SystemConfig defaultConfig : defaultConfigs) {
+                SystemConfig newConfig = new SystemConfig();
+                newConfig.setBotId(botId);
+                newConfig.setConfigKey(defaultConfig.getConfigKey());
+                newConfig.setConfigValue(defaultConfig.getConfigValue());
+                newConfig.setConfigType(defaultConfig.getConfigType());
+                newConfig.setMetadata(defaultConfig.getMetadata());
+                newConfig.setDescription(defaultConfig.getDescription());
+                newConfig.setExplain(defaultConfig.getExplain());
+                newConfig.setCategory(defaultConfig.getCategory());
+                newConfig.setEditable(defaultConfig.getEditable());
+                this.save(newConfig);
+            }
+            
+            log.info("懒加载复制所有默认配置到Bot专属配置: botId={}, count={}", botId, defaultConfigs.size());
+            
+            LambdaQueryWrapper<SystemConfig> newBotWrapper = new LambdaQueryWrapper<>();
+            newBotWrapper.eq(SystemConfig::getConfigKey, configKey)
+                        .eq(SystemConfig::getBotId, botId);
+            botConfig = this.getOne(newBotWrapper);
+        } else {
+            LambdaQueryWrapper<SystemConfig> defaultWrapper = new LambdaQueryWrapper<>();
+            defaultWrapper.eq(SystemConfig::getConfigKey, configKey)
+                          .isNull(SystemConfig::getBotId);
+            SystemConfig defaultConfig = this.getOne(defaultWrapper);
+            
+            if (defaultConfig == null) {
+                return false;
+            }
+            
+            ConfigType configType = ConfigType.fromCode(defaultConfig.getConfigType());
+            if (!configTypeHandler.validate(configType, configValue)) {
+                log.warn("配置值验证失败: type={}, value={}", configType, configValue);
+            }
+            
+            SystemConfig newConfig = new SystemConfig();
+            newConfig.setBotId(botId);
+            newConfig.setConfigKey(configKey);
+            newConfig.setConfigValue(configValue);
+            newConfig.setConfigType(defaultConfig.getConfigType());
+            newConfig.setMetadata(defaultConfig.getMetadata());
+            newConfig.setDescription(defaultConfig.getDescription());
+            newConfig.setExplain(defaultConfig.getExplain());
+            newConfig.setCategory(defaultConfig.getCategory());
+            newConfig.setEditable(defaultConfig.getEditable());
+            this.save(newConfig);
+            
+            mangoEventPublisher.publish(new SystemConfigChangedEvent(
+                    newConfig.getId(),
+                    newConfig.getConfigKey(),
+                    newConfig.getConfigType(),
+                    newConfig.getCategory(),
+                    defaultConfig.getConfigValue(),
+                    configValue
+            ));
+            
+            log.info("懒加载创建单个Bot专属配置: botId={}, key={}", botId, configKey);
+            return true;
+        }
+        
+        if (botConfig == null) {
             return false;
         }
         
-        ConfigType configType = ConfigType.fromCode(defaultConfig.getConfigType());
+        ConfigType configType = ConfigType.fromCode(botConfig.getConfigType());
         if (!configTypeHandler.validate(configType, configValue)) {
             log.warn("配置值验证失败: type={}, value={}", configType, configValue);
         }
         
-        SystemConfig newConfig = new SystemConfig();
-        newConfig.setBotId(botId);
-        newConfig.setConfigKey(configKey);
-        newConfig.setConfigValue(configValue);
-        newConfig.setConfigType(defaultConfig.getConfigType());
-        newConfig.setMetadata(defaultConfig.getMetadata());
-        newConfig.setDescription(defaultConfig.getDescription());
-        newConfig.setExplain(defaultConfig.getExplain());
-        newConfig.setCategory(defaultConfig.getCategory());
-        newConfig.setEditable(defaultConfig.getEditable());
-        this.save(newConfig);
-        
-        mangoEventPublisher.publish(new SystemConfigChangedEvent(
-                newConfig.getId(),
-                newConfig.getConfigKey(),
-                newConfig.getConfigType(),
-                newConfig.getCategory(),
-                defaultConfig.getConfigValue(),
-                configValue
-        ));
-        
-        log.info("懒加载创建Bot专属配置: botId={}, key={}", botId, configKey);
-        return true;
+        String oldValue = botConfig.getConfigValue();
+        botConfig.setConfigValue(configValue);
+        botConfig.setUpdatedAt(System.currentTimeMillis());
+        boolean result = this.updateById(botConfig);
+
+        if (result) {
+            mangoEventPublisher.publish(new SystemConfigChangedEvent(
+                    botConfig.getId(),
+                    botConfig.getConfigKey(),
+                    botConfig.getConfigType(),
+                    botConfig.getCategory(),
+                    oldValue,
+                    configValue
+            ));
+            log.info("更新系统配置值成功: botId={}, key={}", botId, configKey);
+        }
+        return result;
     }
 
     @Override

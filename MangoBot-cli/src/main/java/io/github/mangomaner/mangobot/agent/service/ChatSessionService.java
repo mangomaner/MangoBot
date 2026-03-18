@@ -4,6 +4,7 @@ import io.github.mangomaner.mangobot.agent.model.domain.ChatSession;
 import com.baomidou.mybatisplus.extension.service.IService;
 import io.github.mangomaner.mangobot.agent.model.dto.CreateChatSessionRequest;
 import io.github.mangomaner.mangobot.agent.model.dto.UpdateChatSessionRequest;
+import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.model.vo.ChatSessionVO;
 
 import java.util.List;
@@ -53,4 +54,13 @@ public interface ChatSessionService extends IService<ChatSession> {
      * @param id 会话ID
      */
     void deleteSession(Integer id);
+
+    /**
+     * 根据 botId 和 chatId 获取会话详情
+     *
+     * @param botId  Bot ID
+     * @param chatId 群聊ID/私聊ID
+     * @return 会话视图对象，如果不存在则返回 null
+     */
+    ChatSessionVO getSessionByBotIdAndChatId(Long botId, Long chatId, SessionSource source);
 }

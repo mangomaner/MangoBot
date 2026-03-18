@@ -1,5 +1,6 @@
 package io.github.mangomaner.mangobot.agent.service;
 
+import io.agentscope.core.ReActAgent;
 import reactor.core.publisher.Flux;
 
 /**
@@ -23,5 +24,5 @@ public interface ChatService {
      * @param message   用户消息内容
      * @return 流式响应（Server-Sent Events）
      */
-    Flux<String> streamChat(Integer sessionId, String message);
+    Flux<String> streamChat(Integer sessionId, String message, ReActAgent agent);
 }

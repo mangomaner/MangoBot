@@ -33,7 +33,7 @@ public class ChatServiceImpl implements ChatService {
     private static final String ROLE_USER = "user";
 
     @Override
-    public Flux<String> streamChat(Integer sessionId, String message) {
+    public Flux<String> streamChat(Integer sessionId, String message, ReActAgent agent) {
         if (sessionId == null) {
             return Flux.just("<Error>会话ID不能为空</Error>\n[DONE]");
         }
@@ -48,8 +48,6 @@ public class ChatServiceImpl implements ChatService {
         }
 
         Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
-
-        ReActAgent agent = agentFactory.createAgent(sessionId);
 
         if(agent.getModel() == null) {
             return Flux.just("<Error>主模型未配置</Error>\n");

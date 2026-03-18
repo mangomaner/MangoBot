@@ -41,6 +41,18 @@ public class ChatSession implements Serializable {
     private Date createTime;
 
     /**
+     *
+     */
+    @TableField(value = "bot_id")
+    private Long botId;
+
+    /**
+     *
+     */
+    @TableField(value = "chat_id")
+    private Long chatId;
+
+    /**
      * 
      */
     @TableField(value = "update_time")

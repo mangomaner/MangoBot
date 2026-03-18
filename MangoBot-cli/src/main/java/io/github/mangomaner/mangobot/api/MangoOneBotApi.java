@@ -3,7 +3,9 @@ package io.github.mangomaner.mangobot.api;
 import io.github.mangomaner.mangobot.model.onebot.SendMessage;
 import io.github.mangomaner.mangobot.model.onebot.api.response.*;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
+import io.github.mangomaner.mangobot.service.GroupMessagesService;
 import io.github.mangomaner.mangobot.service.OneBotApiService;
+import io.github.mangomaner.mangobot.service.PrivateMessagesService;
 
 import java.util.List;
 import java.util.Map;
@@ -15,11 +17,21 @@ import java.util.Map;
 public class MangoOneBotApi {
 
     private static OneBotApiService service;
+    private static GroupMessagesService groupMessagesService;
+    private static PrivateMessagesService privateMessagesService;
 
     private MangoOneBotApi() {}
 
     static void setService(OneBotApiService service) {
         MangoOneBotApi.service = service;
+    }
+
+    static void setGroupMessagesService(GroupMessagesService groupMessagesService) {
+        MangoOneBotApi.groupMessagesService = groupMessagesService;
+    }
+
+    static void setPrivateMessagesService(PrivateMessagesService privateMessagesService) {
+        MangoOneBotApi.privateMessagesService = privateMessagesService;
     }
 
     private static void checkService() {
@@ -38,7 +50,11 @@ public class MangoOneBotApi {
      */
     public static MessageId sendPrivateMsg(long botId, long userId, SendMessage message) {
         checkService();
-        return service.sendPrivateMsg(botId, userId, message);
+        MessageId result = service.sendPrivateMsg(botId, userId, message);
+        if (privateMessagesService != null) {
+            privateMessagesService.addPrivateMessage(message.getMessage(), botId, userId, result.getMessageId());
+        }
+        return result;
     }
 
     /**
@@ -51,7 +67,11 @@ public class MangoOneBotApi {
      */
     public static MessageId sendGroupMsg(long botId, long groupId, SendMessage message) {
         checkService();
-        return service.sendGroupMsg(botId, groupId, message);
+        MessageId result = service.sendGroupMsg(botId, groupId, message);
+        if (groupMessagesService != null) {
+            groupMessagesService.addGroupMessage(message.getMessage(), botId, groupId, result.getMessageId());
+        }
+        return result;
     }
 
     /**

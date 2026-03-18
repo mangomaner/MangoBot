@@ -5,13 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.tool.coding.ShellCommandTool;
 import io.agentscope.core.tool.file.ReadFileTool;
 import io.agentscope.core.tool.file.WriteFileTool;
+import io.github.mangomaner.mangobot.agent.model.domain.AgentJavaToolConfig;
 import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
+import io.github.mangomaner.mangobot.agent.service.AgentJavaToolConfigService;
 import io.github.mangomaner.mangobot.agent.tools.CalculatorTool;
 import io.github.mangomaner.mangobot.agent.tools.DateTimeTool;
-import io.github.mangomaner.mangobot.agent.tools.TextTool;
+import io.github.mangomaner.mangobot.agent.tools.GroupMessageSendTool;
 import io.github.mangomaner.mangobot.annotation.MangoTool;
-import io.github.mangomaner.mangobot.agent.model.domain.AgentJavaToolConfig;
-import io.github.mangomaner.mangobot.agent.service.AgentJavaToolConfigService;
 import io.github.mangomaner.mangobot.api.MangoToolApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -75,7 +75,7 @@ public class ToolRegistrationService {
     public void initBuiltInTools() {
         registerBuiltInTool(DateTimeTool.class, "日期时间工具");
         registerBuiltInTool(CalculatorTool.class, "计算器工具");
-        registerBuiltInTool(TextTool.class, "文本处理工具");
+        registerBuiltInTool(GroupMessageSendTool.class, "群聊回复工具", List.of(SessionSource.GROUP));
         registerBuiltInTool(ReadFileTool.class, "文件读取工具");
         registerBuiltInTool(WriteFileTool.class, "文件写入工具");
         registerBuiltInToolFactory(ShellCommandTool.class, "Shell 命令工具");
@@ -423,6 +423,11 @@ public class ToolRegistrationService {
 
     private void registerBuiltInTool(Class<?> toolClass, String description) {
         MangoToolApi.registerTool(toolClass);
+        log.debug("Registered built-in tool: {} - {}", toolClass.getSimpleName(), description);
+    }
+
+    private void registerBuiltInTool(Class<?> toolClass, String description, List<SessionSource> availableSources) {
+        MangoToolApi.registerTool(toolClass, availableSources);
         log.debug("Registered built-in tool: {} - {}", toolClass.getSimpleName(), description);
     }
 

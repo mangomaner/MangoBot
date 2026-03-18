@@ -129,18 +129,18 @@ INSERT INTO model_configs (model_name, provider_id, temperature, description) VA
 -- 模型角色初始数据
 INSERT INTO model_roles (role_key, role_name, model_config_id, description) VALUES
     ('main', '主模型', 1, '用于主要对话任务'),
-    ('assistant', '助手模型', 2, '用于简单任务，节省成本'),
-    ('image', '图片模型', 3, '用于图片理解任务'),
-    ('embedding', '向量模型', 4, '用于文本向量化');
+    ('assistant', '助手模型', 1, '用于简单任务，节省成本'),
+    ('image', '图片模型', 1, '用于图片理解任务'),
+    ('embedding', '向量模型', 1, '用于文本向量化');
 
 -- 系统配置初始数据（bot_id 为 null 表示默认配置，用于无 Bot 连接时显示）
 INSERT INTO system_configs (bot_id, config_key, config_value, config_type, metadata, description, explain, category) VALUES
     (NULL, 'group.whitelist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组白名单', '群号列表，示例：[111111, 222222]', 'BW_list'),
     (NULL, 'group.blacklist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组黑名单', '群号列表，示例：[111111, 222222]', 'BW_list'),
-    (NULL, 'group.enable_list', '1', 'BOOLEAN', NULL, '启用群组黑白名单', '', 'BW_list'),
+    (NULL, 'group.enable_list', 'true', 'BOOLEAN', NULL, '启用群组黑白名单', '', 'BW_list'),
     (NULL, 'private.whitelist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊白名单', '用户QQ列表，示例：[111111, 222222]', 'BW_list'),
     (NULL, 'private.blacklist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊黑名单', '用户QQ列表，示例：[111111, 222222]', 'BW_list'),
-    (NULL, 'private.enable_list', '1', 'BOOLEAN', NULL, '启用私聊黑白名单', '', 'BW_list');
+    (NULL, 'private.enable_list', 'true', 'BOOLEAN', NULL, '启用私聊黑白名单', '', 'BW_list');
 
 -- ============================================
 -- 消息存储表
@@ -229,12 +229,18 @@ CREATE TABLE IF NOT EXISTS plugins
 -- 对话会话表：记录每个工作区的对话会话
 CREATE TABLE IF NOT EXISTS chat_session (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bot_id INTEGER,
+    chat_id INTEGER,   -- 关联群聊ID/私聊ID
     title VARCHAR(256), -- 会话标题（默认为该会话第一个问题，因此，前端点击新对话时，先不创建会话，等到输入问题并发送后再新建对话）
     memory_state TEXT, -- AutoContextMemory 持久化状态（JSON格式）
     source VARCHAR(32),
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 索引顺序 (bot_id, chat_id)
+CREATE INDEX IF NOT EXISTS idx_chat_session_bot_chat
+    ON chat_session (bot_id, chat_id);
 
 -- 对话消息表：记录对话历史
 CREATE TABLE IF NOT EXISTS chat_message_web (

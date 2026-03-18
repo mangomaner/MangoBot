@@ -2,9 +2,11 @@ package io.github.mangomaner.mangobot.model.dto.message;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 @Schema(description = "查询最新消息请求")
 public class QueryLatestMessagesRequest {
 

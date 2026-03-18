@@ -1,5 +1,6 @@
 package io.github.mangomaner.mangobot.agent.controller;
 
+import io.github.mangomaner.mangobot.agent.factory.AgentFactory;
 import io.github.mangomaner.mangobot.agent.model.dto.CreateChatSessionRequest;
 import io.github.mangomaner.mangobot.agent.model.dto.StreamChatRequest;
 import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
@@ -32,6 +33,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final ChatSessionService chatSessionService;
+    private final AgentFactory agentFactory;
 
     @PostMapping("/session")
     @Operation(summary = "创建Web会话", description = "创建一个新的Web端对话会话")
@@ -63,6 +65,8 @@ public class ChatController {
         log.info("Received streaming chat request, sessionId: {}, message length: {}",
                 sessionId, message != null ? message.length() : 0);
 
-        return chatService.streamChat(sessionId, message);
+
+
+        return chatService.streamChat(sessionId, message, agentFactory.createAgent(sessionId));
     }
 }

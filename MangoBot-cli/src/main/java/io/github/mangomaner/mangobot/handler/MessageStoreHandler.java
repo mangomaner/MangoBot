@@ -1,5 +1,6 @@
 package io.github.mangomaner.mangobot.handler;
 
+import io.github.mangomaner.mangobot.agent.factory.AgentFactory;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.configuration.event.SystemConfigChangedEvent;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @MangoBotEventListener
-public class MessageHandler {
+public class MessageStoreHandler {
 
     @Resource
     private GroupMessagesService groupMessagesService;
@@ -25,6 +26,9 @@ public class MessageHandler {
 
     @Resource
     private MessageParser messageParser;
+
+    @Resource
+    private AgentFactory agentFactory;
 
     @MangoBotEventListener
     @PluginPriority(-1)
