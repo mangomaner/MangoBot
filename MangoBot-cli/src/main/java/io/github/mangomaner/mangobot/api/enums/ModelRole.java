@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.api;
+package io.github.mangomaner.mangobot.api.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

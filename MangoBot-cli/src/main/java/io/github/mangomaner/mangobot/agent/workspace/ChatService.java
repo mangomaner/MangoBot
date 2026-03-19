@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.agent.service.impl;
+package io.github.mangomaner.mangobot.agent.workspace;
 
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.StreamOptions;
@@ -7,10 +7,8 @@ import io.github.mangomaner.mangobot.agent.factory.AgentFactory;
 import io.github.mangomaner.mangobot.agent.hook.StreamingToolHook;
 import io.github.mangomaner.mangobot.agent.model.dto.ChatMessageWebRequest;
 import io.github.mangomaner.mangobot.agent.service.ChatMessageWebService;
-import io.github.mangomaner.mangobot.agent.service.ChatService;
+import io.github.mangomaner.mangobot.agent.workspace.ChatService;
 import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
-import io.github.mangomaner.mangobot.common.ErrorCode;
-import io.github.mangomaner.mangobot.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,9 +20,8 @@ import reactor.core.scheduler.Schedulers;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatServiceImpl implements ChatService {
-
-    private final AgentFactory agentFactory;
+public class ChatService {
+    
     private final StreamingToolHook streamingToolHook;
     private final ChatMessageWebService chatMessageWebService;
     private final ChatSessionService chatSessionService;
@@ -32,7 +29,20 @@ public class ChatServiceImpl implements ChatService {
 
     private static final String ROLE_USER = "user";
 
-    @Override
+    /**
+     * 执行流式对话
+     * <p>
+     * 该方法会：
+     * 1. 为指定会话创建独立的 Agent 实例
+     * 2. 加载会话历史消息作为上下文
+     * 3. 将用户消息持久化到数据库
+     * 4. 通过 SSE 流式返回 AI 响应
+     * 5. 自动将 AI 回复持久化到数据库
+     *
+     * @param sessionId 对话会话ID
+     * @param message   用户消息内容
+     * @return 流式响应（Server-Sent Events）
+     */
     public Flux<String> streamChat(Integer sessionId, String message, ReActAgent agent) {
         if (sessionId == null) {
             return Flux.just("<Error>会话ID不能为空</Error>\n[DONE]");

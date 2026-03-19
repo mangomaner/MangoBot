@@ -2,7 +2,7 @@ package io.github.mangomaner.mangobot.manager;
 
 import io.github.mangomaner.mangobot.agent.capability.tool.ToolRegistrationService;
 import io.github.mangomaner.mangobot.agent.factory.AgentFactory;
-import io.github.mangomaner.mangobot.agent.service.ChatService;
+import io.github.mangomaner.mangobot.agent.workspace.ChatService;
 import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
 import io.github.mangomaner.mangobot.api.*;
 import io.github.mangomaner.mangobot.configuration.core.ModelProvider;

@@ -5,7 +5,7 @@ import io.github.mangomaner.mangobot.agent.factory.AgentFactory;
 import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.model.vo.ChatSessionVO;
 import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
-import io.github.mangomaner.mangobot.agent.service.ChatService;
+import io.github.mangomaner.mangobot.agent.workspace.ChatService;
 import reactor.core.publisher.Flux;
 
 /**

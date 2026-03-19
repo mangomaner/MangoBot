@@ -1,10 +1,14 @@
 package io.github.mangomaner.mangobot.agent.hook;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.hook.*;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.ToolUseBlock;
+import io.github.mangomaner.mangobot.agent.model.vo.TokenUsageVO;
 import io.github.mangomaner.mangobot.agent.service.ChatMessageWebService;
+import io.github.mangomaner.mangobot.utils.TokenUsageUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -31,7 +35,7 @@ public class StreamingToolHook implements Hook {
         responseBuffers.put(agentName, new StringBuilder());
         sessionIdMapping.put(agentName, chatSessionId);
         recordedFlags.put(agentName, new AtomicBoolean(false));
-        log.info("Registered streaming session: {}, chatSessionId: {}", agentName, chatSessionId);
+        log.debug("Registered streaming session: {}, chatSessionId: {}", agentName, chatSessionId);
     }
 
     public void unregisterSession(String agentName) {
@@ -40,7 +44,7 @@ public class StreamingToolHook implements Hook {
         responseBuffers.remove(agentName);
         sessionIdMapping.remove(agentName);
         recordedFlags.remove(agentName);
-        log.info("Unregistered streaming session: {}", agentName);
+        log.debug("Unregistered streaming session: {}", agentName);
     }
 
     private void emit(String agentName, String message) {
@@ -71,7 +75,7 @@ public class StreamingToolHook implements Hook {
                 try {
                     chatMessageWebService.createAssistantMessage(chatSessionId, content, "{}");
                     recorded.set(true);
-                    log.info("Persisted AI response for session: {}, length: {}", agentName, content.length());
+                    log.debug("Persisted AI response for session: {}, length: {}", agentName, content.length());
                 } catch (Exception e) {
                     log.error("Failed to persist AI response for session: {}", agentName, e);
                 }
@@ -116,8 +120,10 @@ public class StreamingToolHook implements Hook {
             log.info("[Tool] 执行结果: {}", result);
             emit(agentName, "<FunctionCallResult>" + result + "</FunctionCallResult>\n");
         }
-        else if (event instanceof PostCallEvent) {
+        else if (event instanceof PostCallEvent e) {
             log.info("[Agent] 调用完成: {}", agentName);
+            // 获取并发送 Token 用量信息
+            emitTokenUsage(agentName, e);
             persistResponseIfNeeded(agentName);
         }
         else if (event instanceof ErrorEvent e) {
@@ -127,5 +133,36 @@ public class StreamingToolHook implements Hook {
         }
 
         return Mono.just(event);
+    }
+
+    /**
+     * 获取并发送 Token 用量信息
+     * <p>
+     * 从 PostCallEvent 中获取最终消息的 ChatUsage，转换为 TokenUsageVO 后发送给前端
+     *
+     * @param agentName Agent 名称
+     * @param event     PostCallEvent 事件
+     */
+    private void emitTokenUsage(String agentName, PostCallEvent event) {
+        try {
+            // 使用工具类提取 Token 用量
+            TokenUsageVO tokenUsageVO = TokenUsageUtils.extractFromEvent(event);
+            if (tokenUsageVO == null) {
+                return;
+            }
+
+            // 序列化为 JSON 并发送
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(tokenUsageVO);
+            emit(agentName, "<TokenUsage>" + json + "</TokenUsage>\n");
+            log.info("[TokenUsage] 输入: {} tokens, 输出: {} tokens, 耗时: {}s",
+                    tokenUsageVO.getInputTokens(),
+                    tokenUsageVO.getOutputTokens(),
+                    tokenUsageVO.getTime());
+        } catch (JsonProcessingException e) {
+            log.error("[TokenUsage] JSON 序列化失败", e);
+        } catch (Exception e) {
+            log.error("[TokenUsage] 获取 Token 用量失败", e);
+        }
     }
 }

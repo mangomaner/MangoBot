@@ -16,5 +16,6 @@ public class FaceSegment extends MessageSegment {
         private String id;
         @JsonProperty("sub_type")
         private int subType;
+        private String raw;     // NapCat
     }
 }

@@ -9,7 +9,7 @@ import io.agentscope.core.state.SessionKey;
 import io.agentscope.core.state.State;
 import io.github.mangomaner.mangobot.agent.model.domain.ChatSession;
 import io.github.mangomaner.mangobot.api.MangoModelApi;
-import io.github.mangomaner.mangobot.api.ModelRole;
+import io.github.mangomaner.mangobot.api.enums.ModelRole;
 import io.github.mangomaner.mangobot.mapper.agent.ChatSessionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,7 +80,7 @@ public class MemoryManager {
             chatSession.setMemoryState(state);
             chatSession.setUpdateTime(new Date());
             chatSessionMapper.updateById(chatSession);
-            log.info("Persisted memory state for session: {}", sessionId);
+            log.debug("Persisted memory state for session: {}", sessionId);
         } catch (Exception e) {
             log.error("Failed to persist memory state for session: {}", sessionId, e);
         }
@@ -89,7 +89,7 @@ public class MemoryManager {
     public void removeMemory(Integer sessionId) {
         sessionMemories.remove(sessionId);
         sessionStores.remove(sessionId);
-        log.info("Removed memory from cache for session: {}", sessionId);
+        log.debug("Removed memory from cache for session: {}", sessionId);
     }
 
     public void persistAndRemoveMemory(Integer sessionId) {

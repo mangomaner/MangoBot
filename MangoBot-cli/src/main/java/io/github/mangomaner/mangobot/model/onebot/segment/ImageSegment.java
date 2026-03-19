@@ -19,6 +19,6 @@ public class ImageSegment extends MessageSegment {
         private String url;
         @JsonProperty("file_size")
         private String fileSize;
-        private String summary;
+        private String summary; // NapCat
     }
 }

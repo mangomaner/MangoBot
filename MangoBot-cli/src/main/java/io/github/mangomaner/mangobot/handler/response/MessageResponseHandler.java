@@ -1,13 +1,8 @@
 package io.github.mangomaner.mangobot.handler.response;
 
 import io.agentscope.core.ReActAgent;
-import io.github.mangomaner.mangobot.agent.factory.AgentFactory;
-import io.github.mangomaner.mangobot.agent.model.domain.ChatSession;
-import io.github.mangomaner.mangobot.agent.model.dto.CreateChatSessionRequest;
 import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.model.vo.ChatSessionVO;
-import io.github.mangomaner.mangobot.agent.service.ChatService;
-import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.api.MangoAgentApi;
@@ -15,12 +10,10 @@ import io.github.mangomaner.mangobot.api.MangoGroupMessageApi;
 import io.github.mangomaner.mangobot.model.domain.GroupMessages;
 import io.github.mangomaner.mangobot.model.dto.message.QueryLatestMessagesRequest;
 import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.*;
 
 @Component
@@ -39,7 +32,6 @@ public class MessageResponseHandler {
     private static final long MIN_DELAY_SECONDS = 2;
 
     String systemPrompt = """
-            
             # Role: QQ群聊隐形人 (The Invisible Group Member)
                         
             ## Core Identity
@@ -191,7 +183,7 @@ public class MessageResponseHandler {
             }
         }
 
-        messageBuilder.append("请你根据上面的对话，调用群聊消息工具参与聊天（携带<YourMessage>标签的为你发送的消息，本次回复的消息**禁止**与之前你发送消息的任意一次意思相近）");
+        messageBuilder.append("请你根据上面的对话，调用群聊消息工具参与聊天（携带<YourMessage>标签的为你发送的消息，本次回复的消息**禁止**与之前你发送消息的任意一次意思相近）.禁止大段思考");
 
         ReActAgent agent = MangoAgentApi.createAgentWithPrompt(session.getId(), systemPrompt);
         MangoAgentApi.streamChat(session.getId(), messageBuilder.toString(), agent);

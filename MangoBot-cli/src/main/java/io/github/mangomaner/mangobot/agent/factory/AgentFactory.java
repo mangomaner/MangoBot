@@ -23,7 +23,7 @@ import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.model.vo.ChatSessionVO;
 import io.github.mangomaner.mangobot.agent.service.*;
 import io.github.mangomaner.mangobot.api.MangoModelApi;
-import io.github.mangomaner.mangobot.api.ModelRole;
+import io.github.mangomaner.mangobot.api.enums.ModelRole;
 import io.github.mangomaner.mangobot.api.context.ChatContext;
 import io.github.mangomaner.mangobot.common.ErrorCode;
 import io.github.mangomaner.mangobot.exception.BusinessException;

@@ -1,6 +1,7 @@
 package io.github.mangomaner.mangobot.api;
 
 import io.agentscope.core.model.OpenAIChatModel;
+import io.github.mangomaner.mangobot.api.enums.ModelRole;
 import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelConfigVO;
 import io.github.mangomaner.mangobot.configuration.model.vo.ModelRoleVO;
