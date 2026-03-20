@@ -1,6 +1,5 @@
 package io.github.mangomaner.mangobot.api.context;
 
-import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.api.context.state.ToolExecuteState;
 import lombok.Builder;
 import lombok.Data;

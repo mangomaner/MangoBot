@@ -1,8 +1,8 @@
 package io.github.mangomaner.mangobot.api;
 
-import io.github.mangomaner.mangobot.agent.capability.tool.ToolRegistrationService;
-import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
-import io.github.mangomaner.mangobot.plugin.PluginClassLoader;
+import io.github.mangomaner.mangobot.module.agent.capability.tool.ToolRegistrationService;
+import io.github.mangomaner.mangobot.module.agent.model.enums.SessionSource;
+import io.github.mangomaner.mangobot.plugin.core.PluginClassLoader;
 
 import java.util.List;
 import java.util.function.Supplier;

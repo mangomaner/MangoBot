@@ -1,13 +1,13 @@
 package io.github.mangomaner.mangobot.api;
 
-import io.github.mangomaner.mangobot.model.domain.PrivateMessages;
-import io.github.mangomaner.mangobot.model.dto.message.QueryLatestMessagesRequest;
-import io.github.mangomaner.mangobot.model.dto.message.QueryMessagesByMessageIdRequest;
-import io.github.mangomaner.mangobot.model.dto.message.QueryMessagesBySenderRequest;
-import io.github.mangomaner.mangobot.model.dto.message.SearchMessagesRequest;
-import io.github.mangomaner.mangobot.model.dto.message.UpdateMessageRequest;
-import io.github.mangomaner.mangobot.model.vo.PrivateMessageVO;
-import io.github.mangomaner.mangobot.service.PrivateMessagesService;
+import io.github.mangomaner.mangobot.module.message.model.domain.PrivateMessages;
+import io.github.mangomaner.mangobot.module.message.model.dto.QueryLatestMessagesRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.QueryMessagesByMessageIdRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.QueryMessagesBySenderRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.SearchMessagesRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.UpdateMessageRequest;
+import io.github.mangomaner.mangobot.module.message.model.vo.PrivateMessageVO;
+import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
 
 import java.util.List;
 

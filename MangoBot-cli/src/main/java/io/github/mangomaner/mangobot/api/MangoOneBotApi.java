@@ -1,11 +1,11 @@
 package io.github.mangomaner.mangobot.api;
 
-import io.github.mangomaner.mangobot.model.onebot.SendMessage;
-import io.github.mangomaner.mangobot.model.onebot.api.response.*;
-import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
-import io.github.mangomaner.mangobot.service.GroupMessagesService;
-import io.github.mangomaner.mangobot.service.OneBotApiService;
-import io.github.mangomaner.mangobot.service.PrivateMessagesService;
+import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
+import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotSendingMessage;
+import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
+import io.github.mangomaner.mangobot.adapter.onebot.outbound.send.OneBotApiService;
+import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
 
 import java.util.List;
 import java.util.Map;
@@ -48,7 +48,7 @@ public class MangoOneBotApi {
      * @param message 消息内容
      * @return MessageId
      */
-    public static MessageId sendPrivateMsg(long botId, long userId, SendMessage message) {
+    public static MessageId sendPrivateMsg(long botId, long userId, OneBotSendingMessage message) {
         checkService();
         MessageId result = service.sendPrivateMsg(botId, userId, message);
         if (privateMessagesService != null) {
@@ -65,7 +65,7 @@ public class MangoOneBotApi {
      * @param message 消息内容
      * @return MessageId
      */
-    public static MessageId sendGroupMsg(long botId, long groupId, SendMessage message) {
+    public static MessageId sendGroupMsg(long botId, long groupId, OneBotSendingMessage message) {
         checkService();
         MessageId result = service.sendGroupMsg(botId, groupId, message);
         if (groupMessagesService != null) {
@@ -157,7 +157,7 @@ public class MangoOneBotApi {
     /**
      * 获取合并转发消息
      */
-    public static List<GroupMessageEvent> getForwardMsg(long botId, String id) {
+    public static List<OneBotGroupMessageEvent> getForwardMsg(long botId, String id) {
         checkService();
         return service.getForwardMsg(botId, id);
     }

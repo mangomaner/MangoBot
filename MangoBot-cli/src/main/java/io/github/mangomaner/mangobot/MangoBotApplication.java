@@ -1,11 +1,11 @@
 package io.github.mangomaner.mangobot;
 
-import io.github.mangomaner.mangobot.agent.capability.mcp.McpConnectionManager;
-import io.github.mangomaner.mangobot.agent.capability.skill.SkillManager;
-import io.github.mangomaner.mangobot.agent.capability.tool.ToolRegistrationService;
-import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
+import io.github.mangomaner.mangobot.module.agent.capability.mcp.McpConnectionManager;
+import io.github.mangomaner.mangobot.module.agent.capability.skill.SkillManager;
+import io.github.mangomaner.mangobot.module.agent.capability.tool.ToolRegistrationService;
+import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.manager.MangoApiManager;
-import io.github.mangomaner.mangobot.plugin.PluginManager;
+import io.github.mangomaner.mangobot.plugin.core.PluginManager;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
@@ -32,7 +32,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication(exclude = {RedisAutoConfiguration.class})
 @EnableScheduling
 @EnableAspectJAutoProxy(proxyTargetClass = true, exposeProxy = true)
-@MapperScan("io.github.mangomaner.mangobot.mapper")
+@MapperScan("io.github.mangomaner.mangobot.system.mapper")
 @Slf4j
 public class MangoBotApplication {
 

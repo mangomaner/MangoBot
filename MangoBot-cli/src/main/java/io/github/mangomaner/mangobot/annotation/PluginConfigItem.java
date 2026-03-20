@@ -1,7 +1,7 @@
 package io.github.mangomaner.mangobot.annotation;
 
-import io.github.mangomaner.mangobot.configuration.annotation.ConfigMeta;
-import io.github.mangomaner.mangobot.configuration.enums.ConfigType;
+import io.github.mangomaner.mangobot.module.configuration.annotation.ConfigMeta;
+import io.github.mangomaner.mangobot.module.configuration.enums.ConfigType;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

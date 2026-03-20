@@ -1,9 +1,9 @@
 package io.github.mangomaner.mangobot.api;
 
-import io.github.mangomaner.mangobot.model.domain.BotFiles;
-import io.github.mangomaner.mangobot.model.dto.SendFileRequest;
-import io.github.mangomaner.mangobot.model.dto.UpdateFileRequest;
-import io.github.mangomaner.mangobot.service.BotFilesService;
+import io.github.mangomaner.mangobot.module.file.model.domain.BotFiles;
+import io.github.mangomaner.mangobot.module.file.model.dto.SendFileRequest;
+import io.github.mangomaner.mangobot.module.file.model.dto.UpdateFileRequest;
+import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 
 import java.util.List;
 

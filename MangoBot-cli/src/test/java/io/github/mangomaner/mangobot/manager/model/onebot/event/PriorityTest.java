@@ -4,7 +4,7 @@ import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
 import org.junit.jupiter.api.Test;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
-import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -34,7 +34,7 @@ public class PriorityTest {
         // So we cannot easily access the internal state of the listener instance created by publisher
         // unless we expose it or make the logs static.
         
-        GroupMessageEvent event = new GroupMessageEvent();
+        OneBotGroupMessageEvent event = new OneBotGroupMessageEvent();
         event.setRawMessage("Test");
 
         publisher.publish(event);
@@ -56,21 +56,21 @@ public class PriorityTest {
 
         @MangoBotEventListener
         @PluginPriority(1) // Highest
-        public boolean onHighPriority(GroupMessageEvent event) {
+        public boolean onHighPriority(OneBotGroupMessageEvent event) {
             staticLogs.add("HighPriority");
             return true; // Continue
         }
 
         @MangoBotEventListener
         @PluginPriority(5) // Medium
-        public boolean onMediumPriority(GroupMessageEvent event) {
+        public boolean onMediumPriority(OneBotGroupMessageEvent event) {
             staticLogs.add("MediumPriority");
             return false; // Stop propagation
         }
 
         @MangoBotEventListener
         @PluginPriority(10) // Lowest
-        public boolean onLowPriority(GroupMessageEvent event) {
+        public boolean onLowPriority(OneBotGroupMessageEvent event) {
             staticLogs.add("LowPriority");
             return true;
         }

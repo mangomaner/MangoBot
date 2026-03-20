@@ -3,7 +3,7 @@ package io.github.mangomaner.mangobot.utils;
 import io.agentscope.core.hook.PostCallEvent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.ChatUsage;
-import io.github.mangomaner.mangobot.agent.model.vo.TokenUsageVO;
+import io.github.mangomaner.mangobot.module.agent.model.vo.TokenUsageVO;
 import lombok.extern.slf4j.Slf4j;
 
 /**

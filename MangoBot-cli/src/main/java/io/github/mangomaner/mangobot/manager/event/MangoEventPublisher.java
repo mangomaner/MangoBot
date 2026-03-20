@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.api.MangoConfigApi;
-import io.github.mangomaner.mangobot.model.onebot.event.Event;
-import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
-import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.event.OneBotEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotPrivateMessageEvent;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +63,7 @@ public class MangoEventPublisher {
      * 多线程发布事件
      * @param event
      */
-    public void publish(Event event) {
+    public void publish(OneBotEvent event) {
         if (shouldBlockEvent(event)) {
             log.debug("事件被黑白名单拦截: {}", event.getClass().getSimpleName());
             return;
@@ -90,13 +90,13 @@ public class MangoEventPublisher {
      * @param event 事件对象
      * @return true 表示拦截，false 表示放行
      */
-    private boolean shouldBlockEvent(Event event) {
+    private boolean shouldBlockEvent(OneBotEvent event) {
         Long botId = event.getSelfId();
 
-        if (event instanceof GroupMessageEvent groupEvent) {
+        if (event instanceof OneBotGroupMessageEvent groupEvent) {
             return shouldBlockGroupMessage(botId, groupEvent.getGroupId());
-        } else if (event instanceof PrivateMessageEvent) {
-            return shouldBlockPrivateMessage(botId, ((PrivateMessageEvent) event).getUserId());
+        } else if (event instanceof OneBotPrivateMessageEvent) {
+            return shouldBlockPrivateMessage(botId, ((OneBotPrivateMessageEvent) event).getUserId());
         }
 
         return false;
@@ -173,7 +173,7 @@ public class MangoEventPublisher {
         }
 
         Class<?> eventType = parameterTypes[0];
-        if (!Event.class.isAssignableFrom(eventType)) {
+        if (!OneBotEvent.class.isAssignableFrom(eventType)) {
             log.warn("方法 {} 的参数必须是 Event 的子类。", method.getName());
             return;
         }

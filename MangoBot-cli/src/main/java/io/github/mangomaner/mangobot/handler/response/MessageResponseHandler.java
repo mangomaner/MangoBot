@@ -1,15 +1,15 @@
 package io.github.mangomaner.mangobot.handler.response;
 
 import io.agentscope.core.ReActAgent;
-import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
-import io.github.mangomaner.mangobot.agent.model.vo.ChatSessionVO;
+import io.github.mangomaner.mangobot.module.agent.model.enums.SessionSource;
+import io.github.mangomaner.mangobot.module.agent.model.vo.ChatSessionVO;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.api.MangoAgentApi;
 import io.github.mangomaner.mangobot.api.MangoGroupMessageApi;
-import io.github.mangomaner.mangobot.model.domain.GroupMessages;
-import io.github.mangomaner.mangobot.model.dto.message.QueryLatestMessagesRequest;
-import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
+import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
+import io.github.mangomaner.mangobot.module.message.model.dto.QueryLatestMessagesRequest;
+import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -195,7 +195,7 @@ public class MessageResponseHandler {
 
     @MangoBotEventListener
     @PluginPriority(1000)
-    public boolean onGroupMessage(GroupMessageEvent event) {
+    public boolean onGroupMessage(OneBotGroupMessageEvent event) {
 
         ChatSessionVO session = MangoAgentApi.getSessionByBotIdAndChatId(event.getSelfId(), event.getGroupId(), SessionSource.GROUP);
         Integer sessionId = session.getId();
@@ -229,7 +229,7 @@ public class MessageResponseHandler {
         return false;
     }
 
-    private void executeResponseTask(GroupMessageEvent event, ChatSessionVO session) {
+    private void executeResponseTask(OneBotGroupMessageEvent event, ChatSessionVO session) {
         List<GroupMessages> messages = MangoGroupMessageApi.getLatestMessages(QueryLatestMessagesRequest.builder()
                 .botId(event.getSelfId())
                 .targetId(event.getGroupId())

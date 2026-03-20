@@ -2,11 +2,11 @@ package io.github.mangomaner.mangobot.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.mangomaner.mangobot.model.domain.BotFiles;
-import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
-import io.github.mangomaner.mangobot.model.onebot.segment.*;
-import io.github.mangomaner.mangobot.service.BotFilesService;
-import io.github.mangomaner.mangobot.service.OneBotApiService;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.*;
+import io.github.mangomaner.mangobot.module.file.model.domain.BotFiles;
+import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
+import io.github.mangomaner.mangobot.adapter.onebot.outbound.send.OneBotApiService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,13 +23,13 @@ public class MessageParser {
     @Resource
     private BotFilesService botFilesService;
 
-    public String parseMessage(List<MessageSegment> segments, Long botId) {
+    public String parseMessage(List<OneBotMessageSegment> segments, Long botId) {
         if (segments == null || segments.isEmpty()) {
             return "";
         }
 
         StringBuilder result = new StringBuilder();
-        for (MessageSegment segment : segments) {
+        for (OneBotMessageSegment segment : segments) {
             String parsed = parseSegment(segment, botId);
             if (parsed != null && !parsed.isEmpty()) {
                 result.append(parsed);
@@ -38,7 +38,7 @@ public class MessageParser {
         return result.toString();
     }
 
-    private String parseSegment(MessageSegment segment, Long botId) {
+    private String parseSegment(OneBotMessageSegment segment, Long botId) {
         try {
             String type = segment.getType();
             switch (type) {
@@ -219,7 +219,7 @@ public class MessageParser {
             return "转发消息";
         }
 
-        List<GroupMessageEvent> event = null;
+        List<OneBotGroupMessageEvent> event = null;
         event = oneBotApiService.getForwardMsg(botId, id);
 
         if (event == null || event.isEmpty()) {
@@ -227,7 +227,7 @@ public class MessageParser {
         }
 
         StringBuilder sb = new StringBuilder();
-        for (GroupMessageEvent e : event) {
+        for (OneBotGroupMessageEvent e : event) {
             String message = parseMessage(e.getMessage(), botId);
             sb.append(e.getSender().getNickname()).append("发送消息：").append(message).append("\n");
         }

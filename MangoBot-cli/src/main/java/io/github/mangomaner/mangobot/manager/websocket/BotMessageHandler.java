@@ -2,10 +2,10 @@ package io.github.mangomaner.mangobot.manager.websocket;
 
 import lombok.extern.slf4j.Slf4j;
 import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
-import io.github.mangomaner.mangobot.model.onebot.event.Event;
-import io.github.mangomaner.mangobot.model.onebot.event.EventParser;
-import io.github.mangomaner.mangobot.model.onebot.event.meta.HeartbeatEvent;
-import io.github.mangomaner.mangobot.model.onebot.event.meta.LifecycleEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.event.OneBotEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.inbound.OneBotEventParser;
+import io.github.mangomaner.mangobot.adapter.onebot.event.meta.OneBotHeartbeatEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.event.meta.OneBotLifecycleEvent;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -49,12 +49,12 @@ public class BotMessageHandler extends TextWebSocketHandler implements Handshake
         }
 
         try {
-            Event event = EventParser.parse(payload);
-            if (event instanceof HeartbeatEvent heartbeat) {
+            OneBotEvent event = OneBotEventParser.parse(payload);
+            if (event instanceof OneBotHeartbeatEvent heartbeat) {
                 connectionManager.updateHeartbeat(session, heartbeat.getInterval());
                 return;
             }
-            else if (event instanceof LifecycleEvent) {
+            else if (event instanceof OneBotLifecycleEvent) {
                 long selfId = event.getSelfId();
                 session.getAttributes().put("selfId", selfId);
                 connectionManager.registerSession(session);

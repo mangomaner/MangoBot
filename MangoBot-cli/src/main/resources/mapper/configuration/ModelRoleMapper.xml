@@ -2,9 +2,9 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="io.github.mangomaner.mangobot.mapper.configuration.ModelRoleMapper">
+<mapper namespace="io.github.mangomaner.mangobot.system.mapper.configuration.ModelRoleMapper">
 
-    <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.configuration.model.domain.ModelRole">
+    <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.module.configuration.model.domain.ModelRole">
             <id property="id" column="id" jdbcType="INTEGER"/>
             <result property="roleKey" column="role_key" jdbcType="VARCHAR"/>
             <result property="roleName" column="role_name" jdbcType="VARCHAR"/>

@@ -3,7 +3,7 @@ package io.github.mangomaner.mangobot.manager.websocket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import io.github.mangomaner.mangobot.model.onebot.api.OneBotApiResponse;
+import io.github.mangomaner.mangobot.adapter.onebot.model.vo.echo.OneBotApiResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;

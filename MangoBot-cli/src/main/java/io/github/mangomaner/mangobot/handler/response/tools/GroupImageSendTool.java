@@ -6,17 +6,14 @@ import io.github.mangomaner.mangobot.annotation.MangoTool;
 import io.github.mangomaner.mangobot.api.MangoFileApi;
 import io.github.mangomaner.mangobot.api.MangoOneBotApi;
 import io.github.mangomaner.mangobot.api.context.ChatContext;
-import io.github.mangomaner.mangobot.model.domain.BotFiles;
-import io.github.mangomaner.mangobot.model.onebot.MessageBuilder;
-import io.github.mangomaner.mangobot.model.onebot.SendMessage;
-import io.github.mangomaner.mangobot.service.BotFilesService;
+import io.github.mangomaner.mangobot.module.file.model.domain.BotFiles;
+import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotMessageBuilder;
+import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.utils.FileUtils;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 @Component
 @MangoTool(name = "GroupImageSend", description = "发送群聊表情", category = "Group")
@@ -65,7 +62,7 @@ public class GroupImageSendTool {
             return "表情包文件路径无效";
         }
         
-        SendMessage sendMessage = MessageBuilder.create()
+        OneBotSendingMessage sendMessage = OneBotMessageBuilder.create()
                 .image(FileUtils.getBaseDirectory().normalize().toString().replace('\\', '/') + "/" + imagePath, true)
                 .build();
         

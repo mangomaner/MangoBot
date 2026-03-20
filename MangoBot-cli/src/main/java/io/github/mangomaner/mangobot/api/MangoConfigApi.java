@@ -1,10 +1,10 @@
 package io.github.mangomaner.mangobot.api;
 
-import io.github.mangomaner.mangobot.configuration.service.PluginConfigService;
-import io.github.mangomaner.mangobot.configuration.service.SystemConfigService;
-import io.github.mangomaner.mangobot.configuration.model.vo.PluginConfigVO;
-import io.github.mangomaner.mangobot.configuration.model.vo.SystemConfigVO;
-import io.github.mangomaner.mangobot.plugin.PluginClassLoader;
+import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
+import io.github.mangomaner.mangobot.module.configuration.service.SystemConfigService;
+import io.github.mangomaner.mangobot.module.configuration.model.vo.PluginConfigVO;
+import io.github.mangomaner.mangobot.module.configuration.model.vo.SystemConfigVO;
+import io.github.mangomaner.mangobot.plugin.core.PluginClassLoader;
 
 /**
  * 配置 API (静态工具类)

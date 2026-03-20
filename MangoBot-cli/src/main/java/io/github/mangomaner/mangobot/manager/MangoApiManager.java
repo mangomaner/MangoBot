@@ -1,17 +1,17 @@
 package io.github.mangomaner.mangobot.manager;
 
-import io.github.mangomaner.mangobot.agent.capability.tool.ToolRegistrationService;
-import io.github.mangomaner.mangobot.agent.factory.AgentFactory;
-import io.github.mangomaner.mangobot.agent.workspace.ChatService;
-import io.github.mangomaner.mangobot.agent.service.ChatSessionService;
+import io.github.mangomaner.mangobot.module.agent.capability.tool.ToolRegistrationService;
+import io.github.mangomaner.mangobot.module.agent.factory.AgentFactory;
+import io.github.mangomaner.mangobot.module.agent.workspace.ChatService;
+import io.github.mangomaner.mangobot.module.agent.service.ChatSessionService;
 import io.github.mangomaner.mangobot.api.*;
-import io.github.mangomaner.mangobot.configuration.core.ModelProvider;
-import io.github.mangomaner.mangobot.configuration.service.PluginConfigService;
-import io.github.mangomaner.mangobot.configuration.service.SystemConfigService;
-import io.github.mangomaner.mangobot.service.BotFilesService;
-import io.github.mangomaner.mangobot.service.GroupMessagesService;
-import io.github.mangomaner.mangobot.service.OneBotApiService;
-import io.github.mangomaner.mangobot.service.PrivateMessagesService;
+import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;
+import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
+import io.github.mangomaner.mangobot.module.configuration.service.SystemConfigService;
+import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
+import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
+import io.github.mangomaner.mangobot.adapter.onebot.outbound.send.OneBotApiService;
+import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
