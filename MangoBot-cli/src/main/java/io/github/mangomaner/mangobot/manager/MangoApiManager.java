@@ -12,6 +12,7 @@ import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
 import io.github.mangomaner.mangobot.adapter.onebot.outbound.send.OneBotApiService;
 import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
+import io.github.mangomaner.mangobot.adapter.onebot.utils.MessageParser;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
@@ -54,6 +55,9 @@ public class MangoApiManager {
     @Resource
     private PluginConfigService pluginConfigService;
 
+    @Resource
+    private MessageParser messageParser;
+
     /**
      * 初始化静态 API 类
      */
@@ -65,6 +69,7 @@ public class MangoApiManager {
             initApi(MangoOneBotApi.class, "setService", OneBotApiService.class, oneBotApiService);
             initApi(MangoOneBotApi.class, "setGroupMessagesService", GroupMessagesService.class, groupMessagesService);
             initApi(MangoOneBotApi.class, "setPrivateMessagesService", PrivateMessagesService.class, privateMessagesService);
+            initApi(MangoOneBotApi.class, "setMessageParser", MessageParser.class, messageParser);
             initApi(MangoModelApi.class, "setProvider", ModelProvider.class, modelProvider);
             initApi(MangoToolApi.class, "setService", ToolRegistrationService.class, toolRegistrationService);
             initApi(MangoAgentApi.class, "setChatSessionService", ChatSessionService.class, chatSessionService);

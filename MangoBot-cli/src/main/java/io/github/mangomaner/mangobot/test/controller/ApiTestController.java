@@ -1,16 +1,13 @@
 package io.github.mangomaner.mangobot.test.controller;
 
 import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
-import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
-import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
-import io.swagger.v3.oas.annotations.Operation;
-import jakarta.annotation.Resource;
-import lombok.extern.slf4j.Slf4j;
-import io.github.mangomaner.mangobot.system.common.BaseResponse;
-import io.github.mangomaner.mangobot.system.common.ResultUtils;
 import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotMessageBuilder;
 import io.github.mangomaner.mangobot.adapter.onebot.outbound.send.OneBotApiService;
+import io.swagger.v3.oas.annotations.Operation;
+import lombok.extern.slf4j.Slf4j;
+import io.github.mangomaner.mangobot.system.common.BaseResponse;
+import io.github.mangomaner.mangobot.system.common.ResultUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,12 +18,6 @@ import java.util.List;
 public class ApiTestController {
 
     private final OneBotApiService oneBotApiService;
-
-    @Resource
-    private GroupMessagesService groupMessagesService;
-
-    @Resource
-    private PrivateMessagesService privateMessagesService;
 
     public ApiTestController(OneBotApiService oneBotApiService) {
         this.oneBotApiService = oneBotApiService;
@@ -40,7 +31,6 @@ public class ApiTestController {
                 .text(message)
                 .build();
         MessageId result = oneBotApiService.sendPrivateMsg(botId, userId, sendMessage);
-        privateMessagesService.addPrivateMessage(sendMessage.getMessage(), botId, userId, result.getMessageId());
         return ResultUtils.success(result);
     }
 
@@ -52,7 +42,6 @@ public class ApiTestController {
                 .text(message)
                 .build();
         MessageId result = oneBotApiService.sendGroupMsg(botId, groupId, sendMessage);
-        groupMessagesService.addGroupMessage(sendMessage.getMessage(), botId, groupId, result.getMessageId());
         return ResultUtils.success(result);
     }
 
@@ -83,8 +72,6 @@ public class ApiTestController {
         MessageId result = oneBotApiService.sendPrivateForwardMsg(botId, userId, messages);
         return ResultUtils.success(result);
     }
-
-
 
     @PostMapping("/sendComplexGroupMsg")
     @Operation(summary = "发送复杂群消息 (Text + At + Image)")
@@ -117,7 +104,6 @@ public class ApiTestController {
         GroupInfo result = oneBotApiService.getGroupInfo(botId, groupId, noCache);
         return ResultUtils.success(result);
     }
-
 
     @GetMapping("/getMsg")
     @Operation(summary = "获取消息")

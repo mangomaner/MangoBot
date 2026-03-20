@@ -6,14 +6,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.system.mapper.PrivateMessagesMapper;
 import io.github.mangomaner.mangobot.module.message.model.domain.PrivateMessages;
-import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotPrivateMessageEvent;
 import io.github.mangomaner.mangobot.adapter.onebot.model.segment.OneBotMessageSegment;
 import io.github.mangomaner.mangobot.module.message.model.vo.PrivateMessageVO;
-import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 import io.github.mangomaner.mangobot.module.message.model.dto.*;
 import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
-import io.github.mangomaner.mangobot.utils.MessageParser;
-import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,12 +26,6 @@ public class PrivateMessagesServiceImpl extends ServiceImpl<PrivateMessagesMappe
 
     private static final int PAGE_SIZE = 25;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Resource
-    private BotFilesService filesService;
-
-    @Resource
-    private MessageParser messageParser;
 
     @Override
     public List<PrivateMessages> getLatestMessages(QueryLatestMessagesRequest request) {
@@ -87,45 +77,9 @@ public class PrivateMessagesServiceImpl extends ServiceImpl<PrivateMessagesMappe
     }
 
     @Override
-    public PrivateMessages addPrivateMessage(OneBotPrivateMessageEvent event) {
-        try {
-            PrivateMessages privateMessages = new PrivateMessages();
-            privateMessages.setBotId(event.getSelfId());
-            privateMessages.setFriendId(event.getUserId());
-            privateMessages.setMessageId(event.getMessageId());
-            privateMessages.setSenderId(event.getUserId());
-            privateMessages.setMessageSegments(objectMapper.writeValueAsString(event.getMessage()));
-            privateMessages.setMessageTime(event.getTime() * 1000L);
-            privateMessages.setParseMessage(event.getParsedMessage());
-            this.save(privateMessages);
-
-            filesService.saveReceivedFiles(event.getMessage());
-
-            return privateMessages;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to add private message", e);
-        }
-    }
-
-    @Override
-    public PrivateMessages addPrivateMessage(List<OneBotMessageSegment> segments, Long botId, Long friendId, Integer messageId) {
-        try {
-            PrivateMessages privateMessages = new PrivateMessages();
-            privateMessages.setBotId(botId);
-            privateMessages.setFriendId(friendId);
-            privateMessages.setMessageId(messageId);
-            privateMessages.setSenderId(botId);
-            privateMessages.setMessageSegments(objectMapper.writeValueAsString(segments));
-            privateMessages.setMessageTime(System.currentTimeMillis());
-            privateMessages.setParseMessage(messageParser.parseMessage(segments, botId));
-            this.save(privateMessages);
-
-            filesService.saveReceivedFiles(segments);
-
-            return privateMessages;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to add group message", e);
-        }
+    public PrivateMessages addPrivateMessage(PrivateMessages privateMessages) {
+        this.save(privateMessages);
+        return privateMessages;
     }
 
     @Override
@@ -188,7 +142,3 @@ public class PrivateMessagesServiceImpl extends ServiceImpl<PrivateMessagesMappe
         return vo;
     }
 }
-
-
-
-

@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.utils;
+package io.github.mangomaner.mangobot.adapter.onebot.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

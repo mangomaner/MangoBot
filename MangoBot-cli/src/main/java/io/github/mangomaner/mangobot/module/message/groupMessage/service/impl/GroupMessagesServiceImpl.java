@@ -11,12 +11,9 @@ import io.github.mangomaner.mangobot.module.message.model.dto.QueryMessagesByMes
 import io.github.mangomaner.mangobot.module.message.model.dto.QueryMessagesBySenderRequest;
 import io.github.mangomaner.mangobot.module.message.model.dto.SearchMessagesRequest;
 import io.github.mangomaner.mangobot.module.message.model.dto.UpdateMessageRequest;
-import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
 import io.github.mangomaner.mangobot.module.message.model.vo.GroupMessageVO;
-import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
 import io.github.mangomaner.mangobot.system.mapper.GroupMessagesMapper;
-import io.github.mangomaner.mangobot.utils.MessageParser;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
@@ -34,12 +31,6 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
 
     private static final int PAGE_SIZE = 25;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Resource
-    private MessageParser messageParser;
-
-    @Resource
-    private BotFilesService filesService;
 
     @Override
     public List<GroupMessages> getLatestMessages(QueryLatestMessagesRequest request) {
@@ -91,45 +82,9 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
     }
 
     @Override
-    public GroupMessages addGroupMessage(OneBotGroupMessageEvent event) {
-        try {
-            filesService.saveReceivedFiles(event.getMessage());
-
-            GroupMessages groupMessages = new GroupMessages();
-            groupMessages.setBotId(event.getSelfId());
-            groupMessages.setGroupId(event.getGroupId());
-            groupMessages.setMessageId(event.getMessageId());
-            groupMessages.setSenderId(event.getUserId());
-            groupMessages.setMessageSegments(objectMapper.writeValueAsString(event.getMessage()));
-            groupMessages.setMessageTime(event.getTime() * 1000L);
-            groupMessages.setParseMessage(messageParser.parseMessage(event.getMessage(), event.getSelfId()));
-
-            this.save(groupMessages);
-            return groupMessages;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to add group message", e);
-        }
-    }
-
-    @Override
-    public GroupMessages addGroupMessage(List<OneBotMessageSegment> segments, Long botId, Long groupId, Integer messageId) {
-        try {
-            filesService.saveReceivedFiles(segments);
-
-            GroupMessages groupMessages = new GroupMessages();
-            groupMessages.setBotId(botId);
-            groupMessages.setGroupId(groupId);
-            groupMessages.setMessageId(messageId);
-            groupMessages.setSenderId(botId);
-            groupMessages.setMessageSegments(objectMapper.writeValueAsString(segments));
-            groupMessages.setMessageTime(System.currentTimeMillis());
-            groupMessages.setParseMessage(messageParser.parseMessage(segments, botId));
-
-            this.save(groupMessages);
-            return groupMessages;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to add group message", e);
-        }
+    public GroupMessages addGroupMessage(GroupMessages groupMessages) {
+        this.save(groupMessages);
+        return groupMessages;
     }
 
     @Override
