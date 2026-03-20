@@ -2,6 +2,7 @@ package io.github.mangomaner.mangobot.service;
 
 import io.github.mangomaner.mangobot.model.domain.BotFiles;
 import io.github.mangomaner.mangobot.model.dto.AddFileRequest;
+import io.github.mangomaner.mangobot.model.dto.SendFileRequest;
 import io.github.mangomaner.mangobot.model.dto.UpdateFileRequest;
 import com.baomidou.mybatisplus.extension.service.IService;
 import io.github.mangomaner.mangobot.model.onebot.segment.MessageSegment;
@@ -33,5 +34,18 @@ public interface BotFilesService extends IService<BotFiles> {
 
     Boolean deleteFileByFileId(String fileId);
 
-    void saveFileBySegments(List<MessageSegment> segments);
+    /**
+     * 保存收到的文件（从消息段）
+     * 由消息处理器内部调用，不对外暴露
+     * @param segments 消息段列表
+     */
+    void saveReceivedFiles(List<MessageSegment> segments);
+
+    /**
+     * 保存发送的文件（本地文件）
+     * 对外暴露，供 Tool 或其他组件调用
+     * @param request 发送文件请求
+     * @return 保存的文件记录
+     */
+    BotFiles saveSentFile(SendFileRequest request);
 }

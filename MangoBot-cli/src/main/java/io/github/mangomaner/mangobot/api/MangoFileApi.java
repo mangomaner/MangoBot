@@ -1,6 +1,7 @@
 package io.github.mangomaner.mangobot.api;
 
 import io.github.mangomaner.mangobot.model.domain.BotFiles;
+import io.github.mangomaner.mangobot.model.dto.SendFileRequest;
 import io.github.mangomaner.mangobot.model.dto.UpdateFileRequest;
 import io.github.mangomaner.mangobot.service.BotFilesService;
 
@@ -54,5 +55,16 @@ public class MangoFileApi {
     public static Boolean updateFile(UpdateFileRequest request) {
         checkService();
         return service.updateFile(request);
+    }
+
+    /**
+     * 保存发送的文件（本地文件）
+     * 用于记录 Bot 发送的文件信息
+     * @param request 发送文件请求
+     * @return 保存的文件记录
+     */
+    public static BotFiles saveSentFile(SendFileRequest request) {
+        checkService();
+        return service.saveSentFile(request);
     }
 }

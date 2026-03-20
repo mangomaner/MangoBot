@@ -93,7 +93,7 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
     @Override
     public GroupMessages addGroupMessage(GroupMessageEvent event) {
         try {
-            filesService.saveFileBySegments(event.getMessage());
+            filesService.saveReceivedFiles(event.getMessage());
 
             GroupMessages groupMessages = new GroupMessages();
             groupMessages.setBotId(event.getSelfId());
@@ -114,7 +114,7 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
     @Override
     public GroupMessages addGroupMessage(List<MessageSegment> segments, Long botId, Long groupId, Integer messageId) {
         try {
-            filesService.saveFileBySegments(segments);
+            filesService.saveReceivedFiles(segments);
 
             GroupMessages groupMessages = new GroupMessages();
             groupMessages.setBotId(botId);

@@ -99,7 +99,7 @@ public class PrivateMessagesServiceImpl extends ServiceImpl<PrivateMessagesMappe
             privateMessages.setParseMessage(event.getParsedMessage());
             this.save(privateMessages);
 
-            filesService.saveFileBySegments(event.getMessage());
+            filesService.saveReceivedFiles(event.getMessage());
 
             return privateMessages;
         } catch (Exception e) {
@@ -120,7 +120,7 @@ public class PrivateMessagesServiceImpl extends ServiceImpl<PrivateMessagesMappe
             privateMessages.setParseMessage(messageParser.parseMessage(segments, botId));
             this.save(privateMessages);
 
-            filesService.saveFileBySegments(segments);
+            filesService.saveReceivedFiles(segments);
 
             return privateMessages;
         } catch (Exception e) {

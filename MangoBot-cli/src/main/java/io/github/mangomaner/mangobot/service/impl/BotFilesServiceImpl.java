@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.github.mangomaner.mangobot.agent.workspace.ImageParseService;
 import io.github.mangomaner.mangobot.model.domain.BotFiles;
 import io.github.mangomaner.mangobot.model.dto.AddFileRequest;
+import io.github.mangomaner.mangobot.model.dto.SendFileRequest;
 import io.github.mangomaner.mangobot.model.dto.UpdateFileRequest;
 import io.github.mangomaner.mangobot.model.onebot.segment.*;
 import io.github.mangomaner.mangobot.service.BotFilesService;
@@ -14,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -118,12 +121,12 @@ public class BotFilesServiceImpl extends ServiceImpl<BotFilesMapper, BotFiles>
     }
 
     /**
-     * 保存文件到数据库
-     * @param segments
-     * @return
+     * 保存收到的文件（从消息段）
+     * 由消息处理器内部调用，不对外暴露
+     * @param segments 消息段列表
      */
     @Override
-    public void saveFileBySegments(List<MessageSegment> segments) {
+    public void saveReceivedFiles(List<MessageSegment> segments) {
 
         for (MessageSegment segment : segments) {
             if (segment instanceof FileSegment) {
@@ -138,37 +141,40 @@ public class BotFilesServiceImpl extends ServiceImpl<BotFilesMapper, BotFiles>
             } else if (segment instanceof ImageSegment) {
                 ImageSegment.ImageData data = ((ImageSegment) segment).getData();
 
-                int subType = data.getSubType();
+                int subType = data.getSubType() != null ? data.getSubType() : 0;
                 String url = data.getUrl();
                 String fileId = data.getFile();
-                
+
                 if (this.getFileByFileId(fileId) != null) {
                     continue;
                 }
-                
+
+                String fileType;
+                switch (subType) {
+                    case 1, 11 -> fileType = "meme";
+                    default -> fileType = "image";
+                }
+
+                if (isLocalFilePath(fileId)) {
+                    saveLocalImageFile(fileId, fileType, subType);
+                    continue;
+                }
+
                 AddFileRequest request = new AddFileRequest();
                 request.setFileId(fileId);
                 request.setUrl(url);
                 request.setSubType(subType);
-                request.setFileSize(Integer.parseInt(data.getFileSize()));
-
-                String fileType;
-                String targetDir;
-                switch (subType) {
-                    case 1, 11 -> {
-                        fileType = "meme";
-                        targetDir = "data/meme";
-                    }
-                    default -> {
-                        fileType = "image";
-                        targetDir = "data/image";
-                    }
-                }
-
+                request.setFileSize(data.getFileSize() == null ? null : Integer.parseInt(data.getFileSize()));
                 request.setFileType(fileType);
 
+                String targetDir = switch (subType) {
+                    case 1, 11 -> "data/meme";
+                    default -> "data/image";
+                };
+
                 try {
-                    String filePath = targetDir + "/" + fileId;
+                    String fileName = extractFileName(fileId);
+                    String filePath = targetDir + "/" + fileName;
                     Path targetPath = FileUtils.resolvePath(filePath);
                     FileUtils.downloadFile(url, targetPath);
                     request.setFilePath(filePath);
@@ -179,13 +185,12 @@ public class BotFilesServiceImpl extends ServiceImpl<BotFilesMapper, BotFiles>
 
                 String description = null;
                 if (url != null && !url.isEmpty()) {
-                    // 根据 subType 选择解析方式
                     if (subType == 1 || subType == 11) {
                         description = imageParseService.parseMeme(url);
                     } else {
                         description = imageParseService.parseImage(url);
                     }
-                    
+
                     if (description != null) {
                         log.info("Parsed image description: fileId={}, description={}", fileId, description);
                     }
@@ -209,5 +214,133 @@ public class BotFilesServiceImpl extends ServiceImpl<BotFilesMapper, BotFiles>
                 this.addFile(request);
             }
         }
+    }
+
+    /**
+     * 判断是否为本地文件路径
+     */
+    private boolean isLocalFilePath(String fileId) {
+        if (fileId == null || fileId.isEmpty()) {
+            return false;
+        }
+        return fileId.contains(":/") || fileId.contains(":\\") || 
+               fileId.startsWith("/") || fileId.startsWith("\\\\");
+    }
+
+    /**
+     * 保存本地图片文件记录
+     */
+    private void saveLocalImageFile(String filePath, String fileType, int subType) {
+        try {
+            String fileName = extractFileName(filePath);
+            String relativePath = extractRelativePath(filePath);
+            
+            if (this.getFileByFileId(fileName) != null) {
+                return;
+            }
+
+            BotFiles file = new BotFiles();
+            file.setFileId(fileName);
+            file.setFileType(fileType);
+            file.setFilePath(relativePath);
+            file.setSubType(subType);
+            file.setCreateTime(System.currentTimeMillis());
+
+            Path localPath = FileUtils.resolvePath(relativePath);
+            if (Files.exists(localPath)) {
+                file.setFileSize((int) Files.size(localPath));
+            }
+
+            this.save(file);
+            log.info("Saved local image file: fileId={}, filePath={}, fileType={}", fileName, relativePath, fileType);
+        } catch (Exception e) {
+            log.warn("Failed to save local image file: {}", filePath, e);
+        }
+    }
+
+    /**
+     * 从绝对路径提取相对路径
+     */
+    private String extractRelativePath(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return filePath;
+        }
+        
+        Path baseDir = FileUtils.getBaseDirectory();
+        Path absolutePath;
+        
+        try {
+            if (Paths.get(filePath).isAbsolute()) {
+                absolutePath = Paths.get(filePath);
+            } else {
+                absolutePath = baseDir.resolve(filePath);
+            }
+            
+            if (absolutePath.startsWith(baseDir)) {
+                return baseDir.relativize(absolutePath).toString().replace('\\', '/');
+            }
+        } catch (Exception e) {
+            log.debug("Failed to extract relative path: {}", filePath);
+        }
+        
+        return filePath.replace('\\', '/');
+    }
+
+    /**
+     * 从 fileId 中提取文件名
+     * 处理 fileId 可能是完整路径的情况
+     */
+    private String extractFileName(String fileId) {
+        if (fileId == null || fileId.isEmpty()) {
+            return "unknown";
+        }
+        int lastSeparator = Math.max(
+            fileId.lastIndexOf('/'),
+            fileId.lastIndexOf('\\')
+        );
+        if (lastSeparator >= 0 && lastSeparator < fileId.length() - 1) {
+            return fileId.substring(lastSeparator + 1);
+        }
+        return fileId;
+    }
+
+    /**
+     * 保存发送的文件（本地文件）
+     * 对外暴露，供 Tool 或其他组件调用
+     * @param request 发送文件请求
+     * @return 保存的文件记录
+     */
+    @Override
+    public BotFiles saveSentFile(SendFileRequest request) {
+        if (this.getFileByFileId(request.getFileId()) != null) {
+            log.warn("File already exists: fileId={}", request.getFileId());
+            return this.getFileByFileId(request.getFileId());
+        }
+
+        BotFiles file = new BotFiles();
+        file.setFileId(request.getFileId());
+        file.setFileType(request.getFileType());
+        file.setFilePath(request.getFilePath());
+        file.setSubType(request.getSubType());
+        file.setDescription(request.getDescription());
+        file.setCreateTime(System.currentTimeMillis());
+
+        try {
+            Path filePath = FileUtils.resolvePath(request.getFilePath());
+            if (Files.exists(filePath)) {
+                file.setFileSize((int) Files.size(filePath));
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get file size: {}", request.getFilePath());
+        }
+
+        if (request.getFileSize() != null) {
+            file.setFileSize(request.getFileSize().intValue());
+        }
+
+        this.save(file);
+        log.info("Saved sent file: fileId={}, filePath={}, fileType={}", 
+                request.getFileId(), request.getFilePath(), request.getFileType());
+        return file;
     }
 }

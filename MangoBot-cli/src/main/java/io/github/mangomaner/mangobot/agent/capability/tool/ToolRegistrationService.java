@@ -11,6 +11,7 @@ import io.github.mangomaner.mangobot.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.agent.service.AgentJavaToolConfigService;
 import io.github.mangomaner.mangobot.agent.tools.CalculatorTool;
 import io.github.mangomaner.mangobot.agent.tools.DateTimeTool;
+import io.github.mangomaner.mangobot.handler.response.tools.GroupImageSendTool;
 import io.github.mangomaner.mangobot.handler.response.tools.GroupMessageSendTool;
 import io.github.mangomaner.mangobot.annotation.MangoTool;
 import io.github.mangomaner.mangobot.api.MangoToolApi;
@@ -76,10 +77,11 @@ public class ToolRegistrationService {
     public void initBuiltInTools() {
         registerBuiltInTool(DateTimeTool.class, "日期时间工具");
         registerBuiltInTool(CalculatorTool.class, "计算器工具");
-        registerBuiltInTool(GroupMessageSendTool.class, "群聊回复工具", List.of(SessionSource.GROUP));
         registerBuiltInTool(ReadFileTool.class, "文件读取工具");
         registerBuiltInTool(WriteFileTool.class, "文件写入工具");
         registerBuiltInToolFactory(ShellCommandTool.class, "Shell 命令工具");
+        registerBuiltInTool(GroupMessageSendTool.class, "群聊回复工具", List.of(SessionSource.GROUP));
+        registerBuiltInTool(GroupImageSendTool.class, "群聊表情回复工具", List.of(SessionSource.GROUP));
 
         log.info("Built-in tools registered via MangoToolApi");
     }
