@@ -1,5 +1,6 @@
 package io.github.mangomaner.mangobot.manager.websocket;
 
+import io.github.mangomaner.mangobot.adapter.onebot.handler.OneBotEchoHandler;
 import lombok.extern.slf4j.Slf4j;
 import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
 import io.github.mangomaner.mangobot.adapter.onebot.event.OneBotEvent;
@@ -24,12 +25,12 @@ public class BotMessageHandler extends TextWebSocketHandler implements Handshake
 
     private final MangoEventPublisher eventPublisher;
     private final BotConnectionManager connectionManager;
-    private final EchoHandler echoHandler;
+    private final OneBotEchoHandler oneBotEchoHandler;
 
-    public BotMessageHandler(MangoEventPublisher eventPublisher, BotConnectionManager connectionManager, EchoHandler echoHandler) {
+    public BotMessageHandler(MangoEventPublisher eventPublisher, BotConnectionManager connectionManager, OneBotEchoHandler oneBotEchoHandler) {
         this.eventPublisher = eventPublisher;
         this.connectionManager = connectionManager;
-        this.echoHandler = echoHandler;
+        this.oneBotEchoHandler = oneBotEchoHandler;
     }
 
     @Override
@@ -43,7 +44,7 @@ public class BotMessageHandler extends TextWebSocketHandler implements Handshake
         String payload = message.getPayload();
 
         // Check if it's an API response (Echo)
-        if (echoHandler.handleEcho(payload)) {
+        if (oneBotEchoHandler.handleEcho(payload)) {
             log.debug("收到echo消息: {}", payload);
             return;
         }

@@ -106,10 +106,10 @@ public class MangoEventPublisher {
      * 判断群消息是否应该被拦截（黑白名单逻辑）
      */
     private boolean shouldBlockGroupMessage(Long botId, long groupId) {
-        String enableListValue = MangoConfigApi.getSystemConfigValue("group.enable_list", botId, "true");
+        String enableListValue = MangoConfigApi.getBotConfigValue("group.enable_list", botId, "true");
         boolean isWhitelistMode = Boolean.parseBoolean(enableListValue);
 
-        String listValue = MangoConfigApi.getSystemConfigValue(
+        String listValue = MangoConfigApi.getBotConfigValue(
                 isWhitelistMode ? "group.whitelist" : "group.blacklist", botId, "[]");
 
         List<String> groupIdList = parseJsonArray(listValue);
@@ -127,10 +127,10 @@ public class MangoEventPublisher {
      * 判断私聊消息是否应该被拦截（黑白名单逻辑）
      */
     private boolean shouldBlockPrivateMessage(Long botId, long userId) {
-        String enableListValue = MangoConfigApi.getSystemConfigValue("private.enable_list", botId, "true");
+        String enableListValue = MangoConfigApi.getBotConfigValue("private.enable_list", botId, "true");
         boolean isWhitelistMode = Boolean.parseBoolean(enableListValue);
 
-        String listValue = MangoConfigApi.getSystemConfigValue(
+        String listValue = MangoConfigApi.getBotConfigValue(
                 isWhitelistMode ? "private.whitelist" : "private.blacklist", botId, "[]");
 
         List<String> userIdList = parseJsonArray(listValue);

@@ -59,11 +59,11 @@ CREATE INDEX IF NOT EXISTS idx_model_roles_key ON model_roles (role_key);
 CREATE INDEX IF NOT EXISTS idx_model_roles_config ON model_roles (model_config_id);
 
 -- ============================================
--- 系统配置表
+-- Bot 配置表
 -- ============================================
 
--- 系统配置表：存储框架级配置（白名单、黑名单等）
-CREATE TABLE IF NOT EXISTS system_configs (
+-- Bot 配置表：存储 Bot 级别配置（白名单、黑名单等）
+CREATE TABLE IF NOT EXISTS bot_configs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     bot_id          INTEGER,                         -- Bot ID（null 表示默认配置）
     config_key      TEXT NOT NULL,                   -- 配置键
@@ -79,11 +79,34 @@ CREATE TABLE IF NOT EXISTS system_configs (
     UNIQUE(bot_id, config_key)
 );
 
+-- Bot 配置索引
+CREATE INDEX IF NOT EXISTS idx_bot_configs_key ON bot_configs (config_key);
+CREATE INDEX IF NOT EXISTS idx_bot_configs_category ON bot_configs (category);
+CREATE INDEX IF NOT EXISTS idx_bot_configs_bot_id ON bot_configs (bot_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bot_configs_unique ON bot_configs (bot_id, config_key);
+
+-- ============================================
+-- 系统配置表
+-- ============================================
+
+-- 系统配置表：存储系统级全局配置（系统名称、日志级别等）
+CREATE TABLE IF NOT EXISTS system_configs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    config_key      TEXT NOT NULL UNIQUE,            -- 配置键（唯一）
+    config_value    TEXT,                            -- 配置值（支持 JSON）
+    config_type     TEXT NOT NULL DEFAULT 'STRING',  -- 类型：见 ConfigType 枚举
+    metadata        TEXT,                            -- 前端元数据（JSON格式：选项列表、范围限制等）
+    description     TEXT,                            -- 描述
+    explain         TEXT,                            -- 详细说明
+    category        TEXT DEFAULT 'general',          -- 分类
+    editable        INTEGER DEFAULT 1,               -- 是否可编辑：0-不可编辑, 1-可编辑
+    created_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+    updated_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+);
+
 -- 系统配置索引
 CREATE INDEX IF NOT EXISTS idx_system_configs_key ON system_configs (config_key);
 CREATE INDEX IF NOT EXISTS idx_system_configs_category ON system_configs (category);
-CREATE INDEX IF NOT EXISTS idx_system_configs_bot_id ON system_configs (bot_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_system_configs_unique ON system_configs (bot_id, config_key);
 
 -- ============================================
 -- 插件配置表
@@ -120,7 +143,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_configs_unique ON plugin_configs (p
 INSERT INTO model_providers (name, base_url, api_key, description) VALUES
     ('openai', 'https://api.openai.com/v1', '', 'OpenAI'),
     ('siliconflow', 'https://api.siliconflow.cn/v1', '', '硅基流动(siliconflow)'),
-    ('dashscope', 'https://dashscope.aliyuncs.com/compatible-mode/v1', '', '阿里云-百炼');
+    ('dashscope', 'https://dashscope.aliyuncs.com/compatible-mode/v1', '', '阿里云-百炼'),
     ('custom', 'https://api.example.com/v1', '', '自定义接口');
 
 -- 模型配置初始数据
@@ -134,15 +157,21 @@ INSERT INTO model_roles (role_key, role_name, model_config_id, description) VALU
     ('image', '图片模型', 1, '用于图片理解任务'),
     ('embedding', '向量模型', 1, '用于文本向量化');
 
--- 系统配置初始数据（bot_id 为 null 表示默认配置，用于无 Bot 连接时显示）
-INSERT INTO system_configs (bot_id, config_key, config_value, config_type, metadata, description, explain, category) VALUES
+-- Bot 配置初始数据（bot_id 为 null 表示默认配置，用于无 Bot 连接时显示）
+INSERT INTO bot_configs (bot_id, config_key, config_value, config_type, metadata, description, explain, category) VALUES
     (NULL, 'group.whitelist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组白名单', '群号列表', 'BW_list'),
     (NULL, 'group.blacklist', '[]', 'GROUP_LIST_SELECTOR', '{"listType":"group"}', '群组黑名单', '群号列表', 'BW_list'),
     (NULL, 'group.enable_list', 'true', 'BOOLEAN', NULL, '启用群组黑白名单', '', 'BW_list'),
     (NULL, 'private.whitelist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊白名单', '用户QQ列表', 'BW_list'),
     (NULL, 'private.blacklist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊黑名单', '用户QQ列表', 'BW_list'),
     (NULL, 'private.enable_list', 'true', 'BOOLEAN', NULL, '启用私聊黑白名单', '', 'BW_list');
+    (NULL, 'bot.markdown_to_txt', 'true', 'BOOLEAN', NULL, '将md格式转为纯文本发送', '', 'format');
 -- 上述列表示例：["123456789","1011121314"]，true为白名单，false为黑名单
+
+-- 系统配置初始数据（全局配置，无 bot_id）
+INSERT INTO system_configs (config_key, config_value, config_type, metadata, description, explain, category) VALUES
+    ('system.name', 'MangoBot', 'STRING', NULL, '系统名称', '显示在界面上的系统名称', 'general'),
+    ('system.version', '1.0.0', 'STRING', NULL, '系统版本', '当前系统版本号', 'general');
 -- ============================================
 -- 消息存储表
 -- ============================================

@@ -6,6 +6,7 @@ import io.github.mangomaner.mangobot.module.agent.workspace.ChatService;
 import io.github.mangomaner.mangobot.module.agent.service.ChatSessionService;
 import io.github.mangomaner.mangobot.api.*;
 import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;
+import io.github.mangomaner.mangobot.module.configuration.service.BotConfigService;
 import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
 import io.github.mangomaner.mangobot.module.configuration.service.SystemConfigService;
 import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
@@ -53,6 +54,9 @@ public class MangoApiManager {
     private SystemConfigService systemConfigService;
 
     @Resource
+    private BotConfigService botConfigService;
+
+    @Resource
     private PluginConfigService pluginConfigService;
 
     @Resource
@@ -76,6 +80,7 @@ public class MangoApiManager {
             initApi(MangoAgentApi.class, "setAgentFactory", AgentFactory.class, agentFactory);
             initApi(MangoAgentApi.class, "setChatService", ChatService.class, chatService);
             initApi(MangoConfigApi.class, "setSystemConfigService", SystemConfigService.class, systemConfigService);
+            initApi(MangoConfigApi.class, "setBotConfigService", BotConfigService.class, botConfigService);
             initApi(MangoConfigApi.class, "setPluginConfigService", PluginConfigService.class, pluginConfigService);
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize Mango APIs", e);

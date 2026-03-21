@@ -1,9 +1,8 @@
-package io.github.mangomaner.mangobot.manager.websocket;
+package io.github.mangomaner.mangobot.adapter.onebot.handler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import io.github.mangomaner.mangobot.adapter.onebot.model.vo.echo.OneBotApiResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -17,12 +16,12 @@ import java.util.concurrent.TimeoutException;
  */
 @Component
 @Slf4j
-public class EchoHandler {
+public class OneBotEchoHandler {
 
     private final Map<String, CompletableFuture<OneBotApiResponse>> pendingRequests = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
 
-    public EchoHandler(ObjectMapper objectMapper) {
+    public OneBotEchoHandler(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 

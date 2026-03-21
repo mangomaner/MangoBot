@@ -9,15 +9,17 @@ import lombok.Data;
 import java.io.Serializable;
 
 /**
- * 系统配置实体
- * 存储系统级全局配置（系统名称、日志级别等）
+ * Bot 配置实体
+ * 存储 Bot 级别配置（白名单、黑名单等）
  */
-@TableName(value = "system_configs")
+@TableName(value = "bot_configs")
 @Data
-public class SystemConfig implements Serializable {
+public class BotConfig implements Serializable {
 
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    private Long botId;
 
     private String configKey;
 

@@ -1,7 +1,9 @@
 package io.github.mangomaner.mangobot.api;
 
+import io.github.mangomaner.mangobot.module.configuration.service.BotConfigService;
 import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
 import io.github.mangomaner.mangobot.module.configuration.service.SystemConfigService;
+import io.github.mangomaner.mangobot.module.configuration.model.vo.BotConfigVO;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.PluginConfigVO;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.SystemConfigVO;
 import io.github.mangomaner.mangobot.plugin.core.PluginClassLoader;
@@ -9,11 +11,19 @@ import io.github.mangomaner.mangobot.plugin.core.PluginClassLoader;
 /**
  * 配置 API (静态工具类)
  * 
- * <p>提供系统配置和插件配置的统一访问能力。
+ * <p>提供系统配置、Bot 配置和插件配置的统一访问能力。
+ * 
+ * <h3>配置类型</h3>
+ * <ul>
+ *   <li>系统配置：全局配置，无 botId（如系统名称、日志级别等）</li>
+ *   <li>Bot 配置：Bot 级别配置，有 botId（如黑白名单等）</li>
+ *   <li>插件配置：插件自定义配置</li>
+ * </ul>
  * 
  * <h3>权限控制</h3>
  * <ul>
- *   <li>系统配置：所有调用者可读，仅主程序可修改（插件调用修改方法将抛出异常）</li>
+ *   <li>系统配置：所有调用者可读，仅主程序可修改</li>
+ *   <li>Bot 配置：所有调用者可读，仅主程序可修改</li>
  *   <li>插件配置：插件只能读取和修改自己的配置</li>
  * </ul>
  * 
@@ -28,6 +38,7 @@ import io.github.mangomaner.mangobot.plugin.core.PluginClassLoader;
 public class MangoConfigApi {
 
     private static SystemConfigService systemConfigService;
+    private static BotConfigService botConfigService;
     private static PluginConfigService pluginConfigService;
 
     private MangoConfigApi() {}
@@ -36,12 +47,16 @@ public class MangoConfigApi {
         MangoConfigApi.systemConfigService = service;
     }
 
+    static void setBotConfigService(BotConfigService service) {
+        MangoConfigApi.botConfigService = service;
+    }
+
     static void setPluginConfigService(PluginConfigService service) {
         MangoConfigApi.pluginConfigService = service;
     }
 
     private static void checkServices() {
-        if (systemConfigService == null || pluginConfigService == null) {
+        if (systemConfigService == null || botConfigService == null || pluginConfigService == null) {
             throw new IllegalStateException("MangoConfigApi has not been initialized yet.");
         }
     }
@@ -85,50 +100,102 @@ public class MangoConfigApi {
         return null;
     }
 
-    // ==================== 系统配置（所有人可读） ====================
+    // ==================== 系统配置（全局配置，无 botId） ====================
 
     /**
-     * 根据Key和Bot ID获取系统配置（优先返回Bot专属配置，其次返回默认配置）
+     * 根据 Key 获取系统配置
      *
      * @param configKey 配置键
-     * @param botId     Bot ID
      * @return 系统配置视图对象，如果不存在则返回 null
      */
-    public static SystemConfigVO getSystemConfig(String configKey, Long botId) {
+    public static SystemConfigVO getSystemConfig(String configKey) {
         checkServices();
-        return systemConfigService.getConfigByKeyAndBotId(configKey, botId);
+        return systemConfigService.getConfigByKey(configKey);
     }
 
     /**
-     * 根据Key和Bot ID获取系统配置值（优先Bot专属配置）
+     * 根据 Key 获取系统配置值
+     *
+     * @param configKey 配置键
+     * @return 配置值，如果不存在则返回 null
+     */
+    public static String getSystemConfigValue(String configKey) {
+        checkServices();
+        return systemConfigService.getConfigValue(configKey);
+    }
+
+    /**
+     * 根据 Key 获取系统配置值（带默认值）
+     *
+     * @param configKey    配置键
+     * @param defaultValue 默认值
+     * @return 配置值，如果不存在则返回默认值
+     */
+    public static String getSystemConfigValue(String configKey, String defaultValue) {
+        checkServices();
+        return systemConfigService.getConfigValue(configKey, defaultValue);
+    }
+
+    /**
+     * 根据 Key 更新系统配置值
+     * 
+     * <p><b>权限限制：</b>仅主程序可调用，插件调用将抛出 SecurityException
+     *
+     * @param configKey   配置键
+     * @param configValue 配置值
+     * @return 是否更新成功
+     * @throws SecurityException 如果插件调用此方法
+     */
+    public static boolean updateSystemConfigValue(String configKey, String configValue) {
+        checkServices();
+        assertNotPlugin("updateSystemConfigValue");
+        return systemConfigService.updateConfigValue(configKey, configValue);
+    }
+
+    // ==================== Bot 配置（Bot 级别配置，有 botId） ====================
+
+    /**
+     * 根据 Key 和 Bot ID 获取 Bot 配置（优先返回 Bot 专属配置，其次返回默认配置）
+     *
+     * @param configKey 配置键
+     * @param botId     Bot ID
+     * @return Bot 配置视图对象，如果不存在则返回 null
+     */
+    public static BotConfigVO getBotConfig(String configKey, Long botId) {
+        checkServices();
+        return botConfigService.getConfigByKeyAndBotId(configKey, botId);
+    }
+
+    /**
+     * 根据 Key 和 Bot ID 获取 Bot 配置值（优先 Bot 专属配置）
      *
      * @param configKey 配置键
      * @param botId     Bot ID
      * @return 配置值，如果不存在则返回 null
      */
-    public static String getSystemConfigValue(String configKey, Long botId) {
+    public static String getBotConfigValue(String configKey, Long botId) {
         checkServices();
-        return systemConfigService.getConfigValue(configKey, botId);
+        return botConfigService.getConfigValue(configKey, botId);
     }
 
     /**
-     * 根据Key和Bot ID获取系统配置值（带默认值）
+     * 根据 Key 和 Bot ID 获取 Bot 配置值（带默认值）
      *
      * @param configKey    配置键
      * @param botId        Bot ID
      * @param defaultValue 默认值
      * @return 配置值，如果不存在则返回默认值
      */
-    public static String getSystemConfigValue(String configKey, Long botId, String defaultValue) {
+    public static String getBotConfigValue(String configKey, Long botId, String defaultValue) {
         checkServices();
-        String value = systemConfigService.getConfigValue(configKey, botId);
+        String value = botConfigService.getConfigValue(configKey, botId);
         return value != null ? value : defaultValue;
     }
 
     /**
-     * 根据Key和Bot ID更新系统配置值
+     * 根据 Key 和 Bot ID 更新 Bot 配置值
      * 
-     * <p>若Bot专属配置不存在，会将所有默认配置复制为Bot专属配置后再更新。
+     * <p>若 Bot 专属配置不存在，会将所有默认配置复制为 Bot 专属配置后再更新。
      * <p><b>权限限制：</b>仅主程序可调用，插件调用将抛出 SecurityException
      *
      * @param configKey   配置键
@@ -137,10 +204,10 @@ public class MangoConfigApi {
      * @return 是否更新成功
      * @throws SecurityException 如果插件调用此方法
      */
-    public static boolean updateSystemConfigValue(String configKey, Long botId, String configValue) {
+    public static boolean updateBotConfigValue(String configKey, Long botId, String configValue) {
         checkServices();
-        assertNotPlugin("updateSystemConfigValue");
-        return systemConfigService.updateConfigValue(configKey, botId, configValue);
+        assertNotPlugin("updateBotConfigValue");
+        return botConfigService.updateConfigValue(configKey, botId, configValue);
     }
 
     // ==================== 插件配置（仅自己的配置） ====================
@@ -198,7 +265,7 @@ public class MangoConfigApi {
     /**
      * 更新当前插件的配置值
      * 
-     * <p>若Bot专属配置不存在，会将所有默认配置复制为Bot专属配置后再更新。
+     * <p>若 Bot 专属配置不存在，会将所有默认配置复制为 Bot 专属配置后再更新。
      * <p><b>权限限制：</b>仅插件可调用，主程序调用将抛出 IllegalStateException
      *
      * @param configKey   配置键
@@ -226,7 +293,7 @@ public class MangoConfigApi {
         if (pluginId != null) {
             throw new SecurityException(
                 "Plugin (ID: " + pluginId + ") is not allowed to call " + methodName + 
-                ". System config modification is restricted to main program only."
+                ". Config modification is restricted to main program only."
             );
         }
     }

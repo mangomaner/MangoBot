@@ -5,11 +5,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "系统配置信息")
-public class SystemConfigVO {
+@Schema(description = "Bot 配置信息")
+public class BotConfigVO {
 
     @Schema(description = "配置ID")
     private Long id;
+
+    @Schema(description = "Bot ID（null 表示默认配置）")
+    private Long botId;
 
     @Schema(description = "配置键")
     private String configKey;

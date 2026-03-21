@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.adapter.onebot.model.vo.echo;
+package io.github.mangomaner.mangobot.adapter.onebot.handler;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

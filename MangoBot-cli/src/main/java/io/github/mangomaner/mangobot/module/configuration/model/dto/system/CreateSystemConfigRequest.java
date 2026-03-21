@@ -9,11 +9,8 @@ import lombok.Data;
 @Schema(description = "创建系统配置请求")
 public class CreateSystemConfigRequest {
 
-    @Schema(description = "Bot ID（null 表示默认配置）")
-    private Long botId;
-
     @NotBlank(message = "配置键不能为空")
-    @Schema(description = "配置键", example = "group.whitelist")
+    @Schema(description = "配置键", example = "system.name")
     private String configKey;
 
     @Schema(description = "配置值")

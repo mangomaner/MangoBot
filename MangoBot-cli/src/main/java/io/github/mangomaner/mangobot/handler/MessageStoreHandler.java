@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.module.agent.factory.AgentFactory;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
-import io.github.mangomaner.mangobot.module.configuration.event.SystemConfigChangedEvent;
+import io.github.mangomaner.mangobot.module.configuration.event.BotConfigChangedEvent;
 import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
 import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotPrivateMessageEvent;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
@@ -93,8 +93,8 @@ public class MessageStoreHandler {
     }
 
     @MangoBotEventListener
-    public boolean onConfigChange(SystemConfigChangedEvent event) {    
-        log.info("收到配置变更通知: key={}, value={}", event.getConfigKey(), event.getNewValue());
+    public boolean onConfigChange(BotConfigChangedEvent event) {    
+        log.info("收到 Bot 配置变更通知: key={}, value={}", event.getConfigKey(), event.getNewValue());
         return true;
     }
 

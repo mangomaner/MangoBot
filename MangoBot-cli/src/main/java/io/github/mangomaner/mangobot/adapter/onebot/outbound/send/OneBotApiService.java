@@ -2,13 +2,13 @@ package io.github.mangomaner.mangobot.adapter.onebot.outbound.send;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.CollectionType;
-import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
-import io.github.mangomaner.mangobot.manager.websocket.BotConnectionManager;
-import io.github.mangomaner.mangobot.manager.websocket.EchoHandler;
-import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotSendingMessage;
-import io.github.mangomaner.mangobot.adapter.onebot.model.dto.OneBotApiRequest;
-import io.github.mangomaner.mangobot.adapter.onebot.model.vo.echo.OneBotApiResponse;
 import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.OneBotApiResponse;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.OneBotEchoHandler;
+import io.github.mangomaner.mangobot.adapter.onebot.model.dto.OneBotApiRequest;
+import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
+import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotSendingMessage;
+import io.github.mangomaner.mangobot.manager.websocket.BotConnectionManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
@@ -25,12 +25,12 @@ public class OneBotApiService {
 
     private final BotConnectionManager connectionManager;
     private final ObjectMapper objectMapper;
-    private final EchoHandler echoHandler;
+    private final OneBotEchoHandler oneBotEchoHandler;
 
-    public OneBotApiService(BotConnectionManager connectionManager, ObjectMapper objectMapper, EchoHandler echoHandler) {
+    public OneBotApiService(BotConnectionManager connectionManager, ObjectMapper objectMapper, OneBotEchoHandler oneBotEchoHandler) {
         this.connectionManager = connectionManager;
         this.objectMapper = objectMapper;
-        this.echoHandler = echoHandler;
+        this.oneBotEchoHandler = oneBotEchoHandler;
     }
 
     /**
@@ -470,7 +470,7 @@ public class OneBotApiService {
 
         try {
             // 注册等待
-            echoHandler.register(echo);
+            oneBotEchoHandler.register(echo);
             
             String json = objectMapper.writeValueAsString(request);
             log.debug("发送 API 请求 [{}]: {}", action, json);
@@ -481,7 +481,7 @@ public class OneBotApiService {
             }
             
             // 同步等待响应，超时 60 秒
-            OneBotApiResponse response = echoHandler.waitForResponse(echo, 60, TimeUnit.SECONDS);
+            OneBotApiResponse response = oneBotEchoHandler.waitForResponse(echo, 60, TimeUnit.SECONDS);
             
             if (response.getRetcode() != 0) {
                 log.warn("API 调用返回非零状态: {} - {}", response.getRetcode(), response.getMessage());

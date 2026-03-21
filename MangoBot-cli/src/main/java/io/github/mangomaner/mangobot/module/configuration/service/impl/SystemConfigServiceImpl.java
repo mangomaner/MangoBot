@@ -19,9 +19,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,98 +37,38 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
 
     @Override
     public List<SystemConfigVO> getAllConfigs() {
-        LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.isNull(SystemConfig::getBotId);
-        return this.list(wrapper).stream()
+        return this.list().stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<SystemConfigVO> getConfigsByBotId(Long botId) {
-        if (botId == null) {
-            return getAllConfigs();
-        }
-        
-        List<SystemConfigVO> result = new ArrayList<>();
-        
-        LambdaQueryWrapper<SystemConfig> defaultWrapper = new LambdaQueryWrapper<>();
-        defaultWrapper.isNull(SystemConfig::getBotId);
-        List<SystemConfig> defaultConfigs = this.list(defaultWrapper);
-        
-        LambdaQueryWrapper<SystemConfig> botWrapper = new LambdaQueryWrapper<>();
-        botWrapper.eq(SystemConfig::getBotId, botId);
-        List<SystemConfig> botConfigs = this.list(botWrapper);
-        
-        Map<String, SystemConfig> botConfigMap = botConfigs.stream()
-                .collect(Collectors.toMap(SystemConfig::getConfigKey, c -> c));
-        
-        for (SystemConfig defaultConfig : defaultConfigs) {
-            SystemConfigVO vo = convertToVO(defaultConfig);
-            if (botConfigMap.containsKey(defaultConfig.getConfigKey())) {
-                SystemConfig botConfig = botConfigMap.get(defaultConfig.getConfigKey());
-                vo = convertToVO(botConfig);
-            }
-            result.add(vo);
-        }
-        
-        return result;
     }
 
     @Override
     public List<SystemConfigVO> getConfigsByCategory(String category) {
         LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemConfig::getCategory, category)
-               .isNull(SystemConfig::getBotId);
+        wrapper.eq(SystemConfig::getCategory, category);
         return this.list(wrapper).stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public SystemConfigVO getConfigByKeyAndBotId(String configKey, Long botId) {
-        if (botId != null) {
-            LambdaQueryWrapper<SystemConfig> botWrapper = new LambdaQueryWrapper<>();
-            botWrapper.eq(SystemConfig::getConfigKey, configKey)
-                      .eq(SystemConfig::getBotId, botId);
-            SystemConfig botConfig = this.getOne(botWrapper);
-            if (botConfig != null) {
-                return convertToVO(botConfig);
-            }
-        }
-        
-        LambdaQueryWrapper<SystemConfig> defaultWrapper = new LambdaQueryWrapper<>();
-        defaultWrapper.eq(SystemConfig::getConfigKey, configKey)
-                      .isNull(SystemConfig::getBotId);
-        SystemConfig defaultConfig = this.getOne(defaultWrapper);
-        return defaultConfig != null ? convertToVO(defaultConfig) : null;
-    }
-
-    @Override
     public SystemConfigVO getConfigByKey(String configKey) {
         LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemConfig::getConfigKey, configKey)
-               .isNull(SystemConfig::getBotId);
+        wrapper.eq(SystemConfig::getConfigKey, configKey);
         SystemConfig config = this.getOne(wrapper);
         return config != null ? convertToVO(config) : null;
     }
 
     @Override
-    public String getConfigValue(String configKey, Long botId) {
-        SystemConfigVO config = getConfigByKeyAndBotId(configKey, botId);
-        return config != null ? config.getConfigValue() : null;
-    }
-
-    @Override
     public String getConfigValue(String configKey) {
-        return getConfigValue(configKey, (Long) null);
+        SystemConfigVO config = getConfigByKey(configKey);
+        return config != null ? config.getConfigValue() : null;
     }
 
     @Override
     public String getConfigValue(String configKey, String defaultValue) {
         LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemConfig::getConfigKey, configKey)
-               .isNull(SystemConfig::getBotId);
+        wrapper.eq(SystemConfig::getConfigKey, configKey);
         SystemConfig config = this.getOne(wrapper);
         if (config == null) {
             return defaultValue;
@@ -147,7 +85,6 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         }
         
         SystemConfig config = new SystemConfig();
-        config.setBotId(request.getBotId());
         config.setConfigKey(request.getConfigKey());
         config.setConfigValue(request.getConfigValue());
         config.setConfigType(configType.getCode());
@@ -157,7 +94,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         config.setCategory(request.getCategory() != null ? request.getCategory() : "general");
         config.setEditable(request.getEditable() != null ? (request.getEditable() ? 1 : 0) : 1);
         this.save(config);
-        log.info("创建系统配置成功: botId={}, key={}, type={}", config.getBotId(), config.getConfigKey(), configType);
+        log.info("创建系统配置成功: key={}, type={}", config.getConfigKey(), configType);
         return convertToVO(config);
     }
 
@@ -170,9 +107,6 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
 
         String oldValue = config.getConfigValue();
 
-        if (request.getBotId() != null) {
-            config.setBotId(request.getBotId());
-        }
         if (request.getConfigKey() != null) {
             config.setConfigKey(request.getConfigKey());
         }
@@ -213,148 +147,14 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
                 config.getConfigValue()
         ));
 
-        log.info("更新系统配置成功: botId={}, key={}", config.getBotId(), config.getConfigKey());
+        log.info("更新系统配置成功: key={}", config.getConfigKey());
         return convertToVO(config);
-    }
-
-    @Override
-    public boolean updateConfigValue(String configKey, Long botId, String configValue) {
-        if (botId == null) {
-            return updateConfigValue(configKey, configValue);
-        }
-        
-        LambdaQueryWrapper<SystemConfig> botWrapper = new LambdaQueryWrapper<>();
-        botWrapper.eq(SystemConfig::getConfigKey, configKey)
-                  .eq(SystemConfig::getBotId, botId);
-        SystemConfig botConfig = this.getOne(botWrapper);
-        
-        if (botConfig != null) {
-            ConfigType configType = ConfigType.fromCode(botConfig.getConfigType());
-            if (!configTypeHandler.validate(configType, configValue)) {
-                log.warn("配置值验证失败: type={}, value={}", configType, configValue);
-            }
-            
-            String oldValue = botConfig.getConfigValue();
-            botConfig.setConfigValue(configValue);
-            botConfig.setUpdatedAt(System.currentTimeMillis());
-            boolean result = this.updateById(botConfig);
-
-            if (result) {
-                mangoEventPublisher.publish(new SystemConfigChangedEvent(
-                        botConfig.getId(),
-                        botConfig.getConfigKey(),
-                        botConfig.getConfigType(),
-                        botConfig.getCategory(),
-                        oldValue,
-                        configValue
-                ));
-                log.info("更新系统配置值成功: botId={}, key={}", botId, configKey);
-            }
-            return result;
-        }
-        
-        LambdaQueryWrapper<SystemConfig> checkBotWrapper = new LambdaQueryWrapper<>();
-        checkBotWrapper.eq(SystemConfig::getBotId, botId);
-        long botConfigCount = this.count(checkBotWrapper);
-        
-        if (botConfigCount == 0) {
-            LambdaQueryWrapper<SystemConfig> defaultListWrapper = new LambdaQueryWrapper<>();
-            defaultListWrapper.isNull(SystemConfig::getBotId);
-            List<SystemConfig> defaultConfigs = this.list(defaultListWrapper);
-            
-            for (SystemConfig defaultConfig : defaultConfigs) {
-                SystemConfig newConfig = new SystemConfig();
-                newConfig.setBotId(botId);
-                newConfig.setConfigKey(defaultConfig.getConfigKey());
-                newConfig.setConfigValue(defaultConfig.getConfigValue());
-                newConfig.setConfigType(defaultConfig.getConfigType());
-                newConfig.setMetadata(defaultConfig.getMetadata());
-                newConfig.setDescription(defaultConfig.getDescription());
-                newConfig.setExplain(defaultConfig.getExplain());
-                newConfig.setCategory(defaultConfig.getCategory());
-                newConfig.setEditable(defaultConfig.getEditable());
-                this.save(newConfig);
-            }
-            
-            log.info("懒加载复制所有默认配置到Bot专属配置: botId={}, count={}", botId, defaultConfigs.size());
-            
-            LambdaQueryWrapper<SystemConfig> newBotWrapper = new LambdaQueryWrapper<>();
-            newBotWrapper.eq(SystemConfig::getConfigKey, configKey)
-                        .eq(SystemConfig::getBotId, botId);
-            botConfig = this.getOne(newBotWrapper);
-        } else {
-            LambdaQueryWrapper<SystemConfig> defaultWrapper = new LambdaQueryWrapper<>();
-            defaultWrapper.eq(SystemConfig::getConfigKey, configKey)
-                          .isNull(SystemConfig::getBotId);
-            SystemConfig defaultConfig = this.getOne(defaultWrapper);
-            
-            if (defaultConfig == null) {
-                return false;
-            }
-            
-            ConfigType configType = ConfigType.fromCode(defaultConfig.getConfigType());
-            if (!configTypeHandler.validate(configType, configValue)) {
-                log.warn("配置值验证失败: type={}, value={}", configType, configValue);
-            }
-            
-            SystemConfig newConfig = new SystemConfig();
-            newConfig.setBotId(botId);
-            newConfig.setConfigKey(configKey);
-            newConfig.setConfigValue(configValue);
-            newConfig.setConfigType(defaultConfig.getConfigType());
-            newConfig.setMetadata(defaultConfig.getMetadata());
-            newConfig.setDescription(defaultConfig.getDescription());
-            newConfig.setExplain(defaultConfig.getExplain());
-            newConfig.setCategory(defaultConfig.getCategory());
-            newConfig.setEditable(defaultConfig.getEditable());
-            this.save(newConfig);
-            
-            mangoEventPublisher.publish(new SystemConfigChangedEvent(
-                    newConfig.getId(),
-                    newConfig.getConfigKey(),
-                    newConfig.getConfigType(),
-                    newConfig.getCategory(),
-                    defaultConfig.getConfigValue(),
-                    configValue
-            ));
-            
-            log.info("懒加载创建单个Bot专属配置: botId={}, key={}", botId, configKey);
-            return true;
-        }
-        
-        if (botConfig == null) {
-            return false;
-        }
-        
-        ConfigType configType = ConfigType.fromCode(botConfig.getConfigType());
-        if (!configTypeHandler.validate(configType, configValue)) {
-            log.warn("配置值验证失败: type={}, value={}", configType, configValue);
-        }
-        
-        String oldValue = botConfig.getConfigValue();
-        botConfig.setConfigValue(configValue);
-        botConfig.setUpdatedAt(System.currentTimeMillis());
-        boolean result = this.updateById(botConfig);
-
-        if (result) {
-            mangoEventPublisher.publish(new SystemConfigChangedEvent(
-                    botConfig.getId(),
-                    botConfig.getConfigKey(),
-                    botConfig.getConfigType(),
-                    botConfig.getCategory(),
-                    oldValue,
-                    configValue
-            ));
-            log.info("更新系统配置值成功: botId={}, key={}", botId, configKey);
-        }
-        return result;
     }
 
     @Override
     public boolean updateConfigValue(String configKey, String configValue) {
         LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemConfig::getConfigKey, configKey)
-               .isNull(SystemConfig::getBotId);
+        wrapper.eq(SystemConfig::getConfigKey, configKey);
         SystemConfig config = this.getOne(wrapper);
         if (config == null) {
             return false;
@@ -392,7 +192,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         }
         boolean result = this.removeById(id);
         if (result) {
-            log.info("删除系统配置成功: botId={}, key={}", config.getBotId(), config.getConfigKey());
+            log.info("删除系统配置成功: key={}", config.getConfigKey());
         }
         return result;
     }
@@ -400,7 +200,6 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     private SystemConfigVO convertToVO(SystemConfig config) {
         SystemConfigVO vo = new SystemConfigVO();
         vo.setId(config.getId());
-        vo.setBotId(config.getBotId());
         vo.setConfigKey(config.getConfigKey());
         vo.setConfigValue(config.getConfigValue());
         vo.setConfigType(config.getConfigType());

@@ -11,10 +11,7 @@ public class UpdateSystemConfigRequest {
     @Schema(description = "配置ID")
     private Long id;
 
-    @Schema(description = "Bot ID（null 表示默认配置）")
-    private Long botId;
-
-    @Schema(description = "配置键", example = "group.whitelist")
+    @Schema(description = "配置键", example = "system.name")
     private String configKey;
 
     @Schema(description = "配置值")
