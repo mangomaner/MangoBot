@@ -51,10 +51,10 @@ public class MessageStoreHandler {
             event.setParsedMessage(parseMessage);
 
             GroupMessages groupMessages = new GroupMessages();
-            groupMessages.setBotId(event.getSelfId());
-            groupMessages.setGroupId(event.getGroupId());
-            groupMessages.setMessageId(event.getMessageId());
-            groupMessages.setSenderId(event.getUserId());
+            groupMessages.setBotId(String.valueOf(event.getSelfId()));
+            groupMessages.setGroupId(String.valueOf(event.getGroupId()));
+            groupMessages.setMessageId(String.valueOf(event.getMessageId()));
+            groupMessages.setSenderId(String.valueOf(event.getUserId()));
             groupMessages.setMessageSegments(objectMapper.writeValueAsString(event.getMessage()));
             groupMessages.setMessageTime(event.getTime() * 1000L);
             groupMessages.setParseMessage(parseMessage);
@@ -78,10 +78,10 @@ public class MessageStoreHandler {
             event.setParsedMessage(parseMessage);
 
             PrivateMessages privateMessages = new PrivateMessages();
-            privateMessages.setBotId(event.getSelfId());
-            privateMessages.setFriendId(event.getUserId());
-            privateMessages.setMessageId(event.getMessageId());
-            privateMessages.setSenderId(event.getUserId());
+            privateMessages.setBotId(String.valueOf(event.getSelfId()));
+            privateMessages.setFriendId(String.valueOf(event.getUserId()));
+            privateMessages.setMessageId(String.valueOf(event.getMessageId()));
+            privateMessages.setSenderId(String.valueOf(event.getUserId()));
             privateMessages.setMessageSegments(objectMapper.writeValueAsString(event.getMessage()));
             privateMessages.setMessageTime(event.getTime() * 1000L);
             privateMessages.setParseMessage(parseMessage);

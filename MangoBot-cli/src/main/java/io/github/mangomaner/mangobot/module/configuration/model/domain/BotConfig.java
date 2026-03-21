@@ -19,7 +19,7 @@ public class BotConfig implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private Long botId;
+    private String botId;
 
     private String configKey;
 

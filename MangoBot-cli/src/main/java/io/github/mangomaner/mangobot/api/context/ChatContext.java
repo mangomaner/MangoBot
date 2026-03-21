@@ -8,7 +8,7 @@ import lombok.Data;
 @Builder
 public class ChatContext {
     private Integer sessionId;
-    private Long botId;
-    private Long chatId;
+    private String botId;
+    private String chatId;
     private ToolExecuteState toolExecuteState;
 }

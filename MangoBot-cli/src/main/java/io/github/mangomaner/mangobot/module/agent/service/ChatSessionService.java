@@ -62,5 +62,5 @@ public interface ChatSessionService extends IService<ChatSession> {
      * @param chatId 群聊ID/私聊ID
      * @return 会话视图对象，如果不存在则返回 null
      */
-    ChatSessionVO getSessionByBotIdAndChatId(Long botId, Long chatId, SessionSource source);
+    ChatSessionVO getSessionByBotIdAndChatId(String botId, String chatId, SessionSource source);
 }

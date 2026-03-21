@@ -12,7 +12,7 @@ public class UpdateBotConfigRequest {
     private Long id;
 
     @Schema(description = "Bot ID（null 表示默认配置）")
-    private Long botId;
+    private String botId;
 
     @Schema(description = "配置键", example = "group.whitelist")
     private String configKey;

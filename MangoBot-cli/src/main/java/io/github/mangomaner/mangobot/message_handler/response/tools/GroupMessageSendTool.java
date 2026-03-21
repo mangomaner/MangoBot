@@ -19,10 +19,10 @@ public class GroupMessageSendTool {
     ) {
         ToolExecuteState state = context.getToolExecuteState();
         if (state.getToolExecuteCount("sendTextMessage") > 0) {
-            return "你已调用过该方法发送消息，请遵循规则，禁止重复调用";
+            return "你已调用过该方法发送消息，请遵循规则，禁止重复调用，请结束回复或发送表情";
         }
         OneBotSendingMessage sendMessage = OneBotMessageBuilder.create().text(message).build();
-        MangoOneBotApi.sendGroupMsg(context.getBotId(), context.getChatId(), sendMessage);
+        MangoOneBotApi.sendGroupMsg(Long.parseLong(context.getBotId()), Long.parseLong(context.getChatId()), sendMessage);
         state.addToolExecuteCount("sendTextMessage");
         return "发送成功";
     }

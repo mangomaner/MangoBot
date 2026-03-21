@@ -47,7 +47,7 @@ public class BotConfigServiceImpl extends ServiceImpl<BotConfigMapper, BotConfig
     }
 
     @Override
-    public List<BotConfigVO> getConfigsByBotId(Long botId) {
+    public List<BotConfigVO> getConfigsByBotId(String botId) {
         if (botId == null) {
             return getAllConfigs();
         }
@@ -88,7 +88,7 @@ public class BotConfigServiceImpl extends ServiceImpl<BotConfigMapper, BotConfig
     }
 
     @Override
-    public BotConfigVO getConfigByKeyAndBotId(String configKey, Long botId) {
+    public BotConfigVO getConfigByKeyAndBotId(String configKey, String botId) {
         if (botId != null) {
             LambdaQueryWrapper<BotConfig> botWrapper = new LambdaQueryWrapper<>();
             botWrapper.eq(BotConfig::getConfigKey, configKey)
@@ -116,18 +116,18 @@ public class BotConfigServiceImpl extends ServiceImpl<BotConfigMapper, BotConfig
     }
 
     @Override
-    public String getConfigValue(String configKey, Long botId) {
+    public String getConfigValue(String configKey, String botId) {
         BotConfigVO config = getConfigByKeyAndBotId(configKey, botId);
         return config != null ? config.getConfigValue() : null;
     }
 
     @Override
     public String getConfigValue(String configKey) {
-        return getConfigValue(configKey, (Long) null);
+        return getConfigValue(configKey, (String) null);
     }
 
     @Override
-    public String getConfigValue(String configKey, String defaultValue) {
+    public String getConfigValueOrDefault(String configKey, String defaultValue) {
         LambdaQueryWrapper<BotConfig> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BotConfig::getConfigKey, configKey)
                .isNull(BotConfig::getBotId);
@@ -219,7 +219,7 @@ public class BotConfigServiceImpl extends ServiceImpl<BotConfigMapper, BotConfig
     }
 
     @Override
-    public boolean updateConfigValue(String configKey, Long botId, String configValue) {
+    public boolean updateConfigValue(String configKey, String botId, String configValue) {
         if (botId == null) {
             return updateConfigValue(configKey, configValue);
         }

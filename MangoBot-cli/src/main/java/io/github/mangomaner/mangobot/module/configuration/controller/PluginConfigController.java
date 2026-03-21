@@ -31,7 +31,7 @@ public class PluginConfigController {
     @GetMapping("/bot/{botId}")
     @Operation(summary = "根据Bot ID获取配置", description = "获取指定Bot的插件配置（懒加载模式）")
     public BaseResponse<List<PluginConfigVO>> getConfigsByBotId(
-            @Parameter(description = "Bot ID") @PathVariable Long botId) {
+            @Parameter(description = "Bot ID") @PathVariable String botId) {
         return ResultUtils.success(pluginConfigService.getConfigsByBotId(botId));
     }
 
@@ -45,7 +45,7 @@ public class PluginConfigController {
     @Operation(summary = "获取插件的Bot专属配置列表", description = "根据插件ID和Bot ID获取配置（懒加载模式）")
     public BaseResponse<List<PluginConfigVO>> getConfigsByPluginIdAndBotId(
             @PathVariable Long pluginId,
-            @Parameter(description = "Bot ID") @PathVariable Long botId) {
+            @Parameter(description = "Bot ID") @PathVariable String botId) {
         return ResultUtils.success(pluginConfigService.getConfigsByPluginIdAndBotId(pluginId, botId));
     }
 
@@ -62,7 +62,7 @@ public class PluginConfigController {
     public BaseResponse<PluginConfigVO> getConfigByBotId(
             @PathVariable Long pluginId,
             @PathVariable String configKey,
-            @Parameter(description = "Bot ID") @PathVariable Long botId) {
+            @Parameter(description = "Bot ID") @PathVariable String botId) {
         PluginConfigVO config = pluginConfigService.getConfig(pluginId, botId, configKey);
         return config != null ? ResultUtils.success(config) : ResultUtils.error(404, "配置不存在");
     }
@@ -87,7 +87,7 @@ public class PluginConfigController {
     public BaseResponse<Boolean> updateConfigValueByBotId(
             @PathVariable Long pluginId,
             @PathVariable String configKey,
-            @Parameter(description = "Bot ID") @PathVariable Long botId,
+            @Parameter(description = "Bot ID") @PathVariable String botId,
             @RequestBody String configValue) {
         return ResultUtils.success(pluginConfigService.updateConfigValue(pluginId, botId, configKey, configValue));
     }

@@ -52,7 +52,7 @@ public class PluginConfigServiceImpl extends ServiceImpl<PluginConfigMapper, Plu
     }
 
     @Override
-    public List<PluginConfigVO> getConfigsByBotId(Long botId) {
+    public List<PluginConfigVO> getConfigsByBotId(String botId) {
         if (botId == null) {
             return getAllConfigs();
         }
@@ -95,7 +95,7 @@ public class PluginConfigServiceImpl extends ServiceImpl<PluginConfigMapper, Plu
     }
 
     @Override
-    public List<PluginConfigVO> getConfigsByPluginIdAndBotId(Long pluginId, Long botId) {
+    public List<PluginConfigVO> getConfigsByPluginIdAndBotId(Long pluginId, String botId) {
         if (botId == null) {
             return getConfigsByPluginId(pluginId);
         }
@@ -139,7 +139,7 @@ public class PluginConfigServiceImpl extends ServiceImpl<PluginConfigMapper, Plu
     }
 
     @Override
-    public PluginConfigVO getConfig(Long pluginId, Long botId, String configKey) {
+    public PluginConfigVO getConfig(Long pluginId, String botId, String configKey) {
         if (botId != null) {
             LambdaQueryWrapper<PluginConfigEntity> botWrapper = new LambdaQueryWrapper<>();
             botWrapper.eq(PluginConfigEntity::getPluginId, pluginId)
@@ -155,17 +155,17 @@ public class PluginConfigServiceImpl extends ServiceImpl<PluginConfigMapper, Plu
 
     @Override
     public String getConfigValue(Long pluginId, String configKey) {
-        return getConfigValue(pluginId, (Long) null, configKey);
+        return getConfigValueByBotId(pluginId, null, configKey);
     }
 
     @Override
-    public String getConfigValue(Long pluginId, Long botId, String configKey) {
+    public String getConfigValueByBotId(Long pluginId, String botId, String configKey) {
         PluginConfigVO config = getConfig(pluginId, botId, configKey);
         return config != null ? config.getConfigValue() : null;
     }
 
     @Override
-    public String getConfigValue(Long pluginId, String configKey, String defaultValue) {
+    public String getConfigValueOrDefault(Long pluginId, String configKey, String defaultValue) {
         LambdaQueryWrapper<PluginConfigEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PluginConfigEntity::getPluginId, pluginId)
                 .eq(PluginConfigEntity::getConfigKey, configKey)
@@ -353,7 +353,7 @@ public class PluginConfigServiceImpl extends ServiceImpl<PluginConfigMapper, Plu
     }
 
     @Override
-    public boolean updateConfigValue(Long pluginId, Long botId, String configKey, String configValue) {
+    public boolean updateConfigValue(Long pluginId, String botId, String configKey, String configValue) {
         if (botId == null) {
             return updateConfigValue(pluginId, configKey, configValue);
         }

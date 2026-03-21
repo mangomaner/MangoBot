@@ -18,11 +18,11 @@ public class CreateChatSessionRequest {
     @Schema(description = "会话标题", requiredMode = Schema.RequiredMode.REQUIRED)
     private String title;
 
-    @Schema(description = "botId")
-    private Long botId;
+    @Schema(description = "Bot ID")
+    private String botId;
 
-    @Schema(description = "群/私聊Id")
-    private Long chatId;
+    @Schema(description = "群/私聊ID")
+    private String chatId;
 
     @Schema(description = "会话来源")
     private SessionSource source;

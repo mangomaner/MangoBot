@@ -14,16 +14,16 @@ public class GroupMessageVO {
     private Long id;
 
     @Schema(description = "Bot ID")
-    private Long botId;
+    private String botId;
 
     @Schema(description = "群组ID")
-    private Long groupId;
+    private String groupId;
 
     @Schema(description = "消息ID")
-    private Integer messageId;
+    private String messageId;
 
     @Schema(description = "发送者ID")
-    private Long senderId;
+    private String senderId;
 
     @Schema(description = "消息段列表")
     private List<OneBotMessageSegment> messageSegments;
@@ -32,7 +32,7 @@ public class GroupMessageVO {
     private Long messageTime;
 
     @Schema(description = "是否删除")
-    private Integer deleted;
+    private Integer isDelete;
 
     @Schema(description = "解析后的消息")
     private String parseMessage;

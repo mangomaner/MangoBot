@@ -64,10 +64,10 @@ public class MangoOneBotApi {
         if (privateMessagesService != null && messageParser != null) {
             try {
                 PrivateMessages privateMessages = new PrivateMessages();
-                privateMessages.setBotId(botId);
-                privateMessages.setFriendId(userId);
-                privateMessages.setMessageId(result.getMessageId());
-                privateMessages.setSenderId(botId);
+                privateMessages.setBotId(String.valueOf(botId));
+                privateMessages.setFriendId(String.valueOf(userId));
+                privateMessages.setMessageId(String.valueOf(result.getMessageId()));
+                privateMessages.setSenderId(String.valueOf(botId));
                 privateMessages.setMessageSegments(objectMapper.writeValueAsString(message.getMessage()));
                 privateMessages.setMessageTime(System.currentTimeMillis());
                 privateMessages.setParseMessage(messageParser.parseMessage(message.getMessage(), botId));
@@ -93,10 +93,10 @@ public class MangoOneBotApi {
         if (groupMessagesService != null && messageParser != null) {
             try {
                 GroupMessages groupMessages = new GroupMessages();
-                groupMessages.setBotId(botId);
-                groupMessages.setGroupId(groupId);
-                groupMessages.setMessageId(result.getMessageId());
-                groupMessages.setSenderId(botId);
+                groupMessages.setBotId(String.valueOf(botId));
+                groupMessages.setGroupId(String.valueOf(groupId));
+                groupMessages.setMessageId(String.valueOf(result.getMessageId()));
+                groupMessages.setSenderId(String.valueOf(botId));
                 groupMessages.setMessageSegments(objectMapper.writeValueAsString(message.getMessage()));
                 groupMessages.setMessageTime(System.currentTimeMillis());
                 groupMessages.setParseMessage(messageParser.parseMessage(message.getMessage(), botId));

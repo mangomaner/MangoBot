@@ -41,16 +41,16 @@ public class ChatSession implements Serializable {
     private Date createTime;
 
     /**
-     *
+     * Bot ID（使用 String 兼容多平台）
      */
     @TableField(value = "bot_id")
-    private Long botId;
+    private String botId;
 
     /**
-     *
+     * 聊天 ID（群聊ID/私聊ID，使用 String 兼容多平台）
      */
     @TableField(value = "chat_id")
-    private Long chatId;
+    private String chatId;
 
     /**
      * 
@@ -58,6 +58,9 @@ public class ChatSession implements Serializable {
     @TableField(value = "update_time")
     private Date updateTime;
 
+    /**
+     * 
+     */
     @TableField(value = "source")
     private SessionSource source;
 

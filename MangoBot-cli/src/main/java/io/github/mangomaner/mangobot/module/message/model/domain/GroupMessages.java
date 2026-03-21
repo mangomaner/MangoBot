@@ -19,24 +19,24 @@ public class GroupMessages implements Serializable {
     private Long id;
 
     /**
-     * 
+     * Bot ID（使用 String 兼容多平台）
      */
-    private Long botId;
+    private String botId;
 
     /**
-     * 
+     * 群组 ID（使用 String 兼容多平台）
      */
-    private Long groupId;
+    private String groupId;
 
     /**
-     * 
+     * 消息 ID（使用 String 兼容多平台）
      */
-    private Integer messageId;
+    private String messageId;
 
     /**
-     * 
+     * 发送者 ID（使用 String 兼容多平台）
      */
-    private Long senderId;
+    private String senderId;
 
     /**
      * 

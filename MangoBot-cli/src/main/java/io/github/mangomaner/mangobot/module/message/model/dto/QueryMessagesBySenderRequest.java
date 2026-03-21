@@ -1,7 +1,7 @@
 package io.github.mangomaner.mangobot.module.message.model.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
@@ -9,10 +9,10 @@ import lombok.Data;
 public class QueryMessagesBySenderRequest {
 
     @Schema(description = "Bot ID")
-    @NotNull(message = "Bot ID不能为空")
-    private Long botId;
+    @NotBlank(message = "Bot ID不能为空")
+    private String botId;
 
     @Schema(description = "发送者ID")
-    @NotNull(message = "发送者ID不能为空")
-    private Long senderId;
+    @NotBlank(message = "发送者ID不能为空")
+    private String senderId;
 }

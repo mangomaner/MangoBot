@@ -21,7 +21,7 @@ public interface BotConfigService extends IService<BotConfig> {
     /**
      * 根据 Bot ID 获取配置（懒加载模式：返回默认配置和 Bot 专属配置，优先展示 Bot 专属配置）
      */
-    List<BotConfigVO> getConfigsByBotId(Long botId);
+    List<BotConfigVO> getConfigsByBotId(String botId);
 
     /**
      * 根据分类获取配置
@@ -31,7 +31,7 @@ public interface BotConfigService extends IService<BotConfig> {
     /**
      * 根据 Key 和 Bot ID 获取配置（优先返回 Bot 专属配置，其次返回默认配置）
      */
-    BotConfigVO getConfigByKeyAndBotId(String configKey, Long botId);
+    BotConfigVO getConfigByKeyAndBotId(String configKey, String botId);
 
     /**
      * 根据 Key 获取配置（仅默认配置）
@@ -41,7 +41,7 @@ public interface BotConfigService extends IService<BotConfig> {
     /**
      * 根据 Key 和 Bot ID 获取配置值（优先 Bot 专属配置）
      */
-    String getConfigValue(String configKey, Long botId);
+    String getConfigValue(String configKey, String botId);
 
     /**
      * 根据 Key 获取配置值（仅默认配置）
@@ -51,7 +51,7 @@ public interface BotConfigService extends IService<BotConfig> {
     /**
      * 根据 Key 获取配置值（带默认值，仅默认配置）
      */
-    String getConfigValue(String configKey, String defaultValue);
+    String getConfigValueOrDefault(String configKey, String defaultValue);
 
     /**
      * 创建 Bot 配置
@@ -66,7 +66,7 @@ public interface BotConfigService extends IService<BotConfig> {
     /**
      * 根据 Key 和 Bot ID 更新配置值（懒加载：若 Bot 专属配置不存在则创建）
      */
-    boolean updateConfigValue(String configKey, Long botId, String configValue);
+    boolean updateConfigValue(String configKey, String botId, String configValue);
 
     /**
      * 根据 Key 更新配置值（仅默认配置）

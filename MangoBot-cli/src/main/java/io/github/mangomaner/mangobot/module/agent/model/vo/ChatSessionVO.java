@@ -19,11 +19,11 @@ public class ChatSessionVO {
     @Schema(description = "会话标题")
     private String title;
 
-    @Schema(description = "botID")
-    private Long botId;
+    @Schema(description = "Bot ID")
+    private String botId;
 
     @Schema(description = "群/私聊ID")
-    private Long chatId;
+    private String chatId;
 
     @Schema(description = "创建时间")
     private Date createTime;

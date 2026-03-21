@@ -48,7 +48,7 @@ public class MangoAgentApi {
      * @param source 会话来源
      * @return 会话视图对象，如果不存在则返回 null
      */
-    public static ChatSessionVO getSessionByBotIdAndChatId(Long botId, Long chatId, SessionSource source) {
+    public static ChatSessionVO getSessionByBotIdAndChatId(String botId, String chatId, SessionSource source) {
         checkServices();
         return chatSessionService.getSessionByBotIdAndChatId(botId, chatId, source);
     }

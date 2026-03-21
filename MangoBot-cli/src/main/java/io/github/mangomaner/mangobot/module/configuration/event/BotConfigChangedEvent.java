@@ -11,13 +11,13 @@ public class BotConfigChangedEvent extends ConfigurationEvent {
 
     private final Long configId;
 
-    private final Long botId;
+    private final String botId;
 
     private final String configType;
 
     private final String category;
 
-    public BotConfigChangedEvent(Long configId, Long botId, String configKey, String configType,
+    public BotConfigChangedEvent(Long configId, String botId, String configKey, String configType,
                                   String category, String oldValue, String newValue) {
         super(configKey, oldValue, newValue);
         this.configId = configId;

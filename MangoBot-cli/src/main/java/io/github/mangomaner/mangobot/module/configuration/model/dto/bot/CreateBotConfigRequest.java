@@ -10,7 +10,7 @@ import lombok.Data;
 public class CreateBotConfigRequest {
 
     @Schema(description = "Bot ID（null 表示默认配置）")
-    private Long botId;
+    private String botId;
 
     @NotBlank(message = "配置键不能为空")
     @Schema(description = "配置键", example = "group.whitelist")

@@ -33,7 +33,7 @@ public class BotConfigController {
     @GetMapping("/bot/{botId}")
     @Operation(summary = "根据 Bot ID 获取配置", description = "获取指定 Bot 的配置（懒加载模式：返回默认配置和 Bot 专属配置，优先展示 Bot 专属配置）")
     public BaseResponse<List<BotConfigVO>> getConfigsByBotId(
-            @Parameter(description = "Bot ID") @PathVariable Long botId) {
+            @Parameter(description = "Bot ID") @PathVariable String botId) {
         return ResultUtils.success(botConfigService.getConfigsByBotId(botId));
     }
 
@@ -54,7 +54,7 @@ public class BotConfigController {
     @Operation(summary = "根据 Key 和 Bot ID 获取配置", description = "根据配置键和 Bot ID 获取配置（优先返回 Bot 专属配置）")
     public BaseResponse<BotConfigVO> getConfigByKeyAndBotId(
             @PathVariable String configKey,
-            @Parameter(description = "Bot ID") @PathVariable Long botId) {
+            @Parameter(description = "Bot ID") @PathVariable String botId) {
         BotConfigVO config = botConfigService.getConfigByKeyAndBotId(configKey, botId);
         return config != null ? ResultUtils.success(config) : ResultUtils.error(404, "配置不存在");
     }
@@ -83,7 +83,7 @@ public class BotConfigController {
     @Operation(summary = "更新 Bot 专属配置值", description = "根据配置键和 Bot ID 更新配置值（懒加载：若 Bot 专属配置不存在则创建）")
     public BaseResponse<Boolean> updateConfigValueByBotId(
             @PathVariable String configKey,
-            @Parameter(description = "Bot ID") @PathVariable Long botId,
+            @Parameter(description = "Bot ID") @PathVariable String botId,
             @RequestBody String configValue) {
         return ResultUtils.success(botConfigService.updateConfigValue(configKey, botId, configValue));
     }

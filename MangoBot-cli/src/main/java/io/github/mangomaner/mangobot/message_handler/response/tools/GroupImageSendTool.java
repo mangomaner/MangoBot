@@ -66,7 +66,7 @@ public class GroupImageSendTool {
                 .image(FileUtils.getBaseDirectory().normalize().toString().replace('\\', '/') + "/" + imagePath, true)
                 .build();
         
-        MangoOneBotApi.sendGroupMsg(context.getBotId(), context.getChatId(), sendMessage);
+        MangoOneBotApi.sendGroupMsg(Long.parseLong(context.getBotId()), Long.parseLong(context.getChatId()), sendMessage);
         return "表情包发送成功";
     }
 }

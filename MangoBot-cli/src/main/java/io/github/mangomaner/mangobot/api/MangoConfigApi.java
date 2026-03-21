@@ -163,7 +163,7 @@ public class MangoConfigApi {
      */
     public static BotConfigVO getBotConfig(String configKey, Long botId) {
         checkServices();
-        return botConfigService.getConfigByKeyAndBotId(configKey, botId);
+        return botConfigService.getConfigByKeyAndBotId(configKey, botId != null ? botId.toString() : null);
     }
 
     /**
@@ -175,7 +175,7 @@ public class MangoConfigApi {
      */
     public static String getBotConfigValue(String configKey, Long botId) {
         checkServices();
-        return botConfigService.getConfigValue(configKey, botId);
+        return botConfigService.getConfigValue(configKey, botId != null ? botId.toString() : null);
     }
 
     /**
@@ -188,7 +188,7 @@ public class MangoConfigApi {
      */
     public static String getBotConfigValue(String configKey, Long botId, String defaultValue) {
         checkServices();
-        String value = botConfigService.getConfigValue(configKey, botId);
+        String value = botConfigService.getConfigValue(configKey, botId != null ? botId.toString() : null);
         return value != null ? value : defaultValue;
     }
 
@@ -207,7 +207,7 @@ public class MangoConfigApi {
     public static boolean updateBotConfigValue(String configKey, Long botId, String configValue) {
         checkServices();
         assertNotPlugin("updateBotConfigValue");
-        return botConfigService.updateConfigValue(configKey, botId, configValue);
+        return botConfigService.updateConfigValue(configKey, botId != null ? botId.toString() : null, configValue);
     }
 
     // ==================== 插件配置（仅自己的配置） ====================
@@ -225,7 +225,7 @@ public class MangoConfigApi {
     public static PluginConfigVO getPluginConfig(String configKey, Long botId) {
         checkServices();
         Integer pluginId = assertPlugin("getPluginConfig");
-        return pluginConfigService.getConfig(pluginId.longValue(), botId, configKey);
+        return pluginConfigService.getConfig(pluginId.longValue(), botId != null ? botId.toString() : null, configKey);
     }
 
     /**
@@ -241,7 +241,7 @@ public class MangoConfigApi {
     public static String getPluginConfigValue(String configKey, Long botId) {
         checkServices();
         Integer pluginId = assertPlugin("getPluginConfigValue");
-        return pluginConfigService.getConfigValue(pluginId.longValue(), botId, configKey);
+        return pluginConfigService.getConfigValueByBotId(pluginId.longValue(), botId != null ? botId.toString() : null, configKey);
     }
 
     /**
@@ -258,7 +258,7 @@ public class MangoConfigApi {
     public static String getPluginConfigValue(String configKey, Long botId, String defaultValue) {
         checkServices();
         Integer pluginId = assertPlugin("getPluginConfigValue");
-        String value = pluginConfigService.getConfigValue(pluginId.longValue(), botId, configKey);
+        String value = pluginConfigService.getConfigValueByBotId(pluginId.longValue(), botId != null ? botId.toString() : null, configKey);
         return value != null ? value : defaultValue;
     }
 
@@ -277,7 +277,7 @@ public class MangoConfigApi {
     public static boolean updatePluginConfigValue(String configKey, Long botId, String configValue) {
         checkServices();
         Integer pluginId = assertPlugin("updatePluginConfigValue");
-        return pluginConfigService.updateConfigValue(pluginId.longValue(), botId, configKey, configValue);
+        return pluginConfigService.updateConfigValue(pluginId.longValue(), botId != null ? botId.toString() : null, configKey, configValue);
     }
 
     // ==================== 权限检查辅助方法 ====================

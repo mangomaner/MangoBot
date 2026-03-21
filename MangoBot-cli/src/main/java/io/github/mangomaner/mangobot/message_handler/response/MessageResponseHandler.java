@@ -197,7 +197,7 @@ public class MessageResponseHandler {
     @PluginPriority(1000)
     public boolean onGroupMessage(OneBotGroupMessageEvent event) {
 
-        ChatSessionVO session = MangoAgentApi.getSessionByBotIdAndChatId(event.getSelfId(), event.getGroupId(), SessionSource.GROUP);
+        ChatSessionVO session = MangoAgentApi.getSessionByBotIdAndChatId(String.valueOf(event.getSelfId()), String.valueOf(event.getGroupId()), SessionSource.GROUP);
         Integer sessionId = session.getId();
 
         ScheduledFuture<?> existingTask = pendingTasks.get(sessionId);
@@ -231,8 +231,8 @@ public class MessageResponseHandler {
 
     private void executeResponseTask(OneBotGroupMessageEvent event, ChatSessionVO session) {
         List<GroupMessages> messages = MangoGroupMessageApi.getLatestMessages(QueryLatestMessagesRequest.builder()
-                .botId(event.getSelfId())
-                .targetId(event.getGroupId())
+                .botId(String.valueOf(event.getSelfId()))
+                .targetId(String.valueOf(event.getGroupId()))
                 .num(20)
                 .build()
         );

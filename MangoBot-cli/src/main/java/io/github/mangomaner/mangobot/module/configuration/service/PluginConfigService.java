@@ -12,21 +12,21 @@ public interface PluginConfigService extends IService<PluginConfigEntity> {
 
     List<PluginConfigVO> getAllConfigs();
 
-    List<PluginConfigVO> getConfigsByBotId(Long botId);
+    List<PluginConfigVO> getConfigsByBotId(String botId);
 
     List<PluginConfigVO> getConfigsByPluginId(Long pluginId);
 
-    List<PluginConfigVO> getConfigsByPluginIdAndBotId(Long pluginId, Long botId);
+    List<PluginConfigVO> getConfigsByPluginIdAndBotId(Long pluginId, String botId);
 
     PluginConfigVO getConfig(Long pluginId, String configKey);
 
-    PluginConfigVO getConfig(Long pluginId, Long botId, String configKey);
+    PluginConfigVO getConfig(Long pluginId, String botId, String configKey);
 
     String getConfigValue(Long pluginId, String configKey);
 
-    String getConfigValue(Long pluginId, Long botId, String configKey);
+    String getConfigValueByBotId(Long pluginId, String botId, String configKey);
 
-    String getConfigValue(Long pluginId, String configKey, String defaultValue);
+    String getConfigValueOrDefault(Long pluginId, String configKey, String defaultValue);
 
     void registerConfig(Long pluginId, String configKey, String configValue, 
                         String configType, String description, String explain);
@@ -39,7 +39,7 @@ public interface PluginConfigService extends IService<PluginConfigEntity> {
 
     boolean updateConfigValue(Long pluginId, String configKey, String configValue);
 
-    boolean updateConfigValue(Long pluginId, Long botId, String configKey, String configValue);
+    boolean updateConfigValue(Long pluginId, String botId, String configKey, String configValue);
 
     void deleteByPluginId(Long pluginId);
 }

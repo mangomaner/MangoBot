@@ -167,7 +167,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     @Override
-    public ChatSessionVO getSessionByBotIdAndChatId(Long botId, Long chatId, SessionSource source) {
+    public ChatSessionVO getSessionByBotIdAndChatId(String botId, String chatId, SessionSource source) {
         if (botId == null || chatId == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "botId 和 chatId 不能为空");
         }

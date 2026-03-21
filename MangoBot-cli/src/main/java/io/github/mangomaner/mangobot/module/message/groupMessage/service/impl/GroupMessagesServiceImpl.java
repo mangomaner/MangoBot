@@ -130,7 +130,7 @@ public class GroupMessagesServiceImpl extends ServiceImpl<GroupMessagesMapper, G
         vo.setMessageId(message.getMessageId());
         vo.setSenderId(message.getSenderId());
         vo.setMessageTime(message.getMessageTime());
-        vo.setDeleted(message.getIsDelete());
+        vo.setIsDelete(message.getIsDelete());
         vo.setParseMessage(message.getParseMessage());
         
         try {

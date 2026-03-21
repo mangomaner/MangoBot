@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_model_roles_config ON model_roles (model_config_i
 -- Bot 配置表：存储 Bot 级别配置（白名单、黑名单等）
 CREATE TABLE IF NOT EXISTS bot_configs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    bot_id          INTEGER,                         -- Bot ID（null 表示默认配置）
+    bot_id          TEXT,                           -- Bot ID（null 表示默认配置，使用 TEXT 兼容多平台）
     config_key      TEXT NOT NULL,                   -- 配置键
     config_value    TEXT,                            -- 配置值（支持 JSON）
     config_type     TEXT NOT NULL DEFAULT 'STRING',  -- 类型：见 ConfigType 枚举
@@ -116,7 +116,7 @@ CREATE INDEX IF NOT EXISTS idx_system_configs_category ON system_configs (catego
 CREATE TABLE IF NOT EXISTS plugin_configs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     plugin_id       INTEGER NOT NULL,                -- 关联插件
-    bot_id          INTEGER,                         -- Bot ID（null 表示默认配置）
+    bot_id          TEXT,                            -- Bot ID（null 表示默认配置，使用 TEXT 兼容多平台）
     config_key      TEXT NOT NULL,                   -- 配置键（相对于插件）
     config_value    TEXT,                            -- 配置值
     config_type     TEXT NOT NULL DEFAULT 'STRING',  -- 类型：见 ConfigType 枚举
@@ -181,10 +181,10 @@ CREATE TABLE IF NOT EXISTS group_messages
     id               INTEGER                                        not null
         constraint group_messages_pk
             primary key autoincrement,
-    bot_id           INTEGER                                        not null,
-    group_id         INTEGER                                        not null,
-    message_id       INTEGER,
-    sender_id        INTEGER,
+    bot_id           TEXT                                           not null,
+    group_id         TEXT                                           not null,
+    message_id       TEXT,
+    sender_id        TEXT,
     message_segments TEXT,
     message_time     INTEGER default (strftime('%s', 'now') * 1000) not null,
     is_delete        INTEGER DEFAULT 0,
@@ -202,10 +202,10 @@ CREATE TABLE IF NOT EXISTS private_messages(
     id               INTEGER                                        not null
         constraint private_messages_pk
             primary key autoincrement,
-    bot_id           INTEGER                                        not null,
-    friend_id        INTEGER                                        not null,
-    message_id       INTEGER,
-    sender_id        INTEGER,
+    bot_id           TEXT                                           not null,
+    friend_id        TEXT                                           not null,
+    message_id       TEXT,
+    sender_id        TEXT,
     message_segments TEXT,
     message_time     INTEGER default (strftime('%s', 'now') * 1000) not null,
     is_delete        INTEGER DEFAULT 0,
@@ -259,8 +259,8 @@ CREATE TABLE IF NOT EXISTS plugins
 -- 对话会话表：记录每个工作区的对话会话
 CREATE TABLE IF NOT EXISTS chat_session (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    bot_id INTEGER,
-    chat_id INTEGER,   -- 关联群聊ID/私聊ID
+    bot_id TEXT,        -- Bot ID（使用 TEXT 兼容多平台）
+    chat_id TEXT,       -- 关联群聊ID/私聊ID（使用 TEXT 兼容多平台）
     title VARCHAR(256), -- 会话标题（默认为该会话第一个问题，因此，前端点击新对话时，先不创建会话，等到输入问题并发送后再新建对话）
     memory_state TEXT, -- AutoContextMemory 持久化状态（JSON格式）
     source VARCHAR(32),

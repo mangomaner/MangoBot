@@ -14,16 +14,16 @@ public class PrivateMessageVO {
     private Long id;
 
     @Schema(description = "Bot ID")
-    private Long botId;
+    private String botId;
 
     @Schema(description = "好友ID")
-    private Long friendId;
+    private String friendId;
 
     @Schema(description = "消息ID")
-    private Integer messageId;
+    private String messageId;
 
     @Schema(description = "发送者ID")
-    private Long senderId;
+    private String senderId;
 
     @Schema(description = "消息段列表")
     private List<OneBotMessageSegment> messageSegments;

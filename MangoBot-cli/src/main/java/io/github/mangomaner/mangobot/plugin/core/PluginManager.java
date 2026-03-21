@@ -264,7 +264,7 @@ public class PluginManager {
             if (field.isAnnotationPresent(InjectConfig.class)) {
                 InjectConfig ic =
                     field.getAnnotation(InjectConfig.class);
-                String configValue = pluginConfigService.getConfigValue(pluginId, ic.key(), ic.defaultValue());
+                String configValue = pluginConfigService.getConfigValueOrDefault(pluginId, ic.key(), ic.defaultValue());
 
                 try {
                     field.setAccessible(true);
@@ -277,7 +277,7 @@ public class PluginManager {
             } else if (field.isAnnotationPresent(io.github.mangomaner.mangobot.annotation.PluginConfigItem.class)) {
                 io.github.mangomaner.mangobot.annotation.PluginConfigItem pci = 
                     field.getAnnotation(io.github.mangomaner.mangobot.annotation.PluginConfigItem.class);
-                String configValue = pluginConfigService.getConfigValue(pluginId, pci.key(), pci.value());
+                String configValue = pluginConfigService.getConfigValueOrDefault(pluginId, pci.key(), pci.value());
 
                 try {
                     field.setAccessible(true);

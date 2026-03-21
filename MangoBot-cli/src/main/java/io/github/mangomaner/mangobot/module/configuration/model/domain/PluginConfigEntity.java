@@ -21,7 +21,7 @@ public class PluginConfigEntity implements Serializable {
 
     private Long pluginId;
 
-    private Long botId;
+    private String botId;
 
     private String configKey;
 

@@ -15,7 +15,7 @@ public class PluginConfigVO {
     private Long pluginId;
 
     @Schema(description = "Bot ID（null 表示默认配置）")
-    private Long botId;
+    private String botId;
 
     @Schema(description = "插件名称")
     private String pluginName;
