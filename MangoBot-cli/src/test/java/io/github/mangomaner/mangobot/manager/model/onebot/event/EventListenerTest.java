@@ -1,9 +1,9 @@
 package io.github.mangomaner.mangobot.manager.model.onebot.event;
 
 import org.junit.jupiter.api.Test;
-import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotMessageEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotPrivateMessageEvent;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.message.OneBotMessageEvent;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.message.OneBotPrivateMessageEvent;
 
 import java.util.ArrayList;
 import java.util.List;

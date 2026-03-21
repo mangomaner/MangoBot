@@ -164,7 +164,7 @@ INSERT INTO bot_configs (bot_id, config_key, config_value, config_type, metadata
     (NULL, 'group.enable_list', 'true', 'BOOLEAN', NULL, '启用群组黑白名单', '', 'BW_list'),
     (NULL, 'private.whitelist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊白名单', '用户QQ列表', 'BW_list'),
     (NULL, 'private.blacklist', '[]', 'PRIVATE_LIST_SELECTOR', '{"listType":"private"}', '私聊黑名单', '用户QQ列表', 'BW_list'),
-    (NULL, 'private.enable_list', 'true', 'BOOLEAN', NULL, '启用私聊黑白名单', '', 'BW_list');
+    (NULL, 'private.enable_list', 'true', 'BOOLEAN', NULL, '启用私聊黑白名单', '', 'BW_list'),
     (NULL, 'bot.markdown_to_txt', 'true', 'BOOLEAN', NULL, '将md格式转为纯文本发送', '', 'format');
 -- 上述列表示例：["123456789","1011121314"]，true为白名单，false为黑名单
 
@@ -365,6 +365,35 @@ CREATE TABLE agent_mcp_tool_config (
     UNIQUE(mcp_config_id, tool_name),
     FOREIGN KEY (mcp_config_id) REFERENCES agent_mcp_config(id) ON DELETE CASCADE
 );
+
+-- ============================================
+-- 平台连接配置表
+-- ============================================
+
+-- OneBot 平台配置表：存储 OneBot WebSocket 服务器配置
+CREATE TABLE IF NOT EXISTS onebot_config (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,                   -- 配置名称
+    host            TEXT NOT NULL DEFAULT '0.0.0.0', -- WebSocket 服务器监听地址
+    port            INTEGER NOT NULL DEFAULT 8080,   -- WebSocket 服务器监听端口
+    path            TEXT,                            -- WebSocket 路径（可选）
+    token           TEXT,                            -- 访问令牌（可选）
+    protocol_type   TEXT NOT NULL DEFAULT 'onebot_qq', -- 协议类型：onebot_qq, telegram, discord 等
+    enabled         INTEGER DEFAULT 0,               -- 是否启用：0-禁用, 1-启用
+    connection_status INTEGER DEFAULT 0,             -- 连接状态：0-未启动, 1-运行中, 2-已停止, 3-错误
+    description     TEXT,                            -- 描述
+    created_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+    updated_at      INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+);
+
+-- OneBot 配置索引
+CREATE INDEX IF NOT EXISTS idx_onebot_config_name ON onebot_config (name);
+CREATE INDEX IF NOT EXISTS idx_onebot_config_enabled ON onebot_config (enabled);
+CREATE INDEX IF NOT EXISTS idx_onebot_config_protocol ON onebot_config (protocol_type);
+
+-- OneBot 配置初始数据
+INSERT INTO onebot_config (name, host, port, path, token, protocol_type, enabled, description) VALUES
+    ('默认配置', '0.0.0.0', 8080, NULL, NULL, 'onebot_qq', 0, '默认 OneBot WebSocket 服务器配置');
 
 -- ========================================
 -- 4. Skill 配置表

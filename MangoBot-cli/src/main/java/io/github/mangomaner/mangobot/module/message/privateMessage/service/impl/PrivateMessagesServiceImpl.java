@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.system.mapper.PrivateMessagesMapper;
 import io.github.mangomaner.mangobot.module.message.model.domain.PrivateMessages;
-import io.github.mangomaner.mangobot.adapter.onebot.model.segment.OneBotMessageSegment;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.OneBotMessageSegment;
 import io.github.mangomaner.mangobot.module.message.model.vo.PrivateMessageVO;
 import io.github.mangomaner.mangobot.module.message.model.dto.*;
 import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;

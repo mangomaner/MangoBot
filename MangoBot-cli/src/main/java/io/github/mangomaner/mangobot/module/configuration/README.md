@@ -16,18 +16,21 @@ configuration/
 │   ├── ModelConfigController.java # 模型配置控制器
 │   ├── ModelRoleController.java   # 模型角色控制器
 │   ├── SystemConfigController.java# 系统配置控制器
+│   ├── BotConfigController.java   # Bot 配置控制器
 │   └── PluginConfigController.java# 插件配置控制器
 ├── event/                         # 配置事件
 │   ├── ConfigurationEvent.java    # 配置事件基类
 │   ├── ModelRoleChangedEvent.java # 模型角色变更事件
 │   ├── ModelConfigChangedEvent.java
 │   ├── SystemConfigChangedEvent.java
+│   ├── BotConfigChangedEvent.java
 │   └── PluginConfigChangedEvent.java
 ├── mapper/                        # 数据访问层
 │   ├── ModelProviderMapper.java
 │   ├── ModelConfigMapper.java
 │   ├── ModelRoleMapper.java
 │   ├── SystemConfigMapper.java
+│   ├── BotConfigMapper.java
 │   └── PluginConfigMapper.java
 ├── model/                         # 数据模型
 │   ├── domain/                    # 实体类
@@ -35,16 +38,19 @@ configuration/
 │   │   ├── ModelConfig.java
 │   │   ├── ModelRole.java
 │   │   ├── SystemConfig.java
+│   │   ├── BotConfig.java
 │   │   └── PluginConfigEntity.java
 │   ├── dto/                       # 数据传输对象
 │   │   ├── model/
 │   │   ├── system/
+│   │   ├── bot/
 │   │   └── plugin/
 │   └── vo/                        # 视图对象
 │       ├── ModelProviderVO.java
 │       ├── ModelConfigVO.java
 │       ├── ModelRoleVO.java
 │       ├── SystemConfigVO.java
+│       ├── BotConfigVO.java
 │       ├── PluginConfigVO.java
 │       └── ModelTestResultVO.java
 └── service/                       # 服务层
@@ -52,7 +58,8 @@ configuration/
     ├── ModelProviderService.java  # 供应商服务
     ├── ModelConfigService.java    # 模型配置服务
     ├── ModelRoleService.java      # 模型角色服务
-    ├── SystemConfigService.java
+    ├── SystemConfigService.java   # 系统配置服务
+    ├── BotConfigService.java      # Bot 配置服务
     ├── PluginConfigService.java
     └── impl/
 ```
@@ -103,7 +110,30 @@ configuration/
 
 ### 4. system_configs（系统配置表）
 
-存储框架级配置（白名单、黑名单等），支持多 Bot 配置。
+存储系统级全局配置（系统名称、日志级别等），**无 bot_id**。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| config_key | TEXT | 配置键（唯一） |
+| config_value | TEXT | 配置值（支持 JSON） |
+| config_type | TEXT | 类型（见 ConfigType 枚举） |
+| metadata | TEXT | 前端元数据（JSON 格式） |
+| description | TEXT | 描述 |
+| explain | TEXT | 详细说明 |
+| category | TEXT | 分类 |
+| editable | INTEGER | 是否可编辑 |
+
+**系统配置示例：**
+- `system.name` - 系统名称
+- `system.log_level` - 日志级别
+- `system.data_retention_days` - 数据保留天数
+- `system.enable_web` - 是否启用 Web 界面
+- `system.max_connections` - 最大连接数
+
+### 5. bot_configs（Bot 配置表）
+
+存储 Bot 级别配置（白名单、黑名单等），支持多 Bot 配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -124,7 +154,15 @@ configuration/
 - 在修改配置时，若 Bot 专属配置不存在则自动创建，已存在则更新
 - 查询时优先返回 Bot 专属配置，其次返回默认配置
 
-### 5. plugin_configs（插件配置表）
+**Bot 配置示例：**
+- `group.whitelist` - 群组白名单
+- `group.blacklist` - 群组黑名单
+- `group.enable_list` - 启用群组黑白名单
+- `private.whitelist` - 私聊白名单
+- `private.blacklist` - 私聊黑名单
+- `private.enable_list` - 启用私聊黑白名单
+
+### 6. plugin_configs（插件配置表）
 
 存储插件自定义配置，支持多 Bot 配置。
 
@@ -142,7 +180,7 @@ configuration/
 | editable | INTEGER | 是否可编辑 |
 
 **多 Bot 配置说明：**
-- 与 system_configs 相同的懒加载机制
+- 与 bot_configs 相同的懒加载机制
 - 每个 Bot 可以有独立的插件配置
 
 ## 配置类型（ConfigType）
@@ -225,20 +263,32 @@ metadata 用于存储前端渲染所需的额外信息：
 | DELETE | /api/configuration/model/configs/{id} | 删除模型配置 |
 | POST | /api/configuration/model/configs/{id}/test | 测试模型 |
 
-### 系统配置 API
+### 系统配置 API（全局配置，无 botId）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | /api/configuration/system | 获取所有默认系统配置（bot_id 为 null） |
-| GET | /api/configuration/system/bot/{botId} | 根据 Bot ID 获取配置（懒加载模式） |
-| GET | /api/configuration/system/category/{category} | 按分类获取默认配置 |
-| GET | /api/configuration/system/{configKey} | 获取指定默认配置 |
-| GET | /api/configuration/system/{configKey}/bot/{botId} | 根据 Key 和 Bot ID 获取配置 |
+| GET | /api/configuration/system | 获取所有系统配置 |
+| GET | /api/configuration/system/category/{category} | 按分类获取配置 |
+| GET | /api/configuration/system/{configKey} | 获取指定配置 |
 | POST | /api/configuration/system | 创建系统配置 |
 | PUT | /api/configuration/system | 更新系统配置 |
-| PUT | /api/configuration/system/{configKey} | 更新默认配置值 |
-| PUT | /api/configuration/system/{configKey}/bot/{botId} | 更新 Bot 专属配置值（懒加载） |
+| PUT | /api/configuration/system/{configKey} | 更新配置值 |
 | DELETE | /api/configuration/system/{id} | 删除系统配置 |
+
+### Bot 配置 API（Bot 级别配置，有 botId）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /api/configuration/bot | 获取所有默认 Bot 配置（bot_id 为 null） |
+| GET | /api/configuration/bot/bot/{botId} | 根据 Bot ID 获取配置（懒加载模式） |
+| GET | /api/configuration/bot/category/{category} | 按分类获取默认配置 |
+| GET | /api/configuration/bot/{configKey} | 获取指定默认配置 |
+| GET | /api/configuration/bot/{configKey}/bot/{botId} | 根据 Key 和 Bot ID 获取配置 |
+| POST | /api/configuration/bot | 创建 Bot 配置 |
+| PUT | /api/configuration/bot | 更新 Bot 配置 |
+| PUT | /api/configuration/bot/{configKey} | 更新默认配置值 |
+| PUT | /api/configuration/bot/{configKey}/bot/{botId} | 更新 Bot 专属配置值（懒加载） |
+| DELETE | /api/configuration/bot/{id} | 删除 Bot 配置 |
 
 ### 插件配置 API
 
@@ -264,7 +314,8 @@ metadata 用于存储前端渲染所需的额外信息：
 |--------|------|
 | ModelRoleChangedEvent | 模型角色变更事件（角色与模型映射变更） |
 | ModelConfigChangedEvent | 模型配置变更事件 |
-| SystemConfigChangedEvent | 系统配置变更事件 |
+| SystemConfigChangedEvent | 系统配置变更事件（全局配置） |
+| BotConfigChangedEvent | Bot 配置变更事件（Bot 级别配置） |
 | PluginConfigChangedEvent | 插件配置变更事件 |
 
 ### 监听配置变更
@@ -348,6 +399,48 @@ public void example() {
 
 当角色对应的模型变更时，`ModelProviderImpl` 会自动监听 `ModelRoleChangedEvent` 并重新加载模型实例。
 
+## 配置 API（MangoConfigApi）
+
+### 配置类型说明
+
+| 配置类型 | 说明 | 特点 |
+|---------|------|------|
+| 系统配置 | 全局配置，如系统名称、日志级别 | 无 botId，全局唯一 |
+| Bot 配置 | Bot 级别配置，如黑白名单 | 有 botId，支持多 Bot |
+| 插件配置 | 插件自定义配置 | 有 pluginId 和 botId |
+
+### 使用示例
+
+```java
+import io.github.mangomaner.mangobot.api.MangoConfigApi;
+
+// ==================== 系统配置（全局配置） ====================
+
+// 获取系统配置值
+String systemName = MangoConfigApi.getSystemConfigValue("system.name", "MangoBot");
+String logLevel = MangoConfigApi.getSystemConfigValue("system.log_level", "INFO");
+
+// 更新系统配置值（仅主程序可调用）
+MangoConfigApi.updateSystemConfigValue("system.log_level", "DEBUG");
+
+// ==================== Bot 配置（Bot 级别配置） ====================
+
+// 获取 Bot 配置值（优先 Bot 专属配置，其次默认配置）
+String whitelist = MangoConfigApi.getBotConfigValue("group.whitelist", botId, "[]");
+String enableList = MangoConfigApi.getBotConfigValue("group.enable_list", botId, "true");
+
+// 更新 Bot 配置值（仅主程序可调用，懒加载模式）
+MangoConfigApi.updateBotConfigValue("group.whitelist", botId, "[\"123456789\"]");
+
+// ==================== 插件配置（仅插件可调用） ====================
+
+// 获取当前插件的配置值
+String timeout = MangoConfigApi.getPluginConfigValue("timeout", botId, "30");
+
+// 更新当前插件的配置值
+MangoConfigApi.updatePluginConfigValue("timeout", botId, "60");
+```
+
 ## 插件配置注入
 
 ### 使用 @InjectConfig 注解
@@ -412,8 +505,8 @@ public class ExamplePlugin implements Plugin {
 | main.model.assistant_model | model_roles 表（role_key='assistant'） |
 | main.model.image_model | model_roles 表（role_key='image'） |
 | main.model.embedding_model | model_roles 表（role_key='embedding'） |
-| main.QQ.group.whitelist | system_configs 表（config_key='group.whitelist'） |
-| main.QQ.group.blacklist | system_configs 表（config_key='group.blacklist'） |
+| main.QQ.group.whitelist | bot_configs 表（config_key='group.whitelist'） |
+| main.QQ.group.blacklist | bot_configs 表（config_key='group.blacklist'） |
 | plugin.* | plugin_configs 表 |
 
 ## 最佳实践
@@ -424,6 +517,7 @@ public class ExamplePlugin implements Plugin {
 4. **类型选择**：根据配置值选择合适的类型（STRING, INTEGER, BOOLEAN, JSON）
 5. **事件监听**：需要响应配置变更时，监听对应的事件类型
 6. **插件配置**：使用 `@InjectConfig` 注解实现类型安全的配置注入
+7. **配置分类**：系统配置用于全局设置，Bot 配置用于 Bot 级别设置
 
 ## 多 Bot 配置机制
 
@@ -449,17 +543,17 @@ public class ExamplePlugin implements Plugin {
 ### 前端集成建议
 
 ```typescript
-// 获取配置时传入当前 Bot ID
+// 获取 Bot 配置时传入当前 Bot ID
 const botId = botStore.currentBotId;
-const configs = await getSystemConfigsByBotId(botId);
+const configs = await getBotConfigsByBotId(botId);
 
-// 更新配置时使用懒加载接口
-await updateSystemConfigValueByBotId(configKey, botId, newValue);
+// 更新 Bot 配置时使用懒加载接口
+await updateBotConfigValueByBotId(configKey, botId, newValue);
 ```
 
 ### 配置优先级
 
-查询配置时的优先级：
+查询 Bot 配置时的优先级：
 1. Bot 专属配置（`bot_id = {具体Bot ID}`）
 2. 默认配置（`bot_id = null`）
 

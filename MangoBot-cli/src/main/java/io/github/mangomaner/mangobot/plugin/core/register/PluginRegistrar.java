@@ -10,7 +10,7 @@ import io.github.mangomaner.mangobot.plugin.core.register.web.MangoArgumentResol
 import io.github.mangomaner.mangobot.plugin.core.register.web.MangoReturnValueHandler;
 import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
-import io.github.mangomaner.mangobot.adapter.onebot.outbound.send.OneBotApiService;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.send.OneBotApiService;
 import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

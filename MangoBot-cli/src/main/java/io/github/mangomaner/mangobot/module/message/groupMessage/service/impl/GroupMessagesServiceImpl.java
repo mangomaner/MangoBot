@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.mangomaner.mangobot.adapter.onebot.model.segment.OneBotMessageSegment;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.OneBotMessageSegment;
 import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
 import io.github.mangomaner.mangobot.module.message.model.dto.QueryLatestMessagesRequest;
 import io.github.mangomaner.mangobot.module.message.model.dto.QueryMessagesByMessageIdRequest;
@@ -14,7 +14,6 @@ import io.github.mangomaner.mangobot.module.message.model.dto.UpdateMessageReque
 import io.github.mangomaner.mangobot.module.message.model.vo.GroupMessageVO;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
 import io.github.mangomaner.mangobot.system.mapper.GroupMessagesMapper;
-import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

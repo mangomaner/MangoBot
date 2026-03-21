@@ -86,6 +86,13 @@
             <artifactId>agentscope-extensions-autocontext-memory</artifactId>
             <version>1.0.9</version>
         </dependency>
+
+        <!-- Java-WebSocket for standalone WebSocket server -->
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>1.5.6</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

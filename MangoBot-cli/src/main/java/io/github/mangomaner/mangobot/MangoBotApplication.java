@@ -6,6 +6,7 @@ import io.github.mangomaner.mangobot.module.agent.capability.tool.ToolRegistrati
 import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.manager.MangoApiManager;
 import io.github.mangomaner.mangobot.plugin.core.PluginManager;
+import io.github.mangomaner.mangobot.adapter.connect_controller.onebot.service.OneBotConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
@@ -28,6 +29,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *    - Skill 同步初始化
  *    - MCP 连接初始化
  * 4. 插件加载阶段：加载并启动所有已启用的插件
+ * 5. WebSocket 服务器启动阶段：启动所有已启用的 WebSocket 服务器
  */
 @SpringBootApplication(exclude = {RedisAutoConfiguration.class})
 @EnableScheduling
@@ -49,22 +51,26 @@ public class MangoBotApplication {
         ToolRegistrationService toolRegistrationService = context.getBean(ToolRegistrationService.class);
 
         apiManager.init();
-        log.info("[1/6] 静态 API 初始化完成");
+        log.info("[1/7] 静态 API 初始化完成");
 
         modelProvider.init();
-        log.info("[2/6] 模型初始化完成");
+        log.info("[2/7] 模型初始化完成");
 
         toolRegistrationService.initBuiltInTools();
-        log.info("[3/6] 内置工具注册完成");
+        log.info("[3/7] 内置工具注册完成");
 
         skillManager.init();
-        log.info("[4/6] Skill 同步完成");
+        log.info("[4/7] Skill 同步完成");
 
         mcpConnectionManager.init();
-        log.info("[5/6] MCP 连接初始化完成");
+        log.info("[5/7] MCP 连接初始化完成");
 
         pluginManager.init();
-        log.info("[6/6] 插件加载完成");
+        log.info("[6/7] 插件加载完成");
+
+        OneBotConfigService oneBotConfigService = context.getBean(OneBotConfigService.class);
+        oneBotConfigService.startAllEnabledServers();
+        log.info("[7/7] 已启用的 WebSocket 服务器启动完成");
 
         log.info("========== MangoBot 启动成功 ==========");
     }

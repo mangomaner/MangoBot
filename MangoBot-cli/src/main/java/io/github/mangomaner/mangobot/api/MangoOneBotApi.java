@@ -1,11 +1,11 @@
 package io.github.mangomaner.mangobot.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
-import io.github.mangomaner.mangobot.adapter.onebot.outbound.OneBotSendingMessage;
-import io.github.mangomaner.mangobot.adapter.onebot.event.message.OneBotGroupMessageEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.outbound.send.OneBotApiService;
-import io.github.mangomaner.mangobot.adapter.onebot.utils.MessageParser;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.vo.*;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.build_sending_message.OneBotSendingMessage;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.send.OneBotApiService;
+import io.github.mangomaner.mangobot.adapter.message_handler.onebot.utils.MessageParser;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
 import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
 import io.github.mangomaner.mangobot.module.message.model.domain.PrivateMessages;
