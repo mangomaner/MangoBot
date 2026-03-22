@@ -72,6 +72,9 @@ public class MangoBotApplication {
         oneBotConfigService.startAllEnabledServers();
         log.info("[7/7] 已启用的 WebSocket 服务器启动完成");
 
+        log.info("控制台请访问：http://localhost:8082/static/mangobot/");
+
         log.info("========== MangoBot 启动成功 ==========");
+
     }
 }
