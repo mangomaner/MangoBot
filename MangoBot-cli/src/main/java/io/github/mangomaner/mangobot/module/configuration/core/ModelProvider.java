@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.agentscope.core.model.OpenAIChatModel;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.system.common.ErrorCode;
-import io.github.mangomaner.mangobot.module.configuration.event.ModelRoleChangedEvent;
+import io.github.mangomaner.mangobot.events.configuration.ModelRoleChangedEvent;
 import io.github.mangomaner.mangobot.system.exception.BusinessException;
 import io.github.mangomaner.mangobot.system.mapper.configuration.ModelConfigMapper;
 import io.github.mangomaner.mangobot.system.mapper.configuration.ModelRoleMapper;

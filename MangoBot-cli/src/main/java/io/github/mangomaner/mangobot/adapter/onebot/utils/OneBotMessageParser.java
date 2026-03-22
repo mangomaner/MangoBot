@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.adapter.onebot.model.segment.*;
 import io.github.mangomaner.mangobot.module.file.model.domain.BotFiles;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
 import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
 import jakarta.annotation.Resource;

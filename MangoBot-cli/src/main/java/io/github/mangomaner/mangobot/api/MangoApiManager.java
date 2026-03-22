@@ -1,10 +1,9 @@
-package io.github.mangomaner.mangobot.api.manager;
+package io.github.mangomaner.mangobot.api;
 
 import io.github.mangomaner.mangobot.module.agent.capability.tool.ToolRegistrationService;
 import io.github.mangomaner.mangobot.module.agent.factory.AgentFactory;
 import io.github.mangomaner.mangobot.module.agent.workspace.ChatService;
 import io.github.mangomaner.mangobot.module.agent.service.ChatSessionService;
-import io.github.mangomaner.mangobot.api.*;
 import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.module.configuration.service.BotConfigService;
 import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
@@ -66,30 +65,24 @@ public class MangoApiManager {
      * 初始化静态 API 类
      */
     public void init() {
-        try {
-            initApi(MangoGroupMessageApi.class, "setService", GroupMessagesService.class, groupMessagesService);
-            initApi(MangoPrivateMessageApi.class, "setService", PrivateMessagesService.class, privateMessagesService);
-            initApi(MangoFileApi.class, "setService", BotFilesService.class, botFilesService);
-            initApi(MangoOneBotApi.class, "setService", OneBotApiService.class, oneBotApiService);
-            initApi(MangoOneBotApi.class, "setGroupMessagesService", GroupMessagesService.class, groupMessagesService);
-            initApi(MangoOneBotApi.class, "setPrivateMessagesService", PrivateMessagesService.class, privateMessagesService);
-            initApi(MangoOneBotApi.class, "setMessageParser", OneBotMessageParser.class, messageParser);
-            initApi(MangoModelApi.class, "setProvider", ModelProvider.class, modelProvider);
-            initApi(MangoToolApi.class, "setService", ToolRegistrationService.class, toolRegistrationService);
-            initApi(MangoAgentApi.class, "setChatSessionService", ChatSessionService.class, chatSessionService);
-            initApi(MangoAgentApi.class, "setAgentFactory", AgentFactory.class, agentFactory);
-            initApi(MangoAgentApi.class, "setChatService", ChatService.class, chatService);
-            initApi(MangoConfigApi.class, "setSystemConfigService", SystemConfigService.class, systemConfigService);
-            initApi(MangoConfigApi.class, "setBotConfigService", BotConfigService.class, botConfigService);
-            initApi(MangoConfigApi.class, "setPluginConfigService", PluginConfigService.class, pluginConfigService);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize Mango APIs", e);
-        }
-    }
-
-    private void initApi(Class<?> apiClass, String methodName, Class<?> serviceType, Object serviceInstance) throws Exception {
-        java.lang.reflect.Method method = apiClass.getDeclaredMethod(methodName, serviceType);
-        method.setAccessible(true);
-        method.invoke(null, serviceInstance);
+        MangoGroupMessageApi.setService(groupMessagesService);
+        MangoPrivateMessageApi.setService(privateMessagesService);
+        MangoFileApi.setService(botFilesService);
+        
+        MangoOneBotApi.setService(oneBotApiService);
+        MangoOneBotApi.setGroupMessagesService(groupMessagesService);
+        MangoOneBotApi.setPrivateMessagesService(privateMessagesService);
+        MangoOneBotApi.setMessageParser(messageParser);
+        
+        MangoModelApi.setProvider(modelProvider);
+        MangoToolApi.setService(toolRegistrationService);
+        
+        MangoAgentApi.setChatSessionService(chatSessionService);
+        MangoAgentApi.setAgentFactory(agentFactory);
+        MangoAgentApi.setChatService(chatService);
+        
+        MangoConfigApi.setSystemConfigService(systemConfigService);
+        MangoConfigApi.setBotConfigService(botConfigService);
+        MangoConfigApi.setPluginConfigService(pluginConfigService);
     }
 }

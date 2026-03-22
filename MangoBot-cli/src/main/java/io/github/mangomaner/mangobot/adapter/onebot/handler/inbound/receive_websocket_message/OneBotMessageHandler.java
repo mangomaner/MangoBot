@@ -3,8 +3,8 @@ package io.github.mangomaner.mangobot.adapter.onebot.handler.inbound.receive_web
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.adapter.WebSocketProtocolAdapter;
 import io.github.mangomaner.mangobot.adapter.onebot.model.event.OneBotEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.meta.OneBotHeartbeatEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.meta.OneBotLifecycleEvent;
+import io.github.mangomaner.mangobot.events.onebot.meta.OneBotHeartbeatEvent;
+import io.github.mangomaner.mangobot.events.onebot.meta.OneBotLifecycleEvent;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.echo.OneBotEchoHandler;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.inbound.json_to_event.OneBotEventParser;
 import io.github.mangomaner.mangobot.infra.MangoEventPublisher;

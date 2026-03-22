@@ -1,24 +1,24 @@
-package io.github.mangomaner.mangobot.adapter.onebot.model.event.notice;
+package io.github.mangomaner.mangobot.events.onebot.notice;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.notice.OneBotNoticeEvent;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
-
 /**
- * 群成员减少
+ * 群禁言
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-@JsonTypeName("group_decrease")
+@JsonTypeName("group_ban")
 @JsonDeserialize(using = com.fasterxml.jackson.databind.JsonDeserializer.None.class)
-public class OneBotGroupDecreaseEvent extends OneBotNoticeEvent {
+public class OneBotGroupBanEvent extends OneBotNoticeEvent {
     @JsonProperty("sub_type")
-    private String subType; // kick, leave, kick_me
+    private String subType; // ban, lift_ban
     
     @JsonProperty("group_id")
     private long groupId;
@@ -27,5 +27,7 @@ public class OneBotGroupDecreaseEvent extends OneBotNoticeEvent {
     private long operatorId;
     
     @JsonProperty("user_id")
-    private long userId;
+    private long userId; // 0 for all
+    
+    private long duration; // seconds
 }

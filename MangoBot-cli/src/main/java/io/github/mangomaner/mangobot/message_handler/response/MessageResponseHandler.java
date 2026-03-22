@@ -9,7 +9,7 @@ import io.github.mangomaner.mangobot.api.MangoAgentApi;
 import io.github.mangomaner.mangobot.api.MangoGroupMessageApi;
 import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
 import io.github.mangomaner.mangobot.module.message.model.dto.QueryLatestMessagesRequest;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

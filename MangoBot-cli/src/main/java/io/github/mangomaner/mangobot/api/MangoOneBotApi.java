@@ -2,7 +2,7 @@ package io.github.mangomaner.mangobot.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
 import io.github.mangomaner.mangobot.adapter.onebot.utils.OneBotMessageParser;
 import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;

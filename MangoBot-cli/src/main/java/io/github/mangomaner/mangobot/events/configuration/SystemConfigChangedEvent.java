@@ -1,5 +1,6 @@
-package io.github.mangomaner.mangobot.module.configuration.event;
+package io.github.mangomaner.mangobot.events.configuration;
 
+import io.github.mangomaner.mangobot.module.configuration.event.ConfigurationEvent;
 import lombok.Getter;
 
 /**

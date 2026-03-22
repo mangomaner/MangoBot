@@ -1,6 +1,7 @@
-package io.github.mangomaner.mangobot.adapter.onebot.model.event.message;
+package io.github.mangomaner.mangobot.events.onebot.message;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotMessageEvent;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

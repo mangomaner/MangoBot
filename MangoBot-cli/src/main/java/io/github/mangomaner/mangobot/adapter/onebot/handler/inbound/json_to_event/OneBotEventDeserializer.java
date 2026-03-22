@@ -6,11 +6,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.github.mangomaner.mangobot.adapter.onebot.model.event.OneBotEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGroupMessageEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotPrivateMessageEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.meta.OneBotHeartbeatEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.meta.OneBotLifecycleEvent;
-import io.github.mangomaner.mangobot.adapter.onebot.model.event.notice.*;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotPrivateMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.meta.OneBotHeartbeatEvent;
+import io.github.mangomaner.mangobot.events.onebot.meta.OneBotLifecycleEvent;
+import io.github.mangomaner.mangobot.events.onebot.notice.*;
 
 import java.io.IOException;
 

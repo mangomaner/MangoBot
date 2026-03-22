@@ -1,30 +1,31 @@
-package io.github.mangomaner.mangobot.adapter.onebot.model.event.notice;
+package io.github.mangomaner.mangobot.events.onebot.notice;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.notice.OneBotNoticeEvent;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 /**
- * 群消息撤回
+ * 群成员增加
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-@JsonTypeName("group_recall")
+@JsonTypeName("group_increase")
 @JsonDeserialize(using = com.fasterxml.jackson.databind.JsonDeserializer.None.class)
-public class OneBotGroupRecallEvent extends OneBotNoticeEvent {
+public class OneBotGroupIncreaseEvent extends OneBotNoticeEvent {
+    @JsonProperty("sub_type")
+    private String subType; // approve, invite
+    
     @JsonProperty("group_id")
     private long groupId;
-    
-    @JsonProperty("user_id")
-    private long userId;
     
     @JsonProperty("operator_id")
     private long operatorId;
     
-    @JsonProperty("message_id")
-    private int messageId;
+    @JsonProperty("user_id")
+    private long userId;
 }

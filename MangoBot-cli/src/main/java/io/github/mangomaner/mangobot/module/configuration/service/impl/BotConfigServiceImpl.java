@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.module.configuration.enums.ConfigType;
-import io.github.mangomaner.mangobot.module.configuration.event.BotConfigChangedEvent;
+import io.github.mangomaner.mangobot.events.configuration.BotConfigChangedEvent;
 import io.github.mangomaner.mangobot.module.configuration.model.config.ConfigMetadata;
 import io.github.mangomaner.mangobot.module.configuration.util.ConfigTypeHandler;
 import io.github.mangomaner.mangobot.system.mapper.configuration.BotConfigMapper;

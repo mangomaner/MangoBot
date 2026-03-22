@@ -2,7 +2,7 @@ package io.github.mangomaner.mangobot.module.configuration.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import io.github.mangomaner.mangobot.module.configuration.event.ModelRoleChangedEvent;
+import io.github.mangomaner.mangobot.events.configuration.ModelRoleChangedEvent;
 import io.github.mangomaner.mangobot.system.mapper.configuration.ModelRoleMapper;
 import io.github.mangomaner.mangobot.module.configuration.model.domain.ModelRole;
 import io.github.mangomaner.mangobot.module.configuration.model.dto.model.UpdateModelRoleRequest;
