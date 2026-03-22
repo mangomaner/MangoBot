@@ -1,9 +1,7 @@
 package io.github.mangomaner.mangobot.module.configuration.core;
 
-import io.github.mangomaner.mangobot.annotation.PluginConfigGroup;
-import io.github.mangomaner.mangobot.annotation.PluginConfigItem;
-import io.github.mangomaner.mangobot.module.configuration.annotation.ConfigMeta;
-import io.github.mangomaner.mangobot.module.configuration.annotation.InjectConfig;
+import io.github.mangomaner.mangobot.annotation.ConfigMeta;
+import io.github.mangomaner.mangobot.annotation.InjectConfig;
 import io.github.mangomaner.mangobot.module.configuration.model.config.ConfigMetadata;
 import io.github.mangomaner.mangobot.module.configuration.model.config.PluginConfigDefinition;
 import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
@@ -39,44 +37,18 @@ public class PluginConfigRegistry {
 
     public List<PluginConfigDefinition> scanConfigDefinitions(Class<?> pluginClass) {
         List<PluginConfigDefinition> definitions = new ArrayList<>();
-        
-        String defaultCategory = "general";
-        if (pluginClass.isAnnotationPresent(PluginConfigGroup.class)) {
-            PluginConfigGroup group = pluginClass.getAnnotation(PluginConfigGroup.class);
-            defaultCategory = group.category();
-        }
 
         for (Field field : pluginClass.getDeclaredFields()) {
-            if (field.isAnnotationPresent(PluginConfigItem.class)) {
-                PluginConfigItem item = field.getAnnotation(PluginConfigItem.class);
-                definitions.add(createDefinitionFromItem(item, defaultCategory));
-            } else if (field.isAnnotationPresent(InjectConfig.class)) {
+            if (field.isAnnotationPresent(InjectConfig.class)) {
                 InjectConfig inject = field.getAnnotation(InjectConfig.class);
-                definitions.add(createDefinitionFromInject(inject, defaultCategory));
+                definitions.add(createDefinitionFromInject(inject));
             }
         }
         
         return definitions;
     }
 
-    private PluginConfigDefinition createDefinitionFromItem(PluginConfigItem item, String defaultCategory) {
-        String category = item.category().isEmpty() ? defaultCategory : item.category();
-        ConfigMetadata metadata = createMetadataFromAnnotation(item.metadata());
-        
-        return PluginConfigDefinition.builder()
-                .key(item.key())
-                .value(item.value())
-                .type(item.type())
-                .description(item.description())
-                .explain(item.explain())
-                .category(category)
-                .editable(item.editable())
-                .metadata(metadata)
-                .build();
-    }
-
-    private PluginConfigDefinition createDefinitionFromInject(InjectConfig inject, String defaultCategory) {
-        String category = inject.category().isEmpty() ? defaultCategory : inject.category();
+    private PluginConfigDefinition createDefinitionFromInject(InjectConfig inject) {
         ConfigMetadata metadata = createMetadataFromAnnotation(inject.metadata());
         
         return PluginConfigDefinition.builder()
@@ -85,7 +57,7 @@ public class PluginConfigRegistry {
                 .type(inject.type())
                 .description(inject.description())
                 .explain(inject.explain())
-                .category(category)
+                .category(inject.category())
                 .editable(inject.editable())
                 .metadata(metadata)
                 .build();

@@ -1,6 +1,5 @@
 package io.github.mangomaner.mangobot.plugin.core.register;
 
-import io.github.mangomaner.mangobot.annotation.MangoBotApiService;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
 import io.github.mangomaner.mangobot.annotation.web.MangoRequestMethod;
@@ -10,7 +9,6 @@ import io.github.mangomaner.mangobot.plugin.core.register.web.MangoArgumentResol
 import io.github.mangomaner.mangobot.plugin.core.register.web.MangoReturnValueHandler;
 import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
-import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
 import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +25,6 @@ import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,9 +45,6 @@ public class PluginRegistrar {
 
     @Resource
     private RequestMappingHandlerAdapter requestMappingHandlerAdapter;
-
-    @Resource
-    private OneBotApiService oneBotApiService;
 
     @Resource
     private GroupMessagesService groupMessagesService;
@@ -157,23 +151,6 @@ public class PluginRegistrar {
             }
         } catch (Exception e) {
             log.error("清理 Bean {} 失败", beanName, e);
-        }
-    }
-
-    /**
-     * 注入 API 服务
-     */
-    public void injectFields(Class<?> clazz, Object instance) {
-        for (Field field : clazz.getDeclaredFields()) {
-            try {
-                if (field.isAnnotationPresent(MangoBotApiService.class)) {
-                    field.setAccessible(true);
-                    field.set(instance, oneBotApiService);
-                }
-            }  catch (IllegalAccessException e) {
-            log.error("注入 MangoBotApiService 到 {}.{} 失败",
-                    clazz.getSimpleName(), field.getName(), e);
-            }
         }
     }
 

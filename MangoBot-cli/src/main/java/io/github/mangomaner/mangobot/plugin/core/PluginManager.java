@@ -8,7 +8,7 @@ import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigSe
 import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import io.github.mangomaner.mangobot.plugin.model.domain.Plugins;
 import io.github.mangomaner.mangobot.plugin.model.vo.PluginInfo;
-import io.github.mangomaner.mangobot.module.configuration.annotation.InjectConfig;
+import io.github.mangomaner.mangobot.annotation.InjectConfig;
 import io.github.mangomaner.mangobot.plugin.Plugin;
 import io.github.mangomaner.mangobot.plugin.core.register.PluginRegistrar;
 import io.github.mangomaner.mangobot.plugin.core.unregister.PluginUnloader;
@@ -240,7 +240,6 @@ public class PluginManager {
             Plugin plugin = (Plugin) instance;
             wrapper.setPluginInstance(plugin);
 
-            pluginRegistrar.injectFields(clazz, instance);
             pluginRegistrar.registerEventListeners(clazz, instance, wrapper);
 
             injectPluginConfigs(clazz, instance, p.getId());
@@ -273,19 +272,6 @@ public class PluginManager {
                     log.debug("注入配置: {} = {}", ic.key(), configValue);
                 } catch (Exception e) {
                     log.warn("注入配置失败: {} -> {}", ic.key(), field.getName(), e);
-                }
-            } else if (field.isAnnotationPresent(io.github.mangomaner.mangobot.annotation.PluginConfigItem.class)) {
-                io.github.mangomaner.mangobot.annotation.PluginConfigItem pci = 
-                    field.getAnnotation(io.github.mangomaner.mangobot.annotation.PluginConfigItem.class);
-                String configValue = pluginConfigService.getConfigValueOrDefault(pluginId, pci.key(), pci.value());
-
-                try {
-                    field.setAccessible(true);
-                    Object convertedValue = convertValue(configValue, field.getType());
-                    field.set(instance, convertedValue);
-                    log.debug("注入配置: {} = {}", pci.key(), configValue);
-                } catch (Exception e) {
-                    log.warn("注入配置失败: {} -> {}", pci.key(), field.getName(), e);
                 }
             }
         }

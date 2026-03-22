@@ -1,8 +1,9 @@
 package io.github.mangomaner.mangobot.plugin.example;
 
-import io.github.mangomaner.mangobot.annotation.MangoBotApiService;
-import io.github.mangomaner.mangobot.annotation.PluginConfigGroup;
-import io.github.mangomaner.mangobot.annotation.PluginConfigItem;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.TextSegment;
+import io.github.mangomaner.mangobot.annotation.ConfigMeta;
+import io.github.mangomaner.mangobot.annotation.InjectConfig;
 import io.github.mangomaner.mangobot.annotation.PluginDescribe;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
@@ -13,16 +14,11 @@ import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestParam;
 import io.github.mangomaner.mangobot.annotation.web.MangoRequestMethod;
 import io.github.mangomaner.mangobot.api.MangoOneBotApi;
 import io.github.mangomaner.mangobot.api.MangoToolApi;
-import io.github.mangomaner.mangobot.configuration.annotation.ConfigMeta;
-import io.github.mangomaner.mangobot.configuration.annotation.InjectConfig;
-import io.github.mangomaner.mangobot.configuration.enums.ConfigType;
-import io.github.mangomaner.mangobot.configuration.event.PluginConfigChangedEvent;
-import io.github.mangomaner.mangobot.model.onebot.SendMessage;
-import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
-import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
-import io.github.mangomaner.mangobot.model.onebot.segment.TextSegment;
+import io.github.mangomaner.mangobot.events.configuration.PluginConfigChangedEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotPrivateMessageEvent;
+import io.github.mangomaner.mangobot.module.configuration.enums.ConfigType;
 import io.github.mangomaner.mangobot.plugin.Plugin;
-import io.github.mangomaner.mangobot.service.OneBotApiService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -36,11 +32,7 @@ import java.util.List;
     description = "MangoBot 示例插件，演示插件系统的完整功能，包括自定义工具注册",
     enableWeb = true
 )
-@PluginConfigGroup(name = "基础设置", category = "basic", order = 1)
 public class ExamplePlugin implements Plugin {
-
-    @MangoBotApiService
-    private OneBotApiService oneBotApiService;
 
     @InjectConfig(
         key = "plugin.example.enabled",
@@ -64,9 +56,9 @@ public class ExamplePlugin implements Plugin {
     )
     private String replyPrefix;
 
-    @PluginConfigItem(
+    @InjectConfig(
         key = "plugin.example.maxReplyLength",
-        value = "500",
+        defaultValue = "500",
         type = ConfigType.INTEGER,
         description = "最大回复长度",
         explain = "机器人回复消息的最大字符数",
@@ -75,9 +67,9 @@ public class ExamplePlugin implements Plugin {
     )
     private Integer maxReplyLength;
 
-    @PluginConfigItem(
+    @InjectConfig(
         key = "plugin.example.apiTimeout",
-        value = "30",
+        defaultValue = "30",
         type = ConfigType.INTEGER,
         description = "API超时时间",
         explain = "请求外部API的超时时间，单位秒",
@@ -107,7 +99,7 @@ public class ExamplePlugin implements Plugin {
 
     @MangoBotEventListener
     @PluginPriority(5)
-    public boolean onGroupMessage(GroupMessageEvent event) {
+    public boolean onGroupMessage(OneBotGroupMessageEvent event) {
         String message = event.getRawMessage();
         long userId = event.getUserId();
         long groupId = event.getGroupId();
@@ -157,7 +149,7 @@ public class ExamplePlugin implements Plugin {
 
     @MangoBotEventListener
     @PluginPriority(5)
-    public boolean onPrivateMessage(PrivateMessageEvent event) {
+    public boolean onPrivateMessage(OneBotPrivateMessageEvent event) {
         String message = event.getRawMessage();
         long userId = event.getUserId();
 
@@ -191,7 +183,7 @@ public class ExamplePlugin implements Plugin {
 
     private void sendGroupReply(long botId, long groupId, String text) {
         try {
-            SendMessage message = new SendMessage();
+            OneBotSendingMessage message = new OneBotSendingMessage();
             TextSegment textSegment = new TextSegment();
             TextSegment.TextData textData = new TextSegment.TextData();
             textData.setText(text);
@@ -205,7 +197,7 @@ public class ExamplePlugin implements Plugin {
 
     private void sendPrivateReply(long botId, long userId, String text) {
         try {
-            SendMessage message = new SendMessage();
+            OneBotSendingMessage message = new OneBotSendingMessage();
             TextSegment textSegment = new TextSegment();
             TextSegment.TextData textData = new TextSegment.TextData();
             textData.setText(text);

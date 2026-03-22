@@ -9,6 +9,7 @@ import io.github.mangomaner.mangobot.module.file.service.BotFilesService;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,8 +19,11 @@ import java.util.List;
 public class OneBotMessageParser {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Resource
+    @Lazy
     private OneBotApiService oneBotApiService;
+
     @Resource
     private BotFilesService botFilesService;
 

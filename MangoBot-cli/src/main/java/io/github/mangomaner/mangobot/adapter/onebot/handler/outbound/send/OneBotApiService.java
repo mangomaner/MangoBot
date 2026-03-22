@@ -8,11 +8,16 @@ import io.github.mangomaner.mangobot.adapter.onebot.handler.echo.OneBotEchoHandl
 import io.github.mangomaner.mangobot.adapter.onebot.model.dto.OneBotApiRequest;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
+import io.github.mangomaner.mangobot.adapter.onebot.utils.OneBotMessageParser;
 import io.github.mangomaner.mangobot.infra.websocket.ConnectionSessionManager;
 import io.github.mangomaner.mangobot.infra.websocket.model.ConnectionSession;
+import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
+import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
+import io.github.mangomaner.mangobot.module.message.model.domain.PrivateMessages;
+import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import org.java_websocket.WebSocket;
+import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -24,11 +29,23 @@ public class OneBotApiService {
     private final ConnectionSessionManager sessionManager;
     private final ObjectMapper objectMapper;
     private final OneBotEchoHandler oneBotEchoHandler;
+    private final GroupMessagesService groupMessagesService;
+    private final PrivateMessagesService privateMessagesService;
+    private final OneBotMessageParser messageParser;
 
-    public OneBotApiService(ConnectionSessionManager sessionManager, ObjectMapper objectMapper, OneBotEchoHandler oneBotEchoHandler) {
+    public OneBotApiService(
+            ConnectionSessionManager sessionManager,
+            ObjectMapper objectMapper,
+            OneBotEchoHandler oneBotEchoHandler,
+            GroupMessagesService groupMessagesService,
+            PrivateMessagesService privateMessagesService,
+            OneBotMessageParser messageParser) {
         this.sessionManager = sessionManager;
         this.objectMapper = objectMapper;
         this.oneBotEchoHandler = oneBotEchoHandler;
+        this.groupMessagesService = groupMessagesService;
+        this.privateMessagesService = privateMessagesService;
+        this.messageParser = messageParser;
     }
 
     public MessageId sendPrivateMsg(long botId, long userId, OneBotSendingMessage message) {
@@ -36,14 +53,61 @@ public class OneBotApiService {
         params.put("user_id", userId);
         params.put("message", message.getMessage());
 
-        return callApi(botId, "send_private_msg", params, MessageId.class);
+        MessageId result = callApi(botId, "send_private_msg", params, MessageId.class);
+        
+        savePrivateMessage(botId, userId, message, result);
+        
+        return result;
     }
 
     public MessageId sendGroupMsg(long botId, long groupId, OneBotSendingMessage message) {
         Map<String, Object> params = new HashMap<>();
         params.put("group_id", groupId);
         params.put("message", message.getMessage());
-        return callApi(botId, "send_group_msg", params, MessageId.class);
+        
+        MessageId result = callApi(botId, "send_group_msg", params, MessageId.class);
+        
+        saveGroupMessage(botId, groupId, message, result);
+        
+        return result;
+    }
+
+    private void savePrivateMessage(long botId, long userId, OneBotSendingMessage message, MessageId result) {
+        if (result == null || privateMessagesService == null || messageParser == null) {
+            return;
+        }
+        try {
+            PrivateMessages privateMessages = new PrivateMessages();
+            privateMessages.setBotId(String.valueOf(botId));
+            privateMessages.setFriendId(String.valueOf(userId));
+            privateMessages.setMessageId(String.valueOf(result.getMessageId()));
+            privateMessages.setSenderId(String.valueOf(botId));
+            privateMessages.setMessageSegments(objectMapper.writeValueAsString(message.getMessage()));
+            privateMessages.setMessageTime(System.currentTimeMillis());
+            privateMessages.setParseMessage(messageParser.parseMessage(message.getMessage(), botId));
+            privateMessagesService.save(privateMessages);
+        } catch (Exception e) {
+            log.error("Failed to save private message", e);
+        }
+    }
+
+    private void saveGroupMessage(long botId, long groupId, OneBotSendingMessage message, MessageId result) {
+        if (result == null || groupMessagesService == null || messageParser == null) {
+            return;
+        }
+        try {
+            GroupMessages groupMessages = new GroupMessages();
+            groupMessages.setBotId(String.valueOf(botId));
+            groupMessages.setGroupId(String.valueOf(groupId));
+            groupMessages.setMessageId(String.valueOf(result.getMessageId()));
+            groupMessages.setSenderId(String.valueOf(botId));
+            groupMessages.setMessageSegments(objectMapper.writeValueAsString(message.getMessage()));
+            groupMessages.setMessageTime(System.currentTimeMillis());
+            groupMessages.setParseMessage(messageParser.parseMessage(message.getMessage(), botId));
+            groupMessagesService.addGroupMessage(groupMessages);
+        } catch (Exception e) {
+            log.error("Failed to save group message", e);
+        }
     }
 
     public Void sendGroupPoke(long botId, long groupId, long userId) {

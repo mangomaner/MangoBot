@@ -1,15 +1,9 @@
 package io.github.mangomaner.mangobot.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
-import io.github.mangomaner.mangobot.adapter.onebot.utils.OneBotMessageParser;
 import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
-import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
-import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
-import io.github.mangomaner.mangobot.module.message.model.domain.PrivateMessages;
-import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
 
 import java.util.List;
 import java.util.Map;
@@ -21,27 +15,11 @@ import java.util.Map;
 public class MangoOneBotApi {
 
     private static OneBotApiService service;
-    private static GroupMessagesService groupMessagesService;
-    private static PrivateMessagesService privateMessagesService;
-    private static OneBotMessageParser messageParser;
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private MangoOneBotApi() {}
 
     static void setService(OneBotApiService service) {
         MangoOneBotApi.service = service;
-    }
-
-    static void setGroupMessagesService(GroupMessagesService groupMessagesService) {
-        MangoOneBotApi.groupMessagesService = groupMessagesService;
-    }
-
-    static void setPrivateMessagesService(PrivateMessagesService privateMessagesService) {
-        MangoOneBotApi.privateMessagesService = privateMessagesService;
-    }
-
-    static void setMessageParser(OneBotMessageParser messageParser) {
-        MangoOneBotApi.messageParser = messageParser;
     }
 
     private static void checkService() {
@@ -60,23 +38,7 @@ public class MangoOneBotApi {
      */
     public static MessageId sendPrivateMsg(long botId, long userId, OneBotSendingMessage message) {
         checkService();
-        MessageId result = service.sendPrivateMsg(botId, userId, message);
-        if (privateMessagesService != null && messageParser != null) {
-            try {
-                PrivateMessages privateMessages = new PrivateMessages();
-                privateMessages.setBotId(String.valueOf(botId));
-                privateMessages.setFriendId(String.valueOf(userId));
-                privateMessages.setMessageId(String.valueOf(result.getMessageId()));
-                privateMessages.setSenderId(String.valueOf(botId));
-                privateMessages.setMessageSegments(objectMapper.writeValueAsString(message.getMessage()));
-                privateMessages.setMessageTime(System.currentTimeMillis());
-                privateMessages.setParseMessage(messageParser.parseMessage(message.getMessage(), botId));
-                privateMessagesService.save(privateMessages);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to save private message", e);
-            }
-        }
-        return result;
+        return service.sendPrivateMsg(botId, userId, message);
     }
 
     /**
@@ -89,23 +51,7 @@ public class MangoOneBotApi {
      */
     public static MessageId sendGroupMsg(long botId, long groupId, OneBotSendingMessage message) {
         checkService();
-        MessageId result = service.sendGroupMsg(botId, groupId, message);
-        if (groupMessagesService != null && messageParser != null) {
-            try {
-                GroupMessages groupMessages = new GroupMessages();
-                groupMessages.setBotId(String.valueOf(botId));
-                groupMessages.setGroupId(String.valueOf(groupId));
-                groupMessages.setMessageId(String.valueOf(result.getMessageId()));
-                groupMessages.setSenderId(String.valueOf(botId));
-                groupMessages.setMessageSegments(objectMapper.writeValueAsString(message.getMessage()));
-                groupMessages.setMessageTime(System.currentTimeMillis());
-                groupMessages.setParseMessage(messageParser.parseMessage(message.getMessage(), botId));
-                groupMessagesService.addGroupMessage(groupMessages);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to save group message", e);
-            }
-        }
-        return result;
+        return service.sendGroupMsg(botId, groupId, message);
     }
 
     /**

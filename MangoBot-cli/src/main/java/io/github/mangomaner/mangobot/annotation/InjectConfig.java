@@ -1,4 +1,4 @@
-package io.github.mangomaner.mangobot.module.configuration.annotation;
+package io.github.mangomaner.mangobot.annotation;
 
 import io.github.mangomaner.mangobot.module.configuration.enums.ConfigType;
 
