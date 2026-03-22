@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.mangomaner.mangobot.system.mapper.configuration.ModelRoleMapper">
+
+    <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.module.configuration.model.domain.ModelRole">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="roleKey" column="role_key" jdbcType="VARCHAR"/>
+            <result property="roleName" column="role_name" jdbcType="VARCHAR"/>
+            <result property="modelConfigId" column="model_config_id" jdbcType="INTEGER"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="createdAt" column="created_at" jdbcType="BIGINT"/>
+            <result property="updatedAt" column="updated_at" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,role_key,role_name,model_config_id,description,created_at,updated_at
+    </sql>
+</mapper>

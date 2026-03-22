@@ -1,0 +1,102 @@
+package io.github.mangomaner.mangobot.plugin.controller;
+
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import io.github.mangomaner.mangobot.system.common.BaseResponse;
+import io.github.mangomaner.mangobot.system.common.ResultUtils;
+import io.github.mangomaner.mangobot.plugin.model.domain.Plugins;
+import io.github.mangomaner.mangobot.plugin.model.vo.PluginInfo;
+import io.github.mangomaner.mangobot.plugin.core.PluginManager;
+import io.github.mangomaner.mangobot.plugin.service.PluginsService;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/plugin")
+@Slf4j
+public class PluginController {
+
+    @Resource
+    private PluginManager pluginManager;
+
+    @Resource
+    private PluginsService pluginsService;
+
+    /**
+     * 获取所有已加载的插件列表
+     */
+    @GetMapping("/list")
+    public BaseResponse<List<PluginInfo>> listPlugins() {
+        List<PluginInfo> pluginsInfo = pluginManager.getAllPluginsInfo();
+        return ResultUtils.success(pluginsInfo);
+    }
+
+    /**
+     * 停用插件 (Unload / Disable)
+     * @param pluginId 插件数据库ID
+     */
+    @PostMapping("/unload")
+    public BaseResponse<Void> unloadPlugin(@RequestParam Long pluginId) {
+        log.info("收到停用插件请求: {}", pluginId);
+        Plugins p = pluginsService.getById(pluginId);
+        if (p == null) {
+            return ResultUtils.error(404, "插件不存在");
+        }
+        
+        // 更新数据库状态
+        LambdaUpdateWrapper<Plugins> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Plugins::getId, pluginId).set(Plugins::getEnabled, 0);
+        pluginsService.update(updateWrapper);
+
+        pluginManager.unloadPlugin(p.getJarName());
+        return ResultUtils.success(null);
+    }
+
+    /**
+     * 启用/加载插件 (Load / Enable)
+     * @param pluginId 插件数据库ID
+     */
+    @PostMapping("/load")
+    public BaseResponse<Void> loadPlugin(@RequestParam Long pluginId) {
+        log.info("收到启用插件请求: {}", pluginId);
+        Plugins p = pluginsService.getById(pluginId);
+        if (p == null) {
+            return ResultUtils.error(404, "插件不存在");
+        }
+        
+        File pluginFile = new File(pluginManager.getPluginDirectory(), p.getJarName());
+        if (!pluginFile.exists()) {
+            return ResultUtils.error(404, "插件文件不存在");
+        }
+
+        // 更新数据库状态
+        LambdaUpdateWrapper<Plugins> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Plugins::getId, pluginId).set(Plugins::getEnabled, 1);
+        pluginsService.update(updateWrapper);
+
+        // 先尝试卸载（如果是重载）
+        pluginManager.unloadPlugin(p.getJarName());
+        pluginManager.loadPlugin(pluginFile);
+        
+        return ResultUtils.success(null);
+    }
+
+    /**
+     * 彻底卸载插件 (Delete / Uninstall)
+     * @param pluginId 插件数据库ID
+     */
+    @PostMapping("/uninstall")
+    public BaseResponse<Void> uninstallPlugin(@RequestParam Long pluginId) {
+        log.info("收到卸载插件请求: {}", pluginId);
+        Plugins p = pluginsService.getById(pluginId);
+        if (p == null) {
+            return ResultUtils.error(404, "插件不存在");
+        }
+        
+        pluginManager.uninstallPlugin(p.getJarName(), p.getId());
+        return ResultUtils.success(null);
+    }
+}

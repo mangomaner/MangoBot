@@ -1,9 +1,9 @@
 package io.github.mangomaner.mangobot.manager.model.onebot.event;
 
 import org.junit.jupiter.api.Test;
-import io.github.mangomaner.mangobot.model.onebot.event.MessageEvent;
-import io.github.mangomaner.mangobot.model.onebot.event.message.GroupMessageEvent;
-import io.github.mangomaner.mangobot.model.onebot.event.message.PrivateMessageEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotPrivateMessageEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +17,13 @@ public class EventListenerTest {
     @Test
     public void testHandleMessageEvent() {
         // 模拟一个群消息事件
-        GroupMessageEvent groupEvent = new GroupMessageEvent();
+        OneBotGroupMessageEvent groupEvent = new OneBotGroupMessageEvent();
         groupEvent.setUserId(123456L);
         groupEvent.setGroupId(987654L);
         groupEvent.setRawMessage("Hello Group");
         
         // 模拟一个私聊消息事件
-        PrivateMessageEvent privateEvent = new PrivateMessageEvent();
+        OneBotPrivateMessageEvent privateEvent = new OneBotPrivateMessageEvent();
         privateEvent.setUserId(123456L);
         privateEvent.setRawMessage("Hello Private");
 
@@ -35,7 +35,7 @@ public class EventListenerTest {
         // 验证通用监听器接收到了两个事件
         assertEquals(2, testListener.allMessages.size());
         assertEquals("Hello Group", testListener.allMessages.get(0).getRawMessage());
-        assertTrue(testListener.allMessages.get(0) instanceof GroupMessageEvent);
+        assertTrue(testListener.allMessages.get(0) instanceof OneBotGroupMessageEvent);
         
         // 验证专用监听器只接收到了群消息
         assertEquals(1, testListener.groupMessages.size());
@@ -44,11 +44,11 @@ public class EventListenerTest {
 
     // 模拟上层开发者的监听器类
     static class TestListener {
-        List<MessageEvent> allMessages = new ArrayList<>();
-        List<GroupMessageEvent> groupMessages = new ArrayList<>();
+        List<OneBotMessageEvent> allMessages = new ArrayList<>();
+        List<OneBotGroupMessageEvent> groupMessages = new ArrayList<>();
 
         // 1. 监听所有类型的消息（多态）
-        public void handleAllMessages(MessageEvent event) {
+        public void handleAllMessages(OneBotMessageEvent event) {
             allMessages.add(event);
             System.out.println("收到任意消息: " + event.getRawMessage());
             
@@ -57,7 +57,7 @@ public class EventListenerTest {
         }
 
         // 2. 只监听群消息
-        public void handleGroupMessage(GroupMessageEvent event) {
+        public void handleGroupMessage(OneBotGroupMessageEvent event) {
             groupMessages.add(event);
             System.out.println("收到群消息，群号: " + event.getGroupId());
         }

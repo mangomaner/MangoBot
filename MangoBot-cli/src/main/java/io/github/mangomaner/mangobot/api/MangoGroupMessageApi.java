@@ -1,13 +1,13 @@
 package io.github.mangomaner.mangobot.api;
 
-import io.github.mangomaner.mangobot.model.domain.GroupMessages;
-import io.github.mangomaner.mangobot.model.dto.message.QueryLatestMessagesRequest;
-import io.github.mangomaner.mangobot.model.dto.message.QueryMessagesByMessageIdRequest;
-import io.github.mangomaner.mangobot.model.dto.message.QueryMessagesBySenderRequest;
-import io.github.mangomaner.mangobot.model.dto.message.SearchMessagesRequest;
-import io.github.mangomaner.mangobot.model.dto.message.UpdateMessageRequest;
-import io.github.mangomaner.mangobot.model.vo.GroupMessageVO;
-import io.github.mangomaner.mangobot.service.GroupMessagesService;
+import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
+import io.github.mangomaner.mangobot.module.message.model.dto.QueryLatestMessagesRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.QueryMessagesByMessageIdRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.QueryMessagesBySenderRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.SearchMessagesRequest;
+import io.github.mangomaner.mangobot.module.message.model.dto.UpdateMessageRequest;
+import io.github.mangomaner.mangobot.module.message.model.vo.GroupMessageVO;
+import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
 
 import java.util.List;
 
