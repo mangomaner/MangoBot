@@ -1,6 +1,5 @@
 package io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message;
 
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.*;
 import io.github.mangomaner.mangobot.adapter.onebot.model.segment.*;
 
 import java.util.ArrayList;

@@ -1,11 +1,10 @@
 package io.github.mangomaner.mangobot.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.vo.*;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGroupMessageEvent;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
-import io.github.mangomaner.mangobot.adapter.onebot.utils.MessageParser;
+import io.github.mangomaner.mangobot.adapter.onebot.utils.OneBotMessageParser;
 import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
 import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMessagesService;
 import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
@@ -24,7 +23,7 @@ public class MangoOneBotApi {
     private static OneBotApiService service;
     private static GroupMessagesService groupMessagesService;
     private static PrivateMessagesService privateMessagesService;
-    private static MessageParser messageParser;
+    private static OneBotMessageParser messageParser;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private MangoOneBotApi() {}
@@ -41,7 +40,7 @@ public class MangoOneBotApi {
         MangoOneBotApi.privateMessagesService = privateMessagesService;
     }
 
-    static void setMessageParser(MessageParser messageParser) {
+    static void setMessageParser(OneBotMessageParser messageParser) {
         MangoOneBotApi.messageParser = messageParser;
     }
 

@@ -6,7 +6,6 @@ import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGr
 import io.github.mangomaner.mangobot.adapter.onebot.handler.echo.OneBotApiResponse;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.echo.OneBotEchoHandler;
 import io.github.mangomaner.mangobot.adapter.onebot.model.dto.OneBotApiRequest;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.vo.*;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.adapter.onebot.model.vo.*;
 import io.github.mangomaner.mangobot.infra.websocket.ConnectionSessionManager;

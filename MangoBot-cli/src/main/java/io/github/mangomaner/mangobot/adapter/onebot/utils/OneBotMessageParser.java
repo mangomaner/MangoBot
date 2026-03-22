@@ -2,7 +2,6 @@ package io.github.mangomaner.mangobot.adapter.onebot.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.*;
 import io.github.mangomaner.mangobot.adapter.onebot.model.segment.*;
 import io.github.mangomaner.mangobot.module.file.model.domain.BotFiles;
 import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGroupMessageEvent;
@@ -16,7 +15,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class MessageParser {
+public class OneBotMessageParser {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Resource

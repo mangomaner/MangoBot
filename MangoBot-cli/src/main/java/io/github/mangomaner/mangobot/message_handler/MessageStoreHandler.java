@@ -11,7 +11,7 @@ import io.github.mangomaner.mangobot.module.message.groupMessage.service.GroupMe
 import io.github.mangomaner.mangobot.module.message.model.domain.GroupMessages;
 import io.github.mangomaner.mangobot.module.message.model.domain.PrivateMessages;
 import io.github.mangomaner.mangobot.module.message.privateMessage.service.PrivateMessagesService;
-import io.github.mangomaner.mangobot.adapter.onebot.utils.MessageParser;
+import io.github.mangomaner.mangobot.adapter.onebot.utils.OneBotMessageParser;
 import io.github.mangomaner.mangobot.adapter.onebot.utils.OneBotMessageFileProcessor;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ public class MessageStoreHandler {
     private PrivateMessagesService privateMessagesService;
 
     @Resource
-    private MessageParser messageParser;
+    private OneBotMessageParser messageParser;
 
     @Resource
     private OneBotMessageFileProcessor oneBotMessageFileProcessor;

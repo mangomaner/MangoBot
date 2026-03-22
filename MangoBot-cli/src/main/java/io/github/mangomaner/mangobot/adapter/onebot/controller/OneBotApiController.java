@@ -1,6 +1,5 @@
 package io.github.mangomaner.mangobot.adapter.onebot.controller;
 
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.vo.*;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotMessageBuilder;
 import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
