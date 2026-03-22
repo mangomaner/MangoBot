@@ -7,8 +7,8 @@ import io.github.mangomaner.mangobot.api.MangoFileApi;
 import io.github.mangomaner.mangobot.api.MangoOneBotApi;
 import io.github.mangomaner.mangobot.api.context.ChatContext;
 import io.github.mangomaner.mangobot.module.file.model.domain.BotFiles;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.build_sending_message.OneBotMessageBuilder;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.build_sending_message.OneBotSendingMessage;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotMessageBuilder;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
 import io.github.mangomaner.mangobot.utils.FileUtils;
 import org.springframework.stereotype.Component;
 

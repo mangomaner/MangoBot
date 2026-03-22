@@ -12,7 +12,7 @@ import io.github.mangomaner.mangobot.module.configuration.model.domain.ModelConf
 import io.github.mangomaner.mangobot.module.configuration.model.domain.ModelRole;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.ModelConfigVO;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.ModelRoleVO;
-import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
+import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import io.github.mangomaner.mangobot.system.mapper.configuration.ModelProviderMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

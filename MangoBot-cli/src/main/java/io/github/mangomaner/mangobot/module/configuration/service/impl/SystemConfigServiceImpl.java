@@ -14,7 +14,7 @@ import io.github.mangomaner.mangobot.module.configuration.model.dto.system.Creat
 import io.github.mangomaner.mangobot.module.configuration.model.dto.system.UpdateSystemConfigRequest;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.SystemConfigVO;
 import io.github.mangomaner.mangobot.module.configuration.service.SystemConfigService;
-import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
+import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

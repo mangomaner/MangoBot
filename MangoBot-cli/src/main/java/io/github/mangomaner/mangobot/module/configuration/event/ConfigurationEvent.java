@@ -1,6 +1,6 @@
 package io.github.mangomaner.mangobot.module.configuration.event;
 
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.OneBotEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.OneBotEvent;
 import lombok.Getter;
 
 /**

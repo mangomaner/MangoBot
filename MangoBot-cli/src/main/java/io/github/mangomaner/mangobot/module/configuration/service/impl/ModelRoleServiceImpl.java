@@ -8,7 +8,7 @@ import io.github.mangomaner.mangobot.module.configuration.model.domain.ModelRole
 import io.github.mangomaner.mangobot.module.configuration.model.dto.model.UpdateModelRoleRequest;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.ModelRoleVO;
 import io.github.mangomaner.mangobot.module.configuration.service.ModelRoleService;
-import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
+import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;

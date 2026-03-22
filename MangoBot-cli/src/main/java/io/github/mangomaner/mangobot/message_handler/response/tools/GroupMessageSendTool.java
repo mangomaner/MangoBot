@@ -6,8 +6,8 @@ import io.github.mangomaner.mangobot.annotation.MangoTool;
 import io.github.mangomaner.mangobot.api.MangoOneBotApi;
 import io.github.mangomaner.mangobot.api.context.ChatContext;
 import io.github.mangomaner.mangobot.api.context.state.ToolExecuteState;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.build_sending_message.OneBotMessageBuilder;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.build_sending_message.OneBotSendingMessage;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotMessageBuilder;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sending_message.OneBotSendingMessage;
 
 @MangoTool(name = "GroupMessageSend", description = "发送群聊消息", category = "Group")
 public class GroupMessageSendTool {

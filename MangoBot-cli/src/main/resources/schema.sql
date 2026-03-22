@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS onebot_config (
     port            INTEGER NOT NULL DEFAULT 8080,   -- WebSocket 服务器监听端口
     path            TEXT,                            -- WebSocket 路径（可选）
     token           TEXT,                            -- 访问令牌（可选）
-    protocol_type   TEXT NOT NULL DEFAULT 'onebot_qq', -- 协议类型：onebot_qq, telegram, discord 等
+    protocol_type   TEXT NOT NULL,                   -- 协议类型：onebot_qq, telegram, discord 等
     enabled         INTEGER DEFAULT 0,               -- 是否启用：0-禁用, 1-启用
     connection_status INTEGER DEFAULT 0,             -- 连接状态：0-未启动, 1-运行中, 2-已停止, 3-错误
     description     TEXT,                            -- 描述

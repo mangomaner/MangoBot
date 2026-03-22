@@ -1,6 +1,6 @@
 package io.github.mangomaner.mangobot.adapter;
 
-import io.github.mangomaner.mangobot.infra.transport.websocket.model.ConnectionSession;
+import io.github.mangomaner.mangobot.infra.websocket.model.ConnectionSession;
 
 public interface WebSocketProtocolAdapter {
 

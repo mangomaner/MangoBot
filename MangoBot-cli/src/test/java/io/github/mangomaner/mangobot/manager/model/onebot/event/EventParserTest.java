@@ -1,21 +1,21 @@
 package io.github.mangomaner.mangobot.manager.model.onebot.event;
 
 import org.junit.jupiter.api.Test;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.OneBotEvent;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.inbound.json_to_event.OneBotEventParser;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.message.OneBotGroupMessageEvent;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.meta.OneBotHeartbeatEvent;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.ImageSegment;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.TextSegment;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.OneBotMessageSegment;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.notice.OneBotGroupBanEvent;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.notice.OneBotGroupDecreaseEvent;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.notice.PokeEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.OneBotEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.inbound.json_to_event.OneBotEventParser;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.meta.OneBotHeartbeatEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.ImageSegment;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.TextSegment;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.OneBotMessageSegment;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.notice.OneBotGroupBanEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.notice.OneBotGroupDecreaseEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.notice.PokeEvent;
 
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.event.notice.OneBotGroupRecallEvent;
+import io.github.mangomaner.mangobot.adapter.onebot.model.event.notice.OneBotGroupRecallEvent;
 
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.KeyboardSegment;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.MarkdownSegment;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.KeyboardSegment;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.MarkdownSegment;
 
 import static org.junit.jupiter.api.Assertions.*;
 

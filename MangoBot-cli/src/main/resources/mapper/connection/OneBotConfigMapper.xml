@@ -4,7 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.github.mangomaner.mangobot.system.mapper.connection.OneBotConfigMapper">
 
-    <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.adapter.connect_controller.onebot.model.domain.OneBotConfig">
+    <resultMap id="BaseResultMap" type="io.github.mangomaner.mangobot.adapter.onebot.model.domain.OneBotConfig">
             <id property="id" column="id" jdbcType="INTEGER"/>
             <result property="name" column="name" jdbcType="VARCHAR"/>
             <result property="host" column="host" jdbcType="VARCHAR"/>

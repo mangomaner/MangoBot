@@ -5,7 +5,7 @@ import io.github.mangomaner.mangobot.annotation.PluginDescribe;
 import io.github.mangomaner.mangobot.annotation.web.MangoBotRequestMapping;
 import io.github.mangomaner.mangobot.module.configuration.core.PluginConfigRegistry;
 import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
-import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
+import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import io.github.mangomaner.mangobot.plugin.model.domain.Plugins;
 import io.github.mangomaner.mangobot.plugin.model.vo.PluginInfo;
 import io.github.mangomaner.mangobot.module.configuration.annotation.InjectConfig;

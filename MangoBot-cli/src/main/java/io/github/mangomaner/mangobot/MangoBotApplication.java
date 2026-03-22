@@ -4,9 +4,9 @@ import io.github.mangomaner.mangobot.module.agent.capability.mcp.McpConnectionMa
 import io.github.mangomaner.mangobot.module.agent.capability.skill.SkillManager;
 import io.github.mangomaner.mangobot.module.agent.capability.tool.ToolRegistrationService;
 import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;
-import io.github.mangomaner.mangobot.manager.MangoApiManager;
+import io.github.mangomaner.mangobot.api.manager.MangoApiManager;
 import io.github.mangomaner.mangobot.plugin.core.PluginManager;
-import io.github.mangomaner.mangobot.adapter.connect_controller.onebot.service.OneBotConfigService;
+import io.github.mangomaner.mangobot.adapter.onebot.service.OneBotConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;

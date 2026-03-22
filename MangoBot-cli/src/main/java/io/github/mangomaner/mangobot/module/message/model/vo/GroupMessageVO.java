@@ -1,6 +1,6 @@
 package io.github.mangomaner.mangobot.module.message.model.vo;
 
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.segment.OneBotMessageSegment;
+import io.github.mangomaner.mangobot.adapter.onebot.model.segment.OneBotMessageSegment;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

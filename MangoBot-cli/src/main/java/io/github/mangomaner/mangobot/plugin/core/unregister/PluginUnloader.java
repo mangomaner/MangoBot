@@ -1,6 +1,6 @@
 package io.github.mangomaner.mangobot.plugin.core.unregister;
 
-import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
+import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import io.github.mangomaner.mangobot.plugin.core.PluginRuntimeWrapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

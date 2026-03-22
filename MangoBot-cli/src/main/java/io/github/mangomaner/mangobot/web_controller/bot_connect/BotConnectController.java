@@ -2,9 +2,9 @@ package io.github.mangomaner.mangobot.web_controller.bot_connect;
 
 import io.github.mangomaner.mangobot.system.common.BaseResponse;
 import io.github.mangomaner.mangobot.system.common.ResultUtils;
-import io.github.mangomaner.mangobot.infra.transport.websocket.ConnectionSessionManager;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.model.vo.LoginInfo;
-import io.github.mangomaner.mangobot.adapter.message_handler.onebot.outbound.send.OneBotApiService;
+import io.github.mangomaner.mangobot.infra.websocket.ConnectionSessionManager;
+import io.github.mangomaner.mangobot.adapter.onebot.model.vo.LoginInfo;
+import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.send.OneBotApiService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +35,12 @@ public class BotConnectController {
                 LoginInfo loginInfo = new LoginInfo();
                 loginInfo.setUserId(result.getUserId());
                 loginInfo.setNickname(result.getNickname());
+                
+                var session = connectionSessionManager.getSessionBySelfId(bot);
+                if (session != null) {
+                    loginInfo.setPlatform(session.getProtocolType());
+                }
+                
                 loginInfos.add(loginInfo);
             }
         }

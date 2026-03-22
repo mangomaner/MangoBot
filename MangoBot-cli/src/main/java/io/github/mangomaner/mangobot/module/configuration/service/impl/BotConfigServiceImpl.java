@@ -14,7 +14,7 @@ import io.github.mangomaner.mangobot.module.configuration.model.dto.bot.CreateBo
 import io.github.mangomaner.mangobot.module.configuration.model.dto.bot.UpdateBotConfigRequest;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.BotConfigVO;
 import io.github.mangomaner.mangobot.module.configuration.service.BotConfigService;
-import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
+import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

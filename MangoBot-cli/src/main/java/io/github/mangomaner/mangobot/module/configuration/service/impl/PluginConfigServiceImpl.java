@@ -14,7 +14,7 @@ import io.github.mangomaner.mangobot.module.configuration.model.domain.PluginCon
 import io.github.mangomaner.mangobot.module.configuration.model.dto.plugin.UpdatePluginConfigRequest;
 import io.github.mangomaner.mangobot.module.configuration.model.vo.PluginConfigVO;
 import io.github.mangomaner.mangobot.module.configuration.service.PluginConfigService;
-import io.github.mangomaner.mangobot.manager.event.MangoEventPublisher;
+import io.github.mangomaner.mangobot.infra.MangoEventPublisher;
 import io.github.mangomaner.mangobot.plugin.model.domain.Plugins;
 import io.github.mangomaner.mangobot.plugin.service.PluginsService;
 import jakarta.annotation.Resource;

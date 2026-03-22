@@ -6,14 +6,92 @@
 
 ```
 adapter/
-├── PlatformType.java              # 平台类型枚举
-├── WebSocketProtocolAdapter.java  # WebSocket 协议适配器接口
-├── connect_controller/            # 连接控制器
-│   ├── ConnectionController.java  # 连接管理 API
-│   ├── PlatformOptionVO.java      # 平台选项 VO
-│   └── onebot/                    # OneBot 协议实现（示例）
-└── message_handler/               # 消息处理器
-    └── onebot/                    # OneBot 协议处理（示例）
+├── WebSocketProtocolAdapter.java          # WebSocket 协议适配器接口
+├── controller/                            # 通用连接控制器
+│   └── ConnectionController.java          # 平台列表 API
+├── model/                                 # 通用模型
+│   ├── enums/
+│   │   ├── PlatformType.java              # 平台类型枚举
+│   │   └── ConnectionStatus.java          # 连接状态枚举
+│   └── vo/
+│       └── PlatformOptionVO.java          # 平台选项 VO
+└── onebot/                                # OneBot 协议实现
+    ├── controller/                        # 控制器层
+    │   ├── OneBotConfigController.java    # 配置管理 API
+    │   └── OneBotApiController.java       # OneBot API 控制器
+    ├── handler/                           # 处理器
+    │   ├── echo/                          # Echo 响应处理
+    │   │   ├── OneBotEchoHandler.java     # 异步转同步处理器
+    │   │   └── OneBotApiResponse.java     # API 响应模型
+    │   ├── inbound/                       # 入站消息处理
+    │   │   ├── json_to_event/             # JSON → 事件
+    │   │   │   ├── OneBotEventParser.java
+    │   │   │   └── OneBotEventDeserializer.java
+    │   │   └── receive_websocket_message/ # WebSocket 消息处理
+    │   │       └── OneBotMessageHandler.java
+    │   └── outbound/                      # 出站消息处理
+    │       ├── send/                      # 发送消息
+    │       │   └── OneBotApiService.java
+    │       └── build_sending_message/     # 构建消息
+    │           ├── OneBotMessageBuilder.java
+    │           └── OneBotSendingMessage.java
+    ├── model/                             # 数据模型
+    │   ├── domain/
+    │   │   └── OneBotConfig.java          # 配置实体
+    │   ├── dto/
+    │   │   ├── OneBotApiRequest.java      # API 请求
+    │   │   ├── CreateOneBotConfigRequest.java
+    │   │   └── UpdateOneBotConfigRequest.java
+    │   ├── event/                         # 事件模型
+    │   │   ├── OneBotEvent.java           # 事件接口
+    │   │   ├── OneBotBaseEvent.java       # 事件基类
+    │   │   ├── message/                   # 消息事件
+    │   │   │   ├── OneBotMessageEvent.java
+    │   │   │   ├── OneBotGroupMessageEvent.java
+    │   │   │   └── OneBotPrivateMessageEvent.java
+    │   │   ├── meta/                      # 元事件
+    │   │   │   ├── OneBotMetaEvent.java
+    │   │   │   ├── OneBotHeartbeatEvent.java
+    │   │   │   └── OneBotLifecycleEvent.java
+    │   │   └── notice/                    # 通知事件
+    │   │       ├── OneBotNoticeEvent.java
+    │   │       ├── OneBotGroupBanEvent.java
+    │   │       ├── OneBotGroupDecreaseEvent.java
+    │   │       ├── OneBotGroupIncreaseEvent.java
+    │   │       ├── OneBotGroupRecallEvent.java
+    │   │       ├── OneBotEssenceEvent.java
+    │   │       └── PokeEvent.java
+    │   ├── segment/                       # 消息段类型
+    │   │   ├── OneBotMessageSegment.java  # 消息段基类
+    │   │   ├── TextSegment.java           # 文本
+    │   │   ├── ImageSegment.java          # 图片
+    │   │   ├── AtSegment.java             # @
+    │   │   ├── ReplySegment.java          # 回复
+    │   │   ├── FaceSegment.java           # 表情
+    │   │   ├── RecordSegment.java         # 语音
+    │   │   ├── VideoSegment.java          # 视频
+    │   │   ├── FileSegment.java           # 文件
+    │   │   ├── JsonSegment.java           # JSON
+    │   │   ├── ForwardSegment.java        # 转发
+    │   │   ├── NodeSegment.java           # 节点
+    │   │   └── ... (其他消息段)
+    │   └── vo/                            # 值对象
+    │       ├── OneBotConfigVO.java        # 配置 VO
+    │       ├── LoginInfo.java             # 登录信息
+    │       ├── GroupInfo.java             # 群信息
+    │       ├── GroupMemberInfo.java       # 群成员信息
+    │       ├── FriendInfo.java            # 好友信息
+    │       ├── MessageId.java             # 消息 ID
+    │       ├── MessageInfo.java           # 消息信息
+    │       ├── FileInfo.java              # 文件信息
+    │       └── ... (其他 VO)
+    ├── service/                           # 服务层
+    │   ├── OneBotConfigService.java       # 配置服务接口
+    │   └── impl/
+    │       └── OneBotConfigServiceImpl.java
+    └── utils/                             # 工具类
+        ├── MessageParser.java             # 消息解析器
+        └── OneBotMessageFileProcessor.java # 文件处理器
 ```
 
 ## 核心组件
@@ -54,6 +132,319 @@ public interface WebSocketProtocolAdapter {
 }
 ```
 
+### OneBot 消息处理器 (OneBotMessageHandler)
+
+OneBot 协议的核心处理器，实现 `WebSocketProtocolAdapter` 接口：
+
+```java
+@Component
+public class OneBotMessageHandler implements WebSocketProtocolAdapter {
+
+    private static final String PROTOCOL_TYPE = "onebot_qq";
+
+    @Override
+    public String getProtocolType() {
+        return PROTOCOL_TYPE;
+    }
+
+    @Override
+    public void onMessage(ConnectionSession session, String message) {
+        // 1. 处理 Echo 响应（API 调用的异步转同步）
+        if (echoHandler.handleEcho(message)) {
+            return;
+        }
+
+        // 2. 解析事件
+        OneBotEvent event = OneBotEventParser.parse(message);
+
+        // 3. 处理心跳事件
+        if (event instanceof OneBotHeartbeatEvent heartbeat) {
+            sessionManager.updateHeartbeat(session, heartbeat.getInterval());
+            return;
+        }
+
+        // 4. 处理生命周期事件
+        if (event instanceof OneBotLifecycleEvent lifecycle) {
+            sessionManager.registerSelfId(session, event.getSelfId());
+            return;
+        }
+
+        // 5. 发布事件到事件总线
+        eventPublisher.publish(event);
+    }
+
+    @Override
+    public void onConnect(ConnectionSession session) {
+        sessionManager.registerSession(session);
+    }
+
+    @Override
+    public void onDisconnect(ConnectionSession session) {
+        sessionManager.removeSession(session);
+    }
+}
+```
+
+### Echo 响应处理器 (OneBotEchoHandler)
+
+实现 API 调用的异步转同步机制：
+
+```java
+@Component
+public class OneBotEchoHandler {
+
+    private final Map<String, CompletableFuture<OneBotApiResponse>> pendingRequests = new ConcurrentHashMap<>();
+
+    // 注册等待中的请求
+    public CompletableFuture<OneBotApiResponse> register(String echo) {
+        CompletableFuture<OneBotApiResponse> future = new CompletableFuture<>();
+        pendingRequests.put(echo, future);
+        return future;
+    }
+
+    // 处理收到的 Echo 响应
+    public boolean handleEcho(String jsonRaw) {
+        JsonNode node = objectMapper.readTree(jsonRaw);
+        if (node.has("echo")) {
+            String echo = node.get("echo").asText();
+            CompletableFuture<OneBotApiResponse> future = pendingRequests.remove(echo);
+            if (future != null) {
+                OneBotApiResponse response = objectMapper.treeToValue(node, OneBotApiResponse.class);
+                future.complete(response);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 等待响应（带超时）
+    public OneBotApiResponse waitForResponse(String echo, long timeout, TimeUnit unit) {
+        return pendingRequests.get(echo).get(timeout, unit);
+    }
+}
+```
+
+### 事件模型
+
+#### 事件接口与基类
+
+```java
+// 事件接口
+public interface OneBotEvent {
+    long getTime();
+    long getSelfId();
+    String getPostType();
+}
+
+// 事件基类（使用自定义反序列化器）
+@Data
+@JsonDeserialize(using = OneBotEventDeserializer.class)
+public abstract class OneBotBaseEvent implements OneBotEvent {
+    private long time;
+
+    @JsonProperty("self_id")
+    private long selfId;
+
+    @JsonProperty("post_type")
+    private String postType;
+}
+```
+
+#### 事件反序列化器
+
+根据 `post_type` 字段自动路由到对应的事件类：
+
+```java
+public class OneBotEventDeserializer extends StdDeserializer<OneBotEvent> {
+
+    @Override
+    public OneBotEvent deserialize(JsonParser p, DeserializationContext ctxt) {
+        ObjectMapper mapper = (ObjectMapper) p.getCodec();
+        JsonNode node = mapper.readTree(p);
+
+        if (!node.has("post_type")) {
+            return null;
+        }
+
+        String postType = node.get("post_type").asText();
+        Class<? extends OneBotEvent> targetClass = null;
+
+        switch (postType) {
+            case "message":
+                // 根据 message_type 路由到群消息或私聊消息
+            case "meta_event":
+                // 根据 meta_event_type 路由到心跳或生命周期事件
+            case "notice":
+                // 根据 notice_type 路由到具体通知事件
+        }
+
+        if (targetClass != null) {
+            return mapper.treeToValue(node, targetClass);
+        }
+        return null;
+    }
+}
+```
+
+#### 支持的事件类型
+
+| 事件类 | post_type | 说明 |
+|--------|-----------|------|
+| `OneBotGroupMessageEvent` | message | 群消息事件 |
+| `OneBotPrivateMessageEvent` | message | 私聊消息事件 |
+| `OneBotHeartbeatEvent` | meta_event | 心跳事件 |
+| `OneBotLifecycleEvent` | meta_event | 生命周期事件 |
+| `OneBotGroupBanEvent` | notice | 群禁言事件 |
+| `OneBotGroupDecreaseEvent` | notice | 群成员减少事件 |
+| `OneBotGroupIncreaseEvent` | notice | 群成员增加事件 |
+| `OneBotGroupRecallEvent` | notice | 群消息撤回事件 |
+| `OneBotEssenceEvent` | notice | 精华消息事件 |
+| `PokeEvent` | notice | 戳一戳事件 |
+
+### 消息段 (Message Segment)
+
+支持的消息段类型（使用 Jackson 多态序列化）：
+
+```java
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY,
+    property = "type",
+    visible = true
+)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = TextSegment.class, name = "text"),
+    @JsonSubTypes.Type(value = ImageSegment.class, name = "image"),
+    @JsonSubTypes.Type(value = AtSegment.class, name = "at"),
+    @JsonSubTypes.Type(value = ReplySegment.class, name = "reply"),
+    @JsonSubTypes.Type(value = FaceSegment.class, name = "face"),
+    @JsonSubTypes.Type(value = RecordSegment.class, name = "record"),
+    @JsonSubTypes.Type(value = VideoSegment.class, name = "video"),
+    @JsonSubTypes.Type(value = FileSegment.class, name = "file"),
+    @JsonSubTypes.Type(value = JsonSegment.class, name = "json"),
+    @JsonSubTypes.Type(value = ForwardSegment.class, name = "forward"),
+    @JsonSubTypes.Type(value = NodeSegment.class, name = "node"),
+    // ... 更多类型
+})
+public abstract class OneBotMessageSegment {
+    private String type;
+}
+```
+
+### 消息构建器 (OneBotMessageBuilder)
+
+流式 API 构建消息链：
+
+```java
+// 构建群消息
+OneBotSendingMessage message = OneBotMessageBuilder.create()
+    .text("Hello ")
+    .at("123456789")
+    .text("!")
+    .image("http://example.com/image.jpg", false)
+    .build();
+
+// 回复消息
+OneBotSendingMessage reply = OneBotMessageBuilder.create()
+    .reply(messageId)
+    .text("收到!")
+    .build();
+
+// 发送语音（只能单独使用）
+OneBotSendingMessage record = OneBotMessageBuilder.create()
+    .record("http://example.com/voice.amr")
+    .build();
+
+// 合并转发
+OneBotSendingMessage forward = OneBotMessageBuilder.create()
+    .customNode("123456", "用户A", "消息内容1")
+    .customNode("789012", "用户B", "消息内容2")
+    .build();
+```
+
+### API 服务 (OneBotApiService)
+
+封装 OneBot API 调用：
+
+```java
+@Service
+public class OneBotApiService {
+
+    // 发送消息
+    public MessageId sendPrivateMsg(long botId, long userId, OneBotSendingMessage message);
+    public MessageId sendGroupMsg(long botId, long groupId, OneBotSendingMessage message);
+
+    // 群管理
+    public void setGroupBan(long botId, long groupId, long userId, long duration);
+    public void setGroupWholeBan(long botId, long groupId, boolean enable);
+    public void setGroupAdmin(long botId, long groupId, long userId, boolean enable);
+    public void setGroupKick(long botId, long groupId, long userId, boolean rejectAddRequest);
+
+    // 获取信息
+    public LoginInfo getLoginInfo(long botId);
+    public GroupInfo getGroupInfo(long botId, long groupId, boolean noCache);
+    public List<GroupInfo> getGroupList(long botId);
+    public GroupMemberInfo getGroupMemberInfo(long botId, long groupId, long userId, boolean noCache);
+    public List<GroupMemberInfo> getGroupMemberList(long botId, long groupId);
+    public List<FriendInfo> getFriendList(long botId);
+
+    // 其他操作
+    public void deleteMsg(long botId, int messageId);
+    public void sendLike(long botId, long userId, int times);
+    public void sendGroupPoke(long botId, long groupId, long userId);
+
+    // 通用 API 调用
+    public <T> T callApi(long botId, String action, Map<String, Object> params, Class<T> responseType);
+    public <T> List<T> callApiList(long botId, String action, Map<String, Object> params, Class<T> elementType);
+    public void callApiVoid(long botId, String action, Map<String, Object> params);
+}
+```
+
+### 配置管理 (OneBotConfigService)
+
+管理 OneBot 连接配置和服务器生命周期：
+
+```java
+public interface OneBotConfigService extends IService<OneBotConfig> {
+    List<OneBotConfigVO> listAll();
+    OneBotConfigVO getById(Long id);
+    Long createConfig(CreateOneBotConfigRequest request);
+    void updateConfig(UpdateOneBotConfigRequest request);
+    void deleteConfig(Long id);
+    void startServer(Long id);
+    void stopServer(Long id);
+    void setEnabled(Long id, boolean enabled);
+    OneBotConfigVO getServerStatus(Long id);
+    List<OneBotConfig> listEnabled();
+    void startAllEnabledServers();
+}
+```
+
+### 消息解析器 (MessageParser)
+
+将消息段列表转换为可读文本：
+
+```java
+@Component
+public class MessageParser {
+
+    // 解析消息段列表
+    public String parseMessage(List<OneBotMessageSegment> segments, Long botId);
+
+    // 支持的消息段类型
+    private String parseTextSegment(TextSegment segment);      // 文本
+    private String parseAtSegment(AtSegment segment);          // @
+    private String parseFaceSegment(FaceSegment segment);      // 表情
+    private String parseImageSegment(ImageSegment segment);    // 图片
+    private String parseFileSegment(FileSegment segment);      // 文件
+    private String parseVideoSegment(VideoSegment segment);    // 视频
+    private String parseRecordSegment(RecordSegment segment);  // 语音
+    private String parseJsonSegment(JsonSegment segment);      // JSON
+    private String parseForwardSegment(ForwardSegment segment, Long botId);  // 转发
+    private String parseReplySegment(ReplySegment segment, Long botId);      // 回复
+}
+```
+
 ---
 
 ## 扩展新平台指南
@@ -62,7 +453,7 @@ public interface WebSocketProtocolAdapter {
 
 ### 第一步：添加平台类型枚举
 
-在 [PlatformType.java](PlatformType.java) 中添加新平台：
+在 [PlatformType.java](model/enums/PlatformType.java) 中添加新平台：
 
 ```java
 @Getter
@@ -80,35 +471,46 @@ public enum PlatformType {
 
 ```
 adapter/
-├── connect_controller/
-│   └── new_platform/                    # 新平台连接控制器
-│       ├── controller/
-│       │   └── NewPlatformConfigController.java
-│       ├── model/
-│       │   ├── domain/
-│       │   │   └── NewPlatformConfig.java
-│       │   ├── dto/
-│       │   │   ├── CreateNewPlatformConfigRequest.java
-│       │   │   └── UpdateNewPlatformConfigRequest.java
-│       │   ├── enums/
-│       │   │   └── ConnectionStatus.java
-│       │   └── vo/
-│       │       └── NewPlatformConfigVO.java
-│       └── service/
-│           ├── NewPlatformConfigService.java
-│           └── impl/
-│               └── NewPlatformConfigServiceImpl.java
-└── message_handler/
-    └── new_platform/                    # 新平台消息处理器
-        ├── event/
-        │   ├── NewPlatformEvent.java
-        │   └── NewPlatformMessageEvent.java
-        ├── handler/
-        │   └── NewPlatformMessageHandler.java
-        ├── inbound/
-        │   └── NewPlatformEventParser.java
-        └── outbound/
-            └── NewPlatformApiService.java
+└── new_platform/                         # 新平台实现
+    ├── controller/
+    │   ├── NewPlatformConfigController.java
+    │   └── NewPlatformApiController.java
+    ├── handler/
+    │   ├── echo/
+    │   │   ├── NewPlatformEchoHandler.java
+    │   │   └── NewPlatformApiResponse.java
+    │   ├── inbound/
+    │   │   ├── json_to_event/
+    │   │   │   ├── NewPlatformEventParser.java
+    │   │   │   └── NewPlatformEventDeserializer.java
+    │   │   └── receive_websocket_message/
+    │   │       └── NewPlatformMessageHandler.java
+    │   └── outbound/
+    │       ├── send/
+    │       │   └── NewPlatformApiService.java
+    │       └── build_sending_message/
+    │           ├── NewPlatformMessageBuilder.java
+    │           └── NewPlatformSendingMessage.java
+    ├── model/
+    │   ├── domain/
+    │   │   └── NewPlatformConfig.java
+    │   ├── dto/
+    │   │   ├── CreateNewPlatformConfigRequest.java
+    │   │   └── UpdateNewPlatformConfigRequest.java
+    │   ├── event/
+    │   │   ├── NewPlatformEvent.java
+    │   │   ├── NewPlatformBaseEvent.java
+    │   │   └── NewPlatformMessageEvent.java
+    │   ├── segment/
+    │   │   └── NewPlatformMessageSegment.java
+    │   └── vo/
+    │       └── NewPlatformConfigVO.java
+    ├── service/
+    │   ├── NewPlatformConfigService.java
+    │   └── impl/
+    │       └── NewPlatformConfigServiceImpl.java
+    └── utils/
+        └── MessageParser.java
 ```
 
 ### 第三步：实现协议适配器
@@ -137,16 +539,21 @@ public class NewPlatformMessageHandler implements WebSocketProtocolAdapter {
 
     @Override
     public void onMessage(ConnectionSession session, String message) {
-        // 1. 解析消息
+        // 1. 处理 Echo 响应（如果需要 API 调用）
+        if (echoHandler.handleEcho(message)) {
+            return;
+        }
+
+        // 2. 解析事件
         NewPlatformEvent event = NewPlatformEventParser.parse(message);
-        
-        // 2. 处理特殊事件（如心跳、生命周期）
+
+        // 3. 处理特殊事件（如心跳、生命周期）
         if (event instanceof NewPlatformHeartbeatEvent heartbeat) {
             sessionManager.updateHeartbeat(session, heartbeat.getInterval());
             return;
         }
-        
-        // 3. 发布事件到事件总线
+
+        // 4. 发布事件到事件总线
         eventPublisher.publish(event);
     }
 
@@ -175,14 +582,10 @@ public interface NewPlatformEvent {
     String getEventType();
 }
 
-// 基础事件（使用 Jackson 多态反序列化）
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "event_type")
-@JsonSubTypes({
-    @JsonSubTypes.Type(value = NewPlatformMessageEvent.class, name = "message"),
-    @JsonSubTypes.Type(value = NewPlatformHeartbeatEvent.class, name = "heartbeat")
-})
+// 事件基类（使用自定义反序列化器）
 @Data
-public class NewPlatformBaseEvent implements NewPlatformEvent {
+@JsonDeserialize(using = NewPlatformEventDeserializer.class)
+public abstract class NewPlatformBaseEvent implements NewPlatformEvent {
     private long time;
     private String eventType;
 }
@@ -198,7 +601,33 @@ public class NewPlatformMessageEvent extends NewPlatformBaseEvent {
 }
 ```
 
-### 第五步：实现 API 服务（可选）
+### 第五步：实现事件反序列化器
+
+```java
+public class NewPlatformEventDeserializer extends StdDeserializer<NewPlatformEvent> {
+
+    @Override
+    public NewPlatformEvent deserialize(JsonParser p, DeserializationContext ctxt) {
+        ObjectMapper mapper = (ObjectMapper) p.getCodec();
+        JsonNode node = mapper.readTree(p);
+
+        String eventType = node.get("event_type").asText();
+        Class<? extends NewPlatformEvent> targetClass = switch (eventType) {
+            case "message" -> NewPlatformMessageEvent.class;
+            case "heartbeat" -> NewPlatformHeartbeatEvent.class;
+            // ... 其他事件类型
+            default -> null;
+        };
+
+        if (targetClass != null) {
+            return mapper.treeToValue(node, targetClass);
+        }
+        return null;
+    }
+}
+```
+
+### 第六步：实现 API 服务（可选）
 
 如果平台需要主动调用 API：
 
@@ -207,6 +636,7 @@ public class NewPlatformMessageEvent extends NewPlatformBaseEvent {
 public class NewPlatformApiService {
 
     private final ConnectionSessionManager sessionManager;
+    private final ObjectMapper objectMapper;
 
     public void sendMessage(long botId, long targetId, String content) {
         ConnectionSession session = sessionManager.getSessionBySelfId(botId);
@@ -227,15 +657,15 @@ public class NewPlatformApiService {
 }
 ```
 
-### 第六步：创建配置管理
+### 第七步：创建配置管理
 
-参考 `connect_controller/onebot` 模块实现配置管理：
+参考 `OneBotConfigService` 实现配置管理：
 
 1. **实体类** - 存储连接配置（host、port、token 等）
 2. **Service** - 配置的 CRUD 和服务器生命周期管理
 3. **Controller** - REST API 接口
 
-### 第七步：注册事件监听
+### 第八步：注册事件监听
 
 在插件或业务代码中监听新平台事件：
 
@@ -269,3 +699,6 @@ public class NewPlatformEventListener {
 2. **线程安全**：消息处理可能在多线程环境中执行，注意并发安全
 3. **异常处理**：消息解析失败时应记录日志，避免影响其他消息处理
 4. **会话管理**：在 `onConnect` 和 `onDisconnect` 中正确注册/移除会话
+5. **事件反序列化**：使用自定义 `JsonDeserializer` 实现多态事件解析
+6. **消息段类型**：如需支持新的消息段类型，需在基类上添加 `@JsonSubTypes.Type` 注解
+7. **Echo 处理**：如果需要 API 调用能力，必须实现 Echo 响应处理机制
