@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.util.Map;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
@@ -16,6 +18,8 @@ public class FaceSegment extends OneBotMessageSegment {
         private String id;
         @JsonProperty("sub_type")
         private int subType;
-        private String raw;     // NapCat
+        private Map<String, Object> raw;    // NapCat
+        private String resultId;
+        private Integer chainCount;
     }
 }

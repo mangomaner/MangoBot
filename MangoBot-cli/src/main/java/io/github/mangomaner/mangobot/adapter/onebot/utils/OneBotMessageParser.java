@@ -132,7 +132,8 @@ public class OneBotMessageParser {
         if (data == null) {
             return "";
         }
-        int subType = data.getSubType();
+        Integer subTypeObj = data.getSubType();
+        int subType = subTypeObj != null ? subTypeObj : 0;
         String url = data.getUrl();
 
         BotFiles fileByFileId = botFilesService.getFileByFileId(data.getFile());

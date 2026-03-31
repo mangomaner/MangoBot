@@ -25,7 +25,8 @@ import lombok.Data;
     @JsonSubTypes.Type(value = ShakeSegment.class, name = "shake"),
     @JsonSubTypes.Type(value = ShareSegment.class, name = "share"),
     @JsonSubTypes.Type(value = NodeSegment.class, name = "node"),
-    @JsonSubTypes.Type(value = ForwardSegment.class, name = "forward")
+    @JsonSubTypes.Type(value = ForwardSegment.class, name = "forward"),
+    @JsonSubTypes.Type(value = PokeSegment.class, name = "poke")
 })
 @Data
 public abstract class OneBotMessageSegment {

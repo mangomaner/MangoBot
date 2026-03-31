@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import io.github.mangomaner.mangobot.adapter.onebot.model.event.OneBotEvent;
 import io.github.mangomaner.mangobot.events.onebot.message.OneBotGroupMessageEvent;
+import io.github.mangomaner.mangobot.events.onebot.message.OneBotMessageSentEvent;
 import io.github.mangomaner.mangobot.events.onebot.message.OneBotPrivateMessageEvent;
 import io.github.mangomaner.mangobot.events.onebot.meta.OneBotHeartbeatEvent;
 import io.github.mangomaner.mangobot.events.onebot.meta.OneBotLifecycleEvent;
@@ -47,6 +48,9 @@ public class OneBotEventDeserializer extends StdDeserializer<OneBotEvent> {
                     }
                 }
                 break;
+            case "message_sent":
+                targetClass = OneBotMessageSentEvent.class;
+                break;
             case "meta_event":
                 if (node.has("meta_event_type")) {
                     String metaType = node.get("meta_event_type").asText();
@@ -78,6 +82,12 @@ public class OneBotEventDeserializer extends StdDeserializer<OneBotEvent> {
                             break;
                         case "group_recall":
                             targetClass = OneBotGroupRecallEvent.class;
+                            break;
+                        case "group_upload":
+                            targetClass = OneBotGroupUploadEvent.class;
+                            break;
+                        case "group_msg_emoji_like":
+                            targetClass = OneBotGroupMsgEmojiLikeEvent.class;
                             break;
                     }
                 }

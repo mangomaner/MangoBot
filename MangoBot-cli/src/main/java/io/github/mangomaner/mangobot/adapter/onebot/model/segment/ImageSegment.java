@@ -20,5 +20,10 @@ public class ImageSegment extends OneBotMessageSegment {
         @JsonProperty("file_size")
         private String fileSize;
         private String summary; // NapCat
+        private String key;     // NapCat
+        @JsonProperty("emoji_id")
+        private String emojiId; // NapCat
+        @JsonProperty("emoji_package_id")
+        private Integer emojiPackageId; // NapCat
     }
 }

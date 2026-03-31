@@ -47,6 +47,28 @@ public class OneBotApiController {
         return ResultUtils.success(result);
     }
 
+    @PostMapping("/sendGroupRecord")
+    @Operation(summary = "发送群语音")
+    public BaseResponse<MessageId> sendGroupAudioMsg(@RequestParam long botId, @RequestParam long groupId, @RequestParam String path) {
+        log.info("发送群消息: botId={}, groupId={}, message={}", botId, groupId, path);
+        OneBotSendingMessage sendMessage = OneBotMessageBuilder.create()
+                .record(path)
+                .build();
+        MessageId result = oneBotApiService.sendGroupMsg(botId, groupId, sendMessage);
+        return ResultUtils.success(result);
+    }
+
+    @PostMapping("/sendPrivateAudioMsg")
+    @Operation(summary = "发送私聊语音")
+    public BaseResponse<MessageId> sendPrivateAudioMsg(@RequestParam long botId, @RequestParam long userId, @RequestParam String path) {
+        log.info("发送私聊语音: botId={}, userId={}, path={}", botId, userId, path);
+        OneBotSendingMessage sendMessage = OneBotMessageBuilder.create()
+                .record(path)
+                .build();
+        MessageId result = oneBotApiService.sendPrivateMsg(botId, userId, sendMessage);
+        return ResultUtils.success(result);
+    }
+
     @GetMapping("/sendGroupPoke")
     @Operation(summary = "戳一戳 (群聊)")
     public BaseResponse<Void> sendGroupPoke(@RequestParam long botId, @RequestParam long groupId, @RequestParam long targetId) {
