@@ -63,7 +63,7 @@ public class MessageStoreHandler {
         } catch (Exception e) {
             log.error("Failed to save group message", e);
         }
-        return false;
+        return true;
     }
 
     @MangoBotEventListener
@@ -89,13 +89,13 @@ public class MessageStoreHandler {
         } catch (Exception e) {
             log.error("Failed to save private message", e);
         }
-        return false;
+        return true;
     }
 
     @MangoBotEventListener
     public boolean onConfigChange(BotConfigChangedEvent event) {    
         log.info("收到 Bot 配置变更通知: key={}, value={}", event.getConfigKey(), event.getNewValue());
-        return false;
+        return true;
     }
 
 }

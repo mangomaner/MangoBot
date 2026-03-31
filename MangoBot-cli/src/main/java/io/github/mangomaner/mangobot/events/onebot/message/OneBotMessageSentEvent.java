@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.util.Map;
+
 /**
  * bot自己发送的消息（由用户在另一台设备上发送的消息，不是由本程序发送）
  */
@@ -26,4 +28,6 @@ public class OneBotMessageSentEvent extends OneBotMessageEvent {
 
     @JsonProperty("target_id")
     private Long targetId;
+
+    private Map<String,Object> raw;
 }
