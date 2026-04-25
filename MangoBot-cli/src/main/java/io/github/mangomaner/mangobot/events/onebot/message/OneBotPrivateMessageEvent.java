@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.util.Map;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
@@ -15,5 +17,7 @@ public class OneBotPrivateMessageEvent extends OneBotMessageEvent {
     private String parsedMessage;
 
     @JsonProperty("target_id")
-    private Long targetId;  // NapCat
+    private Long targetId;
+
+    private Map<String, Object> raw;
 }
