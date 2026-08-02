@@ -11,7 +11,15 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -29,10 +37,10 @@ public class ChatSessionController {
     private final ChatSessionService chatSessionService;
 
     /**
-     * 创建工作区下的对话会话
+     * 创建对话会话
      */
     @PostMapping("/create")
-    @Operation(summary = "创建对话会话", description = "在工作区下创建新的对话会话")
+    @Operation(summary = "创建对话会话", description = "创建新的对话会话")
     public BaseResponse<ChatSessionVO> createSession(@Valid @RequestBody CreateChatSessionRequest request) {
         log.info("创建对话会话，title: {}", request.getTitle());
         ChatSessionVO session = chatSessionService.createSession(request);
@@ -52,14 +60,14 @@ public class ChatSessionController {
     }
 
     /**
-     * 获取工作区下的所有会话列表
+     * 获取指定 Bot 下的所有会话列表
      */
     @GetMapping("/list")
-    @Operation(summary = "获取会话列表", description = "获取指定工作区下的所有活跃会话")
-    public BaseResponse<List<ChatSessionVO>> listSessionsByWorkspaceId(
-            @Parameter(description = "工作区ID", required = true) @RequestParam Integer workspaceId) {
-        log.info("获取会话列表，workspaceId: {}", workspaceId);
-        List<ChatSessionVO> sessions = chatSessionService.listSessionsByWorkspaceId(workspaceId);
+    @Operation(summary = "获取会话列表", description = "获取指定 Bot 下的所有活跃会话")
+    public BaseResponse<List<ChatSessionVO>> listSessionsByBotId(
+            @Parameter(description = "Bot ID", required = true) @RequestParam String botId) {
+        log.info("获取会话列表，botId: {}", botId);
+        List<ChatSessionVO> sessions = chatSessionService.listSessionsByBotId(botId);
         return ResultUtils.success(sessions);
     }
 

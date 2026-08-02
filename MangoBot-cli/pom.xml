@@ -77,14 +77,28 @@
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope</artifactId>
-            <version>1.0.9</version>
+            <version>2.0.0</version>
         </dependency>
 
-        <!-- AgentScope AutoContextMemory Extension -->
+        <!-- AgentScope Harness（工作区/记忆/会话日志等工程能力） -->
         <dependency>
             <groupId>io.agentscope</groupId>
-            <artifactId>agentscope-extensions-autocontext-memory</artifactId>
-            <version>1.0.9</version>
+            <artifactId>agentscope-harness</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <!-- AgentScope OpenAI 模型扩展（v2 中模型实现迁出 core） -->
+        <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope-extensions-model-openai</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <!-- 显式钉到 agentscope 2.0.0 期望的 reactor 版本（Spring Boot 3.3 默认管理 3.6.x，会降级） -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+            <version>3.8.2</version>
         </dependency>
 
         <!-- Java-WebSocket for standalone WebSocket server -->

@@ -6,12 +6,14 @@ import io.github.mangomaner.mangobot.module.agent.capability.mcp.McpConnectionMa
 import io.github.mangomaner.mangobot.module.agent.capability.mcp.McpToolSynchronizer;
 import io.github.mangomaner.mangobot.module.agent.capability.skill.SkillManager;
 import io.github.mangomaner.mangobot.module.agent.capability.tool.JavaToolLoader;
+import io.github.mangomaner.mangobot.module.agent.core.AgentRuntimeRegistry;
 import io.github.mangomaner.mangobot.module.agent.model.domain.AgentJavaToolConfig;
 import io.github.mangomaner.mangobot.module.agent.model.domain.AgentMcpConfig;
 import io.github.mangomaner.mangobot.module.agent.model.domain.AgentMcpToolConfig;
 import io.github.mangomaner.mangobot.module.agent.model.domain.AgentSkillConfig;
 import io.github.mangomaner.mangobot.module.agent.model.dto.CreateMcpConfigRequest;
 import io.github.mangomaner.mangobot.module.agent.model.dto.CreateSkillRequest;
+import io.github.mangomaner.mangobot.module.agent.model.dto.ImportSkillRequest;
 import io.github.mangomaner.mangobot.module.agent.model.dto.UpdateEnabledListRequest;
 import io.github.mangomaner.mangobot.module.agent.model.dto.UpdateMcpConfigRequest;
 import io.github.mangomaner.mangobot.module.agent.model.dto.UpdateMcpToolsEnabledListRequest;
@@ -29,9 +31,12 @@ import io.github.mangomaner.mangobot.system.common.ErrorCode;
 import io.github.mangomaner.mangobot.system.exception.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -63,6 +68,7 @@ public class AgentCapabilityController {
     private final McpToolSynchronizer mcpSynchronizer;
     private final McpConnectionManager mcpConnectionManager;
     private final SkillManager skillManager;
+    private final AgentRuntimeRegistry agentRuntimeRegistry;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,6 +93,7 @@ public class AgentCapabilityController {
         boolean newEnabled = !Boolean.TRUE.equals(config.getEnabled());
         config.setEnabled(newEnabled);
         javaToolConfigService.updateById(config);
+        agentRuntimeRegistry.reloadAll();
         return new BaseResponse<>(0, newEnabled, "");
     }
 
@@ -98,6 +105,7 @@ public class AgentCapabilityController {
             return new BaseResponse<>(ErrorCode.NOT_FOUND_ERROR);
         }
         javaToolConfigService.removeById(id);
+        agentRuntimeRegistry.reloadAll();
         return new BaseResponse<>(0, true, "");
     }
 
@@ -159,6 +167,7 @@ public class AgentCapabilityController {
                     config.setEnabled(true);
                     config.setConnectionStatus(1);
                     mcpConfigService.updateById(config);
+                    agentRuntimeRegistry.reloadAll();
                 }
             } catch (Exception e) {
                 log.error("Failed to connect MCP: {}", config.getMcpName(), e);
@@ -172,6 +181,7 @@ public class AgentCapabilityController {
             config.setEnabled(false);
             config.setConnectionStatus(0);
             mcpConfigService.updateById(config);
+            agentRuntimeRegistry.reloadAll();
         }
         
         return new BaseResponse<>(0, newEnabled, "");
@@ -247,6 +257,7 @@ public class AgentCapabilityController {
         boolean newEnabled = !Boolean.TRUE.equals(config.getEnabled());
         config.setEnabled(newEnabled);
         mcpToolConfigService.updateById(config);
+        agentRuntimeRegistry.reloadAll();
         return new BaseResponse<>(0, newEnabled, "");
     }
 
@@ -280,20 +291,27 @@ public class AgentCapabilityController {
     @PostMapping("/skills")
     @Operation(summary = "创建 Skill")
     public BaseResponse<AgentSkillConfig> createSkill(@RequestBody CreateSkillRequest request) throws IOException {
-        skillManager.createSkillDirectory(request.getSkillPath());
+        String skillPath = StringUtils.hasText(request.getSkillPath())
+                ? request.getSkillPath().trim()
+                : SkillManager.sanitizePath(request.getSkillName());
+        if (!StringUtils.hasText(skillPath)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "技能名称不能为空");
+        }
+        skillManager.createSkillDirectory(skillPath);
         
         String content = buildSkillContent(request);
-        skillManager.writeSkillContent(request.getSkillPath(), content);
+        skillManager.writeSkillContent(skillPath, content);
         
         AgentSkillConfig config = new AgentSkillConfig();
         config.setSkillName(request.getSkillName());
         config.setDescription(request.getDescription());
-        config.setSkillPath(request.getSkillPath());
+        config.setSkillPath(skillPath);
         if (request.getBoundToolIds() != null && !request.getBoundToolIds().isEmpty()) {
             config.setBoundToolIds(objectMapper.writeValueAsString(request.getBoundToolIds()));
         }
         config.setEnabled(false);
         skillConfigService.save(config);
+        agentRuntimeRegistry.reloadAll();
         
         return new BaseResponse<>(0, config, "");
     }
@@ -316,6 +334,7 @@ public class AgentCapabilityController {
         if (request.getSkillContent() != null) {
             skillManager.writeSkillContent(config.getSkillPath(), request.getSkillContent());
         }
+        agentRuntimeRegistry.reloadAll();
         
         return new BaseResponse<>(0, true, "");
     }
@@ -330,6 +349,7 @@ public class AgentCapabilityController {
         boolean newEnabled = !Boolean.TRUE.equals(config.getEnabled());
         config.setEnabled(newEnabled);
         skillConfigService.updateById(config);
+        agentRuntimeRegistry.reloadAll();
         return new BaseResponse<>(0, newEnabled, "");
     }
 
@@ -358,6 +378,7 @@ public class AgentCapabilityController {
         }
         skillManager.deleteSkillDirectory(config.getSkillPath());
         skillConfigService.removeById(id);
+        agentRuntimeRegistry.reloadAll();
         return new BaseResponse<>(0, true, "");
     }
 
@@ -370,6 +391,27 @@ public class AgentCapabilityController {
         }
         String content = skillManager.readSkillContent(config.getSkillPath());
         return new BaseResponse<>(0, content, "");
+    }
+
+    @PostMapping("/skills/import-zip")
+    @Operation(summary = "导入 Skill（ZIP）", description = "上传包含 SKILL.md 的 ZIP，可附带 references/examples/scripts 资源")
+    public BaseResponse<AgentSkillConfig> importSkillZip(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请上传 ZIP 文件");
+        }
+        AgentSkillConfig config = skillManager.importFromZip(file.getInputStream());
+        agentRuntimeRegistry.reloadAll();
+        return new BaseResponse<>(0, config, "");
+    }
+
+    @PostMapping("/skills/import-markdown")
+    @Operation(summary = "导入 Skill（单文件 SKILL.md）", description = "直接粘贴 SKILL.md 内容创建技能")
+    public BaseResponse<AgentSkillConfig> importSkillMarkdown(
+            @RequestBody @Valid ImportSkillRequest request) throws IOException {
+        AgentSkillConfig config = skillManager.importFromMarkdown(
+                request.getSkillName(), request.getDescription(), request.getContent());
+        agentRuntimeRegistry.reloadAll();
+        return new BaseResponse<>(0, config, "");
     }
 
     private String buildSkillContent(CreateSkillRequest request) {

@@ -6,7 +6,7 @@ import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.URLSource;
-import io.agentscope.core.model.OpenAIChatModel;
+import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import io.github.mangomaner.mangobot.module.agent.model.vo.TokenUsageVO;
 import io.github.mangomaner.mangobot.api.MangoModelApi;
 import io.github.mangomaner.mangobot.api.enums.ModelRole;

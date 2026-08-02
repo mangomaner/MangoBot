@@ -5,7 +5,7 @@ import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.model.ChatResponse;
-import io.agentscope.core.model.OpenAIChatModel;
+import io.agentscope.extensions.model.openai.OpenAIChatModel;
 import io.github.mangomaner.mangobot.system.common.BaseResponse;
 import io.github.mangomaner.mangobot.system.common.ResultUtils;
 import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;

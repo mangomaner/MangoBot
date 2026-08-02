@@ -1,7 +1,6 @@
 package io.github.mangomaner.mangobot.message_handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.mangomaner.mangobot.module.agent.factory.AgentFactory;
 import io.github.mangomaner.mangobot.annotation.PluginPriority;
 import io.github.mangomaner.mangobot.annotation.messageHandler.MangoBotEventListener;
 import io.github.mangomaner.mangobot.events.configuration.BotConfigChangedEvent;
@@ -35,9 +34,6 @@ public class MessageStoreHandler {
 
     @Resource
     private OneBotMessageFileProcessor oneBotMessageFileProcessor;
-
-    @Resource
-    private AgentFactory agentFactory;
 
     @MangoBotEventListener
     @PluginPriority(-1)

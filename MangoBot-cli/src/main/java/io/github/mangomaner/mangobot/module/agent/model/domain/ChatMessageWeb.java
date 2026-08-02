@@ -10,9 +10,9 @@ import lombok.Data;
 
 /**
  * 
- * @TableName chat_message_web
+ * @TableName chat_messages
  */
-@TableName(value ="chat_message_web")
+@TableName(value = "chat_messages")
 @Data
 public class ChatMessageWeb implements Serializable {
     /**

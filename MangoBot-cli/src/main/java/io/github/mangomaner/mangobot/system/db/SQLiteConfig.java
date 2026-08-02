@@ -1,7 +1,7 @@
 package io.github.mangomaner.mangobot.system.db;
 
-
 import io.github.mangomaner.mangobot.utils.FileUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +15,12 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.Statement;
 
+/**
+ * SQLite 数据源配置
+ *
+ * <p>全新安装时按 schema.sql 建表并写入初始数据（数据库文件不存在时执行）。
+ */
+@Slf4j
 @Configuration
 public class SQLiteConfig {
 
@@ -61,11 +67,10 @@ public class SQLiteConfig {
                 String trimmed = stmt.trim();
                 if (!trimmed.isEmpty()) {
                     statement.execute(trimmed);
-                    System.out.println("执行SQL: " + trimmed);
+                    log.info("执行SQL: {}", trimmed);
                 }
             }
-            System.out.println("Database加载完成.");
-
+            log.info("数据库初始化完成（schema.sql）");
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize database", e);
         }

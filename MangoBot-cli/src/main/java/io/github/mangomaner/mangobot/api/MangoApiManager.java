@@ -1,8 +1,7 @@
 package io.github.mangomaner.mangobot.api;
 
 import io.github.mangomaner.mangobot.module.agent.capability.tool.ToolRegistrationService;
-import io.github.mangomaner.mangobot.module.agent.factory.AgentFactory;
-import io.github.mangomaner.mangobot.module.agent.workspace.ChatService;
+import io.github.mangomaner.mangobot.module.agent.chat.ChatOrchestrator;
 import io.github.mangomaner.mangobot.module.agent.service.ChatSessionService;
 import io.github.mangomaner.mangobot.module.configuration.core.ModelProvider;
 import io.github.mangomaner.mangobot.module.configuration.service.BotConfigService;
@@ -43,10 +42,7 @@ public class MangoApiManager {
     private ChatSessionService chatSessionService;
 
     @Resource
-    private AgentFactory agentFactory;
-
-    @Resource
-    private ChatService chatService;
+    private ChatOrchestrator chatOrchestrator;
 
     @Resource
     private SystemConfigService systemConfigService;
@@ -64,16 +60,15 @@ public class MangoApiManager {
         MangoGroupMessageApi.setService(groupMessagesService);
         MangoPrivateMessageApi.setService(privateMessagesService);
         MangoFileApi.setService(botFilesService);
-        
+
         MangoOneBotApi.setService(oneBotApiService);
-        
+
         MangoModelApi.setProvider(modelProvider);
         MangoToolApi.setService(toolRegistrationService);
-        
+
         MangoAgentApi.setChatSessionService(chatSessionService);
-        MangoAgentApi.setAgentFactory(agentFactory);
-        MangoAgentApi.setChatService(chatService);
-        
+        MangoAgentApi.setChatOrchestrator(chatOrchestrator);
+
         MangoConfigApi.setSystemConfigService(systemConfigService);
         MangoConfigApi.setBotConfigService(botConfigService);
         MangoConfigApi.setPluginConfigService(pluginConfigService);

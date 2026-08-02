@@ -262,18 +262,19 @@ CREATE TABLE IF NOT EXISTS chat_session (
     bot_id TEXT,        -- Bot ID（使用 TEXT 兼容多平台）
     chat_id TEXT,       -- 关联群聊ID/私聊ID（使用 TEXT 兼容多平台）
     title VARCHAR(256), -- 会话标题（默认为该会话第一个问题，因此，前端点击新对话时，先不创建会话，等到输入问题并发送后再新建对话）
-    memory_state TEXT, -- AutoContextMemory 持久化状态（JSON格式）
     source VARCHAR(32),
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- 索引顺序 (bot_id, chat_id)
+-- 会话业务唯一键 (bot_id, chat_id, source)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_session_unique
+    ON chat_session (bot_id, chat_id, source);
 CREATE INDEX IF NOT EXISTS idx_chat_session_bot_chat
     ON chat_session (bot_id, chat_id);
 
--- 对话消息表：记录对话历史
-CREATE TABLE IF NOT EXISTS chat_message_web (
+-- 对话消息表（统一 AI 对话消息投影表）
+CREATE TABLE IF NOT EXISTS chat_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id INTEGER NOT NULL, -- 关联的会话ID
     role VARCHAR(32) NOT NULL, -- 角色：user, assistant, system
@@ -283,8 +284,8 @@ CREATE TABLE IF NOT EXISTS chat_message_web (
 );
 
 -- 创建索引
-CREATE INDEX IF NOT EXISTS idx_chat_message_web_session ON chat_message_web(session_id);
-CREATE INDEX IF NOT EXISTS idx_chat_message_web_time ON chat_message_web(create_time);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_time ON chat_messages(create_time);
 
 -- ========================================
 -- 1. Java 工具配置表

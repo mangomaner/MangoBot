@@ -75,6 +75,7 @@ public final class TokenUsageUtils {
                     .outputTokens((long) chatUsage.getOutputTokens())
                     .totalTokens((long) chatUsage.getTotalTokens())
                     .time(chatUsage.getTime())
+                    .cachedTokens((long) chatUsage.getCachedTokens())
                     .build();
 
             log.debug("[TokenUsage] 提取成功: input={}, output={}, time={}s",

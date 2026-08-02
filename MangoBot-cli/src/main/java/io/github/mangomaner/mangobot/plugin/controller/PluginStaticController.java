@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,8 +33,16 @@ public class PluginStaticController {
             String prefix = "/static/" + pluginName + "/";
             String relativePath = "";
 
-            if (requestUri.startsWith(prefix)) {
-                relativePath = requestUri.substring(prefix.length());
+            // request.getRequestURI() 返回原始（百分号编码）URI，中文等非 ASCII 文件名必须解码后再解析，
+            // 否则 Files.exists 永远匹配不到真实文件（例如 Live2D 的"八千代辉夜姬"资源目录）
+            String decodedUri;
+            try {
+                decodedUri = new URI(requestUri).getPath();
+            } catch (URISyntaxException e) {
+                decodedUri = requestUri;
+            }
+            if (decodedUri.startsWith(prefix)) {
+                relativePath = decodedUri.substring(prefix.length());
             }
 
             // 基础 web 目录

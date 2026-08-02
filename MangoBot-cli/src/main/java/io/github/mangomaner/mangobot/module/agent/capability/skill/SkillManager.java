@@ -13,10 +13,14 @@ import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.stream.Collectors;
 
 /**
@@ -64,7 +68,7 @@ import java.util.stream.Collectors;
 public class SkillManager {
 
     /** Skill 存储目录 */
-    private static final String SKILLS_DIR = "data/skills";
+    private static final String SKILLS_DIR = "data/capabilities/skills";
     
     private final AgentSkillConfigService skillConfigService;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -180,6 +184,152 @@ public class SkillManager {
             log.error("Failed to load skill: {}", config.getSkillPath(), e);
             return Optional.empty();
         }
+    }
+
+    /**
+     * 导入 ZIP 格式的 Skill（zip 内需包含 SKILL.md，可附带 references/examples/scripts 资源）
+     *
+     * @param zipStream ZIP 输入流
+     * @return 导入后的 Skill 配置（默认禁用，需手动启用）
+     */
+    public AgentSkillConfig importFromZip(InputStream zipStream) throws IOException {
+        Path skillsRoot = getSkillsDirectory();
+        FileUtils.createDirectory(skillsRoot);
+
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        long totalSize = 0;
+        int entryCount = 0;
+
+        try (ZipInputStream zis = new ZipInputStream(zipStream)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName().replace('\\', '/');
+                if (name.startsWith("/") || name.contains("..") || name.matches("^[A-Za-z]:.*")) {
+                    throw new IOException("ZIP 中包含非法路径: " + name);
+                }
+                if (++entryCount > 200) {
+                    throw new IOException("ZIP 文件条目过多（>200）");
+                }
+                byte[] bytes = zis.readAllBytes();
+                totalSize += bytes.length;
+                if (totalSize > 10 * 1024 * 1024) {
+                    throw new IOException("ZIP 文件过大（>10MB）");
+                }
+                entries.put(name, bytes);
+            }
+        }
+
+        // 定位 SKILL.md（优先顶层目录形式 <name>/SKILL.md，其次任意层级）
+        String skillMdEntry = entries.keySet().stream()
+                .filter(name -> name.endsWith("/SKILL.md"))
+                .findFirst()
+                .orElseGet(() -> entries.keySet().stream()
+                        .filter(name -> name.endsWith("SKILL.md"))
+                        .findFirst()
+                        .orElse(null));
+        if (skillMdEntry == null) {
+            throw new IOException("ZIP 中未找到 SKILL.md");
+        }
+
+        String parent = skillMdEntry.contains("/")
+                ? skillMdEntry.substring(0, skillMdEntry.lastIndexOf('/'))
+                : "";
+        String skillPath = parent;
+
+        if (skillPath == null || skillPath.isEmpty()) {
+            // SKILL.md 在 zip 根目录：从前置元数据解析名称作为路径
+            String mdContent = new String(entries.get(skillMdEntry), StandardCharsets.UTF_8);
+            SkillMetadata metadata = parseSkillMetadata(mdContent);
+            skillPath = sanitizePath(metadata.name);
+            if (skillPath == null || skillPath.isEmpty()) {
+                throw new IOException("SKILL.md 缺少 name 元数据，无法确定技能路径");
+            }
+        }
+
+        Path skillDir = skillsRoot.resolve(skillPath);
+        for (Map.Entry<String, byte[]> fileEntry : entries.entrySet()) {
+            String relative = fileEntry.getKey();
+            if (skillMdEntry.contains("/") && relative.startsWith(parent + "/")) {
+                relative = relative.substring(parent.length() + 1);
+            }
+            if (relative.isEmpty()) {
+                continue;
+            }
+            Path target = skillDir.resolve(relative).normalize();
+            if (!target.startsWith(skillDir)) {
+                throw new IOException("ZIP 中包含越界路径: " + fileEntry.getKey());
+            }
+            FileUtils.createParentDirectories(target);
+            Files.write(target, fileEntry.getValue());
+        }
+
+        log.info("Skill imported from zip: {}", skillPath);
+        return syncSkillByPath(skillPath);
+    }
+
+    /**
+     * 导入单文件 Skill（SKILL.md 内容）
+     *
+     * @param skillName   技能名称
+     * @param description 技能描述（content 自带 frontmatter 时忽略）
+     * @param content     SKILL.md 内容
+     * @return 导入后的 Skill 配置（默认禁用）
+     */
+    public AgentSkillConfig importFromMarkdown(String skillName, String description, String content) throws IOException {
+        String skillPath = sanitizePath(skillName);
+        if (skillPath == null || skillPath.isEmpty()) {
+            throw new IOException("技能名称不能为空或非法");
+        }
+
+        String fullContent = content;
+        if (!content.trim().startsWith("---")) {
+            fullContent = "---\n"
+                    + "name: " + skillName + "\n"
+                    + "description: " + (description != null ? description : "") + "\n"
+                    + "---\n\n"
+                    + content;
+        }
+
+        Path skillDir = getSkillsDirectory().resolve(skillPath);
+        FileUtils.createDirectory(skillDir);
+        Files.writeString(skillDir.resolve("SKILL.md"), fullContent);
+
+        log.info("Skill imported from markdown: {}", skillPath);
+        return syncSkillByPath(skillPath);
+    }
+
+    /**
+     * 按路径同步单个 Skill 到数据库（读取 SKILL.md，解析元数据，更新配置）
+     */
+    public AgentSkillConfig syncSkillByPath(String skillPathName) throws IOException {
+        Path skillMdPath = getSkillsDirectory().resolve(skillPathName).resolve("SKILL.md");
+        if (!Files.exists(skillMdPath)) {
+            throw new IOException("SKILL.md not found: " + skillMdPath);
+        }
+        String content = Files.readString(skillMdPath);
+        SkillMetadata metadata = parseSkillMetadata(content);
+
+        AgentSkillConfig config = skillConfigService.getBySkillPath(skillPathName);
+        if (config == null) {
+            config = new AgentSkillConfig();
+            config.setSkillPath(skillPathName);
+            config.setEnabled(false);
+            String allSourcesJson = buildAllSourcesJson();
+            config.setEnabledList(allSourcesJson);
+            config.setAvailableList(allSourcesJson);
+        }
+
+        config.setSkillName(metadata.name != null ? metadata.name : skillPathName);
+        config.setDescription(metadata.description);
+        if (metadata.boundToolIds != null && !metadata.boundToolIds.isEmpty()) {
+            config.setBoundToolIds(objectMapper.writeValueAsString(metadata.boundToolIds));
+        }
+        skillConfigService.saveOrUpdate(config);
+        log.info("Skill synced: {}", skillPathName);
+        return config;
     }
 
     /**
@@ -326,5 +476,17 @@ public class SkillManager {
             log.error("Failed to serialize all sources, using hardcoded default", e);
             return "[\"web\",\"group\",\"private\"]";
         }
+    }
+
+    /**
+     * 将技能名规整为文件系统安全路径段（小写，非字母数字统一转 -）
+     */
+    public static String sanitizePath(String name) {
+        if (name == null || name.isBlank()) {
+            return "";
+        }
+        return name.trim().toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9_-]+", "-")
+                .replaceAll("^-+|-+$", "");
     }
 }
