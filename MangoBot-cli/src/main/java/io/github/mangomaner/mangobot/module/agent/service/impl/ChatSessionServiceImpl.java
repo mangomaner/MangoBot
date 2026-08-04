@@ -1,6 +1,7 @@
 package io.github.mangomaner.mangobot.module.agent.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.github.mangomaner.mangobot.module.agent.model.domain.ChatMessageWeb;
 import io.github.mangomaner.mangobot.module.agent.model.domain.ChatSession;
@@ -82,12 +83,14 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     public List<ChatSessionVO> listSessionsByBotId(String botId) {
-        if (!StringUtils.hasText(botId)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "Bot ID不能为空");
-        }
         LambdaQueryWrapper<ChatSession> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ChatSession::getBotId, botId)
-                .orderByDesc(ChatSession::getUpdateTime);
+        if (!StringUtils.hasText(botId)) {
+            // 网页端会话不绑定任何 Bot（bot_id 为空），空 botId 时列出这些会话
+            wrapper.isNull(ChatSession::getBotId);
+        } else {
+            wrapper.eq(ChatSession::getBotId, botId);
+        }
+        wrapper.orderByDesc(ChatSession::getUpdateTime);
         List<ChatSession> sessions = this.list(wrapper);
         return sessions.stream()
                 .map(this::convertToVO)
@@ -143,6 +146,21 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     public ChatSessionVO getSessionByBotIdAndChatId(String botId, String chatId, SessionSource source) {
+        ChatSessionVO existing = getSessionByBotIdAndChatIdOrNull(botId, chatId, source);
+        if (existing != null) {
+            return existing;
+        }
+        CreateChatSessionRequest request = CreateChatSessionRequest.builder()
+                .title((source == SessionSource.GROUP ? "群聊" : "私聊") + chatId)
+                .botId(botId)
+                .chatId(chatId)
+                .source(source)
+                .build();
+        return self.createSession(request);
+    }
+
+    @Override
+    public ChatSessionVO getSessionByBotIdAndChatIdOrNull(String botId, String chatId, SessionSource source) {
         if (botId == null || chatId == null || source == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "botId/chatId/source 不能为空");
         }
@@ -151,17 +169,31 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 .eq(ChatSession::getChatId, chatId)
                 .eq(ChatSession::getSource, source);
         ChatSession session = this.getOne(wrapper);
+        return session == null ? null : convertToVO(session);
+    }
 
-        if (session == null) {
-            CreateChatSessionRequest request = CreateChatSessionRequest.builder()
-                    .title((source == SessionSource.GROUP ? "群聊" : "私聊") + chatId)
-                    .botId(botId)
-                    .chatId(chatId)
-                    .source(source)
-                    .build();
-            return self.createSession(request);
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateCustomPrompt(Integer id, String customPrompt) {
+        if (id == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "会话ID不能为空");
         }
-        return convertToVO(session);
+        ChatSession session = this.getById(id);
+        if (session == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "会话不存在");
+        }
+
+        // 用 update wrapper 显式 SET，避免默认 NOT_NULL 策略下 updateById 忽略 null（清除定制时置空无效）
+        String value = StringUtils.hasText(customPrompt) ? customPrompt.trim() : null;
+        boolean updated = this.update(new LambdaUpdateWrapper<ChatSession>()
+                .eq(ChatSession::getId, id)
+                .set(ChatSession::getCustomPrompt, value)
+                .set(ChatSession::getUpdateTime, new Date()));
+        if (!updated) {
+            log.error("更新会话定制提示词失败，sessionId: {}", id);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新会话定制提示词失败");
+        }
+        log.info("更新会话定制提示词成功，sessionId: {}", id);
     }
 
     private ChatSessionVO convertToVO(ChatSession session) {
@@ -170,6 +202,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         }
         ChatSessionVO vo = new ChatSessionVO();
         BeanUtils.copyProperties(session, vo);
+        vo.setCustomPrompt(session.getCustomPrompt());
+        vo.setHasCustomPrompt(StringUtils.hasText(session.getCustomPrompt()));
 
         long messageCount = chatMessageService.count(
                 new LambdaQueryWrapper<ChatMessageWeb>()

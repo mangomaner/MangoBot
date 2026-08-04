@@ -51,7 +51,38 @@ public class SQLiteConfig {
             if (!Files.exists(dbPath)) {
                 initializeDatabase(dataSource);
             }
+            // 存量库幂等迁移：schema.sql 仅在全新安装执行，这里补齐后续新增列
+            migrateSchema(dataSource);
         };
+    }
+
+    /** 幂等增量迁移：对存量库补充缺失列（ALTER TABLE 在列已存在时会报错，需先探测） */
+    private void migrateSchema(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection()) {
+            ensureColumn(connection, "chat_session", "custom_prompt",
+                    "ALTER TABLE chat_session ADD COLUMN custom_prompt TEXT");
+        } catch (Exception e) {
+            log.warn("增量迁移失败：chat_session.custom_prompt", e);
+        }
+    }
+
+    private void ensureColumn(Connection connection, String table, String column, String alterSql) throws Exception {
+        boolean exists = false;
+        try (Statement statement = connection.createStatement();
+             var rs = statement.executeQuery("PRAGMA table_info(" + table + ")")) {
+            while (rs.next()) {
+                if (column.equalsIgnoreCase(rs.getString("name"))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute(alterSql);
+                log.info("增量迁移：{} 增加列 {}", table, column);
+            }
+        }
     }
 
     private void initializeDatabase(DataSource dataSource) {

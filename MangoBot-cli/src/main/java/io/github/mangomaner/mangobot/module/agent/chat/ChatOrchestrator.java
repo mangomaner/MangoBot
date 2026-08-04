@@ -10,6 +10,7 @@ import io.github.mangomaner.mangobot.adapter.onebot.handler.outbound.build_sendi
 import io.github.mangomaner.mangobot.api.MangoOneBotApi;
 import io.github.mangomaner.mangobot.api.context.ChatContext;
 import io.github.mangomaner.mangobot.api.context.state.ToolExecuteState;
+import io.github.mangomaner.mangobot.module.agent.core.AgentPathKeys;
 import io.github.mangomaner.mangobot.module.agent.core.AgentRuntimeRegistry;
 import io.github.mangomaner.mangobot.module.agent.core.MemoryFlushService;
 import io.github.mangomaner.mangobot.module.agent.model.dto.ChatMessageWebRequest;
@@ -18,6 +19,7 @@ import io.github.mangomaner.mangobot.module.agent.model.vo.ChatSessionVO;
 import io.github.mangomaner.mangobot.module.agent.model.vo.TokenUsageVO;
 import io.github.mangomaner.mangobot.module.agent.service.ChatMessageWebService;
 import io.github.mangomaner.mangobot.module.agent.service.ChatSessionService;
+import io.github.mangomaner.mangobot.module.agent.service.SessionPersonaService;
 import io.github.mangomaner.mangobot.utils.TokenUsageUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +59,7 @@ public class ChatOrchestrator {
     private final ChatMessageWebService chatMessageWebService;
     private final ChatEventMapper chatEventMapper;
     private final MemoryFlushService memoryFlushService;
+    private final SessionPersonaService sessionPersonaService;
 
     /** sessionId -> 运行代数（0 表示空闲；>0 表示有 in-flight 调用） */
     private final ConcurrentHashMap<Integer, AtomicInteger> runningGenerations = new ConcurrentHashMap<>();
@@ -85,6 +88,10 @@ public class ChatOrchestrator {
         }
 
         ChatSessionVO session = chatSessionService.getSessionById(sessionId);
+        // 群聊/私聊：发消息前物化生效人格（定制或来源默认）到会话级 AGENTS.md
+        if (session.getSource() == SessionSource.GROUP || session.getSource() == SessionSource.PRIVATE) {
+            sessionPersonaService.materializeSessionPersona(session);
+        }
         HarnessAgent agent = agentRuntimeRegistry.getOrCreate(session.getBotId(), session.getSource());
         String userId = SessionKeys.userId(session);
         String sessionKey = SessionKeys.sessionId(session, sessionId);
@@ -310,31 +317,21 @@ public class ChatOrchestrator {
     }
 
     /**
-     * 会话标识工具：userId/sessionId 会作为文件系统路径段使用（本机模式
-     * &lt;workspace&gt;/&lt;userId&gt;/agents/...、sessions/&lt;sessionId&gt;.log.jsonl），
-     * 不能含 ':'、'/'、'\' 等字符（Windows 下冒号直接抛 InvalidPathException）。
+     * 会话标识工具：委托 AgentPathKeys 生成文件系统安全的 userId/sessionId。
+     * chatId 为空（Web 端）时回退到 DB 会话 ID。
      */
     static final class SessionKeys {
         private SessionKeys() {
         }
 
         static String userId(ChatSessionVO session) {
-            String source = session.getSource() != null ? session.getSource().getSourceKey() : "web";
-            String chatId = effectiveChatId(session);
-            return safe("bot_" + session.getBotId() + "_" + source + "_" + chatId);
+            return AgentPathKeys.userId(session.getBotId(), session.getSource(),
+                    session.getChatId(), String.valueOf(session.getId()));
         }
 
         static String sessionId(ChatSessionVO session, Integer dbSessionId) {
-            String source = session.getSource() != null ? session.getSource().getSourceKey() : "web";
-            return safe(source + "_" + effectiveChatId(session));
-        }
-
-        private static String effectiveChatId(ChatSessionVO session) {
-            return StringUtils.hasText(session.getChatId()) ? session.getChatId() : String.valueOf(session.getId());
-        }
-
-        private static String safe(String value) {
-            return value.replaceAll("[^A-Za-z0-9_-]", "_");
+            return AgentPathKeys.sessionId(session.getSource(),
+                    session.getChatId(), String.valueOf(session.getId()));
         }
     }
 }

@@ -263,6 +263,7 @@ CREATE TABLE IF NOT EXISTS chat_session (
     chat_id TEXT,       -- 关联群聊ID/私聊ID（使用 TEXT 兼容多平台）
     title VARCHAR(256), -- 会话标题（默认为该会话第一个问题，因此，前端点击新对话时，先不创建会话，等到输入问题并发送后再新建对话）
     source VARCHAR(32),
+    custom_prompt TEXT, -- 定制人格提示词（非空表示已定制，覆盖该来源默认人格）
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );

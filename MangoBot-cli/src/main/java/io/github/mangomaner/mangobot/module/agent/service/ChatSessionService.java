@@ -43,4 +43,14 @@ public interface ChatSessionService extends IService<ChatSession> {
      * 根据 botId / chatId / source 获取会话（不存在时自动创建）
      */
     ChatSessionVO getSessionByBotIdAndChatId(String botId, String chatId, SessionSource source);
+
+    /**
+     * 根据 botId / chatId / source 获取会话（不存在时返回 null，不创建）
+     */
+    ChatSessionVO getSessionByBotIdAndChatIdOrNull(String botId, String chatId, SessionSource source);
+
+    /**
+     * 设置/清除会话定制人格提示词（null 或空白表示清除定制）
+     */
+    void updateCustomPrompt(Integer id, String customPrompt);
 }

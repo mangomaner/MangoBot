@@ -69,7 +69,9 @@ public class ModelProviderServiceImpl extends ServiceImpl<ModelProviderMapper, M
         if (request.getBaseUrl() != null) {
             provider.setBaseUrl(request.getBaseUrl());
         }
-        if (request.getApiKey() != null) {
+        if (request.getApiKey() != null
+                && !request.getApiKey().equals(maskApiKey(provider.getApiKey()))) {
+            // 提交值与当前密钥的脱敏形式相同说明前端未修改，避免用脱敏值覆盖真实密钥
             provider.setApiKey(request.getApiKey());
         }
         if (request.getTimeout() != null) {

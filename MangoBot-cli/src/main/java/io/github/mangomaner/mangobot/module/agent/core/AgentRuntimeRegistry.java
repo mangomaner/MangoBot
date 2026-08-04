@@ -128,7 +128,7 @@ public class AgentRuntimeRegistry {
         registerMcpTools(toolkit, source);
 
         String agentName = "mangobot-" + safeName(botId) + "-" + source.getSourceKey();
-        Path workspace = workspaceManager.ensureBotWorkspace(botId);
+        Path workspace = workspaceManager.ensureAgentWorkspace(botId, source);
         HarnessAgent.Builder builder = HarnessAgent.builder()
                 .name(agentName)
                 .model(model)
@@ -157,7 +157,7 @@ public class AgentRuntimeRegistry {
 
         HarnessAgent agent = builder.build();
         log.info("HarnessAgent built for bot {} source {}: workspace={}",
-                botId, source.getSourceKey(), workspaceManager.resolveBotWorkspace(botId));
+                botId, source.getSourceKey(), workspaceManager.resolveAgentWorkspace(botId, source));
         return agent;
     }
 
