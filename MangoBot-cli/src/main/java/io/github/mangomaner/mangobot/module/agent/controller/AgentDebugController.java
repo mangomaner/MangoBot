@@ -1,7 +1,13 @@
 package io.github.mangomaner.mangobot.module.agent.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.mangomaner.mangobot.module.agent.debug.AgentDebugRecorder;
 import io.github.mangomaner.mangobot.module.agent.middleware.AgentContextCapture;
+import io.github.mangomaner.mangobot.module.agent.model.dto.DebugRecordRequest;
+import io.github.mangomaner.mangobot.module.agent.model.enums.SessionSource;
+import io.github.mangomaner.mangobot.module.agent.model.vo.ChatSessionVO;
+import io.github.mangomaner.mangobot.module.agent.model.vo.DebugRecordStatusVO;
+import io.github.mangomaner.mangobot.module.agent.service.ChatSessionService;
 import io.github.mangomaner.mangobot.system.common.BaseResponse;
 import io.github.mangomaner.mangobot.system.common.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,11 +15,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,6 +36,8 @@ import java.util.Map;
 public class AgentDebugController {
 
     private final AgentContextCapture agentContextCapture;
+    private final AgentDebugRecorder agentDebugRecorder;
+    private final ChatSessionService chatSessionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/context")
@@ -48,5 +59,48 @@ public class AgentDebugController {
             log.error("Failed to read captured context for session: {}", sessionId, e);
             return new BaseResponse<>(ErrorCode.SYSTEM_ERROR.getCode(), null, "读取上下文失败");
         }
+    }
+
+    @PutMapping("/record")
+    @Operation(summary = "开启/关闭会话调试记录", description = "开启后该会话每次模型调用的完整上下文都会追加写入 data/debug/，退出调试模式后仍持续记录")
+    public BaseResponse<Void> setRecord(@RequestBody DebugRecordRequest request) {
+        if (request == null || request.getSessionId() == null || request.getEnabled() == null) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR);
+        }
+        agentDebugRecorder.setRecording(request.getSessionId(), request.getEnabled());
+        return new BaseResponse<>(0, null, "");
+    }
+
+    @GetMapping("/record/status")
+    @Operation(summary = "查询会话调试记录状态", description = "返回记录开关是否开启，以及已记录的模型调用次数")
+    public BaseResponse<DebugRecordStatusVO> getRecordStatus(@RequestParam Integer sessionId) {
+        DebugRecordStatusVO vo = new DebugRecordStatusVO();
+        vo.setEnabled(agentDebugRecorder.isRecording(sessionId));
+        vo.setRecordCount(agentDebugRecorder.recordCount(sessionId));
+        return new BaseResponse<>(0, vo, "");
+    }
+
+    @GetMapping("/record/list")
+    @Operation(summary = "列出会话已记录的所有模型调用", description = "按时间先后返回每次调用的 time/input/usage")
+    public BaseResponse<List<Map<String, Object>>> listRecords(@RequestParam Integer sessionId) {
+        return new BaseResponse<>(0, agentDebugRecorder.listRecords(sessionId), "");
+    }
+
+    @GetMapping("/session")
+    @Operation(summary = "根据来源与 botId/chatId 解析会话", description = "用于调试模式下选中群聊/私聊会话后拿到 sessionId")
+    public BaseResponse<ChatSessionVO> resolveSession(@RequestParam String source,
+                                                      @RequestParam(required = false) String botId,
+                                                      @RequestParam String chatId) {
+        SessionSource sessionSource;
+        try {
+            sessionSource = SessionSource.fromKey(source);
+        } catch (IllegalArgumentException e) {
+            return new BaseResponse<>(ErrorCode.PARAMS_ERROR);
+        }
+        ChatSessionVO vo = chatSessionService.getSessionByBotIdAndChatIdOrNull(botId, chatId, sessionSource);
+        if (vo == null) {
+            return new BaseResponse<>(ErrorCode.NOT_FOUND_ERROR.getCode(), null, "未找到对应会话");
+        }
+        return new BaseResponse<>(0, vo, "");
     }
 }

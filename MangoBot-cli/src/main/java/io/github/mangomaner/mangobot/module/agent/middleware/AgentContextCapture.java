@@ -9,6 +9,8 @@ import io.agentscope.core.middleware.MiddlewareBase;
 import io.agentscope.core.middleware.ModelCallInput;
 import io.agentscope.core.model.ToolSchema;
 import io.github.mangomaner.mangobot.api.context.ChatContext;
+import io.github.mangomaner.mangobot.module.agent.debug.AgentDebugRecorder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -27,8 +29,10 @@ import java.util.function.Function;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AgentContextCapture implements MiddlewareBase {
 
+    private final AgentDebugRecorder debugRecorder;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** sessionId -> 最近一次模型调用的完整上下文 */
@@ -59,6 +63,9 @@ public class AgentContextCapture implements MiddlewareBase {
                         context.usageJson = objectMapper.writeValueAsString(end.getUsage());
                     } catch (Exception e) {
                         log.warn("Failed to capture usage", e);
+                    }
+                    if (debugRecorder.isRecording(sessionId)) {
+                        debugRecorder.append(sessionId, context.inputJson, context.usageJson);
                     }
                 }
             }

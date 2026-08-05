@@ -141,6 +141,21 @@ public class FileUtils {
         writeString(resolvePath(relativePath), content);
     }
 
+    /**
+     * 追加写入字符串到文件（不存在则创建，线程安全）
+     */
+    public static void appendString(Path path, String content) {
+        synchronized (WRITE_LOCK) {
+            createFile(path); // Ensure file and parent dirs exist
+            try {
+                Files.writeString(path, content, StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to append to file: " + path.toAbsolutePath(), e);
+            }
+        }
+    }
+
     // ========================================================================
     // 创建文件
     // ========================================================================
