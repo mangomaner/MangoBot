@@ -2,6 +2,7 @@ package io.github.mangomaner.mangobot.module.agent.debug;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.mangomaner.mangobot.module.agent.model.vo.TokenUsageVO;
 import io.github.mangomaner.mangobot.utils.FileUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,14 +18,18 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Agent 调试「记录」：按会话持久化记录开关，并把每次模型调用的完整上下文追加到文件。
+ * Agent 调试「记录」：按会话持久化记录开关，并把每次完整对话（一条用户输入 + AI 整体输出）追加到文件。
  *
  * <p>文件布局（相对应用根目录）：
  * <ul>
  *   <li>{@code data/debug/settings.json}：{@code {"<sessionId>": true, ...}}，记录开关，重启不丢；</li>
- *   <li>{@code data/debug/<sessionId>.jsonl}：每次模型调用一行 JSON
- *       {@code {"time": "...", "input": {"messages": [...], "tools": [...]}, "usage": {...}}}。</li>
+ *   <li>{@code data/debug/<sessionId>.jsonl}：每次完整对话一行 JSON
+ *       {@code {"time": "...", "input": {"messages": [...], "tools": [...]}, "output": "<AI整体输出>", "usage": {...}, "calls": [...]}}。</li>
  * </ul>
+ *
+ * <p>记录粒度是「一次完整对话」而非「每次模型调用」：同一提问即使内部触发多轮工具调用
+ * （多次 LLM 请求），也只落一行，token 用量为该轮所有调用之和，逐次调用明细放在 calls 中。
+ * {@code input} 保留旧格式的完整上下文（消息列表 + 工具清单），即该轮最后一次模型调用发送给模型的内容。
  */
 @Slf4j
 @Component
@@ -113,13 +118,16 @@ public class AgentDebugRecorder {
     }
 
     /**
-     * 追加一次模型调用记录（仅在开启记录时落盘）。
+     * 追加一次完整对话记录（仅在开启记录时落盘）。
      *
      * @param sessionId 会话 ID
-     * @param inputJson 发送给模型的消息列表 + 工具清单（JSON 字符串，可含 system prompt）
-     * @param usageJson 模型用量（JSON 字符串，可为 null）
+     * @param inputJson 该轮最后一次模型调用发送给模型的完整上下文（JSON 字符串：messages + tools）
+     * @param output    模型整体输出（含思考/工具调用等原始内容）
+     * @param usage     本轮所有模型调用用量之和，可为 null
+     * @param calls     本轮每次模型调用的用量明细，可为 null/空
      */
-    public void append(Integer sessionId, String inputJson, String usageJson) {
+    public void appendTurn(Integer sessionId, String inputJson, String output,
+                           TokenUsageVO usage, List<TokenUsageVO> calls) {
         if (!isRecording(sessionId)) {
             return;
         }
@@ -127,7 +135,13 @@ public class AgentDebugRecorder {
             Map<String, Object> record = new LinkedHashMap<>();
             record.put("time", Instant.now().toString());
             record.put("input", inputJson != null ? objectMapper.readValue(inputJson, Map.class) : null);
-            record.put("usage", usageJson != null ? objectMapper.readValue(usageJson, Map.class) : null);
+            record.put("output", output);
+            if (usage != null) {
+                record.put("usage", usage);
+            }
+            if (calls != null && !calls.isEmpty()) {
+                record.put("calls", calls);
+            }
             FileUtils.createDirectory(debugDir());
             FileUtils.appendString(recordFile(sessionId),
                     objectMapper.writeValueAsString(record) + System.lineSeparator());

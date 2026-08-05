@@ -9,7 +9,6 @@ import io.agentscope.core.middleware.MiddlewareBase;
 import io.agentscope.core.middleware.ModelCallInput;
 import io.agentscope.core.model.ToolSchema;
 import io.github.mangomaner.mangobot.api.context.ChatContext;
-import io.github.mangomaner.mangobot.module.agent.debug.AgentDebugRecorder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -29,10 +28,8 @@ import java.util.function.Function;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class AgentContextCapture implements MiddlewareBase {
 
-    private final AgentDebugRecorder debugRecorder;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /** sessionId -> 最近一次模型调用的完整上下文 */
@@ -64,9 +61,6 @@ public class AgentContextCapture implements MiddlewareBase {
                     } catch (Exception e) {
                         log.warn("Failed to capture usage", e);
                     }
-                    if (debugRecorder.isRecording(sessionId)) {
-                        debugRecorder.append(sessionId, context.inputJson, context.usageJson);
-                    }
                 }
             }
         });
@@ -74,6 +68,17 @@ public class AgentContextCapture implements MiddlewareBase {
 
     public CallContext get(Integer sessionId) {
         return contexts.get(sessionId);
+    }
+
+    /**
+     * 记录一轮完整对话的 AI 整体输出（含 <Thinking>/<FunctionCall>/<TokenUsage> 等原始标签），
+     * 供调试接口 /context 返回临时上下文时展示输出。
+     */
+    public void setOutput(Integer sessionId, String output) {
+        CallContext context = contexts.get(sessionId);
+        if (context != null) {
+            context.output = output;
+        }
     }
 
     private Integer resolveSessionId(RuntimeContext runtimeContext) {
@@ -84,10 +89,12 @@ public class AgentContextCapture implements MiddlewareBase {
         return chatContext != null ? chatContext.getSessionId() : null;
     }
 
-    /** 一次模型调用的完整上下文 */
+    /** 一次模型调用的完整上下文（含整轮 AI 输出） */
     public static class CallContext {
         public final String inputJson;
         public volatile String usageJson;
+        /** 整轮对话的 AI 整体输出，由 ChatOrchestrator 在轮次结束时写入 */
+        public volatile String output;
 
         CallContext(String inputJson, String usageJson) {
             this.inputJson = inputJson;

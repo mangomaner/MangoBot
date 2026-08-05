@@ -51,6 +51,7 @@ public class AgentDebugController {
         try {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("input", objectMapper.readValue(context.inputJson, Map.class));
+            result.put("output", context.output);
             result.put("usage", context.usageJson != null
                     ? objectMapper.readValue(context.usageJson, Map.class)
                     : null);

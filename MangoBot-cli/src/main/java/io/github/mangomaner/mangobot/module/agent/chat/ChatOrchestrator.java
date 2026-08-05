@@ -13,6 +13,8 @@ import io.github.mangomaner.mangobot.api.context.state.ToolExecuteState;
 import io.github.mangomaner.mangobot.module.agent.core.AgentPathKeys;
 import io.github.mangomaner.mangobot.module.agent.core.AgentRuntimeRegistry;
 import io.github.mangomaner.mangobot.module.agent.core.MemoryFlushService;
+import io.github.mangomaner.mangobot.module.agent.debug.AgentDebugRecorder;
+import io.github.mangomaner.mangobot.module.agent.middleware.AgentContextCapture;
 import io.github.mangomaner.mangobot.module.agent.model.dto.ChatMessageWebRequest;
 import io.github.mangomaner.mangobot.module.agent.model.enums.SessionSource;
 import io.github.mangomaner.mangobot.module.agent.model.vo.ChatSessionVO;
@@ -29,6 +31,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,6 +64,8 @@ public class ChatOrchestrator {
     private final ChatEventMapper chatEventMapper;
     private final MemoryFlushService memoryFlushService;
     private final SessionPersonaService sessionPersonaService;
+    private final AgentDebugRecorder debugRecorder;
+    private final AgentContextCapture agentContextCapture;
 
     /** sessionId -> 运行代数（0 表示空闲；>0 表示有 in-flight 调用） */
     private final ConcurrentHashMap<Integer, AtomicInteger> runningGenerations = new ConcurrentHashMap<>();
@@ -141,6 +147,7 @@ public class ChatOrchestrator {
         StringBuilder assistantBuffer = new StringBuilder();
         // 一轮 ReAct 可能有多次模型调用：累计全部调用的用量，整轮结束时输出一次总和
         AtomicReference<TokenUsageVO> totalUsage = new AtomicReference<>();
+        List<TokenUsageVO> callUsages = new ArrayList<>();
 
         Flux<String> turn = agent.streamEvents(
                         new UserMessage(
@@ -154,6 +161,7 @@ public class ChatOrchestrator {
                     if (event instanceof ModelCallEndEvent end) {
                         TokenUsageVO vo = TokenUsageUtils.extractFromChatUsage(end.getUsage());
                         if (vo != null) {
+                            callUsages.add(vo);
                             TokenUsageVO current = totalUsage.get();
                             if (current == null) {
                                 totalUsage.set(vo);
@@ -191,6 +199,13 @@ public class ChatOrchestrator {
             }
 
             persistAssistantMessage(session.getId(), assistantBuffer.toString());
+
+            // 调试记录：一次完整对话一条记录（用户输入上下文 + AI整体输出 + 本轮总用量 + 每次调用明细）
+            AgentContextCapture.CallContext callCtx = agentContextCapture.get(session.getId());
+            agentContextCapture.setOutput(session.getId(), assistantBuffer.toString());
+            debugRecorder.appendTurn(session.getId(),
+                    callCtx != null ? callCtx.inputJson : null,
+                    assistantBuffer.toString(), totalUsage.get(), callUsages);
 
             boolean stillCurrent = generation.get() == myGeneration;
             boolean sendInvoked = sendToolInvoked.get();
